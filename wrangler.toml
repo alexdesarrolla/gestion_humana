@@ -1,18 +1,12 @@
 name = "gestion-humana"
-type = "webpack"
-account_id = "" # Deberás completar esto con tu ID de cuenta de Cloudflare
-route = ""
-zone_id = "" # Deberás completar esto con tu Zone ID si tienes un dominio personalizado
-usage_model = "bundled"
 workers_dev = true
 
 [site]
 bucket = "./out"
-entry-point = "workers-site"
 
+# Configuración simplificada para Cloudflare Pages
+# Se elimina la referencia a workers-site/index.js que no es necesaria
+
+# Configuración de build para Cloudflare Pages
 [build]
 command = "npm run build"
-publish = "out"
-
-[build.environment]
-NODE_VERSION = "18"

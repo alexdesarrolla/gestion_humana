@@ -15,9 +15,10 @@ Este proyecto está configurado para ser desplegado en Cloudflare Pages. A conti
 3. **Configurar el proyecto**
    - **Framework preset**: Selecciona Next.js
    - **Build command**: `npm run build`
-   - **Build output directory**: `.next`
+   - **Build output directory**: `out`
    - **Root directory**: `/` (directorio raíz)
    - **Node.js version**: 18 (o superior)
+   - **Importante**: NO uses `npx wrangler deploy` como comando de implementación
 
 4. **Variables de entorno** (si son necesarias)
    - Configura las variables de entorno necesarias en la sección "Environment variables"
@@ -29,20 +30,19 @@ Este proyecto está configurado para ser desplegado en Cloudflare Pages. A conti
 
 Se han creado/modificado los siguientes archivos para facilitar el despliegue en Cloudflare Pages:
 
-- `next.config.ts`: Configurado con `output: 'standalone'` y otras opciones necesarias para Cloudflare Pages
+- `next.config.ts`: Configurado con `output: 'export'` y otras opciones necesarias para Cloudflare Pages
 - `.pages.dev.json`: Configuración específica para Cloudflare Pages
 - `public/_redirects`: Configuración de redirecciones
 - `public/_headers`: Configuración de encabezados HTTP
 - `wrangler.toml`: Configuración para Cloudflare Workers (opcional)
 
-## Completar la configuración
+## Configuración actualizada
 
-En el archivo `wrangler.toml`, deberás completar los siguientes campos con tus datos de Cloudflare:
+Se ha simplificado el archivo `wrangler.toml` para eliminar campos innecesarios que causaban advertencias durante el despliegue. La configuración actual está optimizada para un despliegue exitoso en Cloudflare Pages.
 
-```toml
-account_id = "" # Tu ID de cuenta de Cloudflare
-zone_id = ""    # Tu Zone ID si tienes un dominio personalizado
-```
+### Corrección de errores de despliegue
+
+**Importante**: El comando de implementación debe ser `npm run build` y NO `npx wrangler deploy`. El despliegue se realiza automáticamente a través de la interfaz de Cloudflare Pages después de la compilación exitosa.
 
 ## Notas adicionales
 

@@ -1,13 +1,8 @@
 name = "gestion-humana"
-workers_dev = true
 
 [site]
 bucket = "./out"
-main = "./out/index.html"
 
-# Configuración simplificada para Cloudflare Pages
-# Se elimina la referencia a workers-site/index.js que no es necesaria
-
-# Configuración de build para Cloudflare Pages
 [build]
 command = "npm run build"
+output_dir = "./out"

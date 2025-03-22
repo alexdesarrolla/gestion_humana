@@ -1,7 +1,0 @@
-name = "gestion-humana"
-
-[build]
-command = "npm run build"
-
-[site]
-bucket = "./out"

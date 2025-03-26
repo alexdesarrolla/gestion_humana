@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -9,15 +10,37 @@ export default function Register() {
     correo: '',
     telefono: '',
     password: '',
-    rol: 'usuario'
+    confirmPassword: '',
+    rol: 'usuario',
+    genero: '',
+    cedula: '',
+    fecha_ingreso: '',
+    empresa: '',
+    cargo: '',
+    sede: '',
+    fecha_nacimiento: '',
+    edad: '',
+    rh: '',
+    eps: '',
+    afp: '',
+    cesantias: '',
+    caja_de_compensacion: '',
+    direccion_residencia: ''
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess(false);
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Las contraseñas no coinciden');
+      return;
+    }
 
     try {
       const supabase = createClient(
@@ -25,7 +48,6 @@ export default function Register() {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
       );
 
-      // Registrar usuario en Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.correo,
         password: formData.password,
@@ -34,7 +56,6 @@ export default function Register() {
       if (authError) throw authError;
 
       if (authData.user) {
-        // Insertar en la tabla usuario_nomina
         const { error: dbError } = await supabase
           .from('usuario_nomina')
           .insert([
@@ -44,7 +65,21 @@ export default function Register() {
               telefono: formData.telefono,
               auth_user_id: authData.user.id,
               user_id: authData.user.id,
-              rol: formData.rol
+              rol: formData.rol,
+              genero: formData.genero || null,
+              cedula: formData.cedula || null,
+              fecha_ingreso: formData.fecha_ingreso || null,
+              empresa: formData.empresa || null,
+              cargo: formData.cargo || null,
+              sede: formData.sede || null,
+              fecha_nacimiento: formData.fecha_nacimiento || null,
+              edad: formData.edad ? parseInt(formData.edad) : null,
+              rh: formData.rh || null,
+              eps: formData.eps || null,
+              afp: formData.afp || null,
+              cesantias: formData.cesantias || null,
+              caja_de_compensacion: formData.caja_de_compensacion || null,
+              direccion_residencia: formData.direccion_residencia || null
             }
           ]);
 
@@ -77,9 +112,10 @@ export default function Register() {
             </div>
           )}
           <form className="space-y-6" onSubmit={handleSubmit}>
+            {/* Campos obligatorios */}
             <div>
               <label htmlFor="nombre" className="block text-sm font-medium text-gray-700">
-                Nombre
+                Nombre completo *
               </label>
               <div className="mt-1">
                 <input
@@ -96,7 +132,7 @@ export default function Register() {
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Correo electrónico
+                Correo electrónico *
               </label>
               <div className="mt-1">
                 <input
@@ -114,7 +150,7 @@ export default function Register() {
 
             <div>
               <label htmlFor="telefono" className="block text-sm font-medium text-gray-700">
-                Teléfono
+                Teléfono *
               </label>
               <div className="mt-1">
                 <input
@@ -131,7 +167,7 @@ export default function Register() {
 
             <div>
               <label htmlFor="rol" className="block text-sm font-medium text-gray-700">
-                Rol
+                Rol *
               </label>
               <div className="mt-1">
                 <select
@@ -150,20 +186,304 @@ export default function Register() {
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Contraseña
+                Contraseña *
               </label>
-              <div className="mt-1">
+              <div className="mt-1 relative">
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeSlashIcon className="h-5 w-5 text-gray-400" />
+                  ) : (
+                    <EyeIcon className="h-5 w-5 text-gray-400" />
+                  )}
+                </button>
               </div>
             </div>
+
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                Confirmar Contraseña *
+              </label>
+              <div className="mt-1 relative">
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  required
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? (
+                    <EyeSlashIcon className="h-5 w-5 text-gray-400" />
+                  ) : (
+                    <EyeIcon className="h-5 w-5 text-gray-400" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Campos opcionales */}
+            <div className="space-y-6 border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-medium text-gray-900">Información adicional</h3>
+              
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="genero" className="block text-sm font-medium text-gray-700">
+                    Género
+                  </label>
+                  <div className="mt-1">
+                    <select
+                      id="genero"
+                      name="genero"
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      value={formData.genero}
+                      onChange={(e) => setFormData({ ...formData, genero: e.target.value })}
+                    >
+                      <option value="">Seleccionar</option>
+                      <option value="masculino">Masculino</option>
+                      <option value="femenino">Femenino</option>
+                      <option value="otro">Otro</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="cedula" className="block text-sm font-medium text-gray-700">
+                    Cédula
+                  </label>
+                  <div className="mt-1">
+                    <input
+                      id="cedula"
+                      name="cedula"
+                      type="text"
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      value={formData.cedula}
+                      onChange={(e) => setFormData({ ...formData, cedula: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="fecha_ingreso" className="block text-sm font-medium text-gray-700">
+                    Fecha de Ingreso
+                  </label>
+                  <div className="mt-1">
+                    <input
+                      id="fecha_ingreso"
+                      name="fecha_ingreso"
+                      type="date"
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      value={formData.fecha_ingreso}
+                      onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="empresa" className="block text-sm font-medium text-gray-700">
+                    Empresa
+                  </label>
+                  <div className="mt-1">
+                    <input
+                      id="empresa"
+                      name="empresa"
+                      type="text"
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      value={formData.empresa}
+                      onChange={(e) => setFormData({ ...formData, empresa: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="cargo" className="block text-sm font-medium text-gray-700">
+                    Cargo
+                  </label>
+                  <div className="mt-1">
+                    <input
+                      id="cargo"
+                      name="cargo"
+                      type="text"
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      value={formData.cargo}
+                      onChange={(e) => setFormData({ ...formData, cargo: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="sede" className="block text-sm font-medium text-gray-700">
+                    Sede
+                  </label>
+                  <div className="mt-1">
+                    <input
+                      id="sede"
+                      name="sede"
+                      type="text"
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      value={formData.sede}
+                      onChange={(e) => setFormData({ ...formData, sede: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="fecha_nacimiento" className="block text-sm font-medium text-gray-700">
+                    Fecha de Nacimiento
+                  </label>
+                  <div className="mt-1">
+                    <input
+                      id="fecha_nacimiento"
+                      name="fecha_nacimiento"
+                      type="date"
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      value={formData.fecha_nacimiento}
+                      onChange={(e) => setFormData({ ...formData, fecha_nacimiento: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="edad" className="block text-sm font-medium text-gray-700">
+                    Edad
+                  </label>
+                  <div className="mt-1">
+                    <input
+                      id="edad"
+                      name="edad"
+                      type="number"
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      value={formData.edad}
+                      onChange={(e) => setFormData({ ...formData, edad: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="rh" className="block text-sm font-medium text-gray-700">
+                    RH
+                  </label>
+                  <div className="mt-1">
+                    <select
+                      id="rh"
+                      name="rh"
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      value={formData.rh}
+                      onChange={(e) => setFormData({ ...formData, rh: e.target.value })}
+                    >
+                      <option value="">Seleccionar</option>
+                      <option value="O+">O+</option>
+                      <option value="O-">O-</option>
+                      <option value="A+">A+</option>
+                      <option value="A-">A-</option>
+                      <option value="B+">B+</option>
+                      <option value="B-">B-</option>
+                      <option value="AB+">AB+</option>
+                      <option value="AB-">AB-</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="eps" className="block text-sm font-medium text-gray-700">
+                    EPS
+                  </label>
+                  <div className="mt-1">
+                    <input
+                      id="eps"
+                      name="eps"
+                      type="text"
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      value={formData.eps}
+                      onChange={(e) => setFormData({ ...formData, eps: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="afp" className="block text-sm font-medium text-gray-700">
+                    AFP
+                  </label>
+                  <div className="mt-1">
+                    <input
+                      id="afp"
+                      name="afp"
+                      type="text"
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      value={formData.afp}
+                      onChange={(e) => setFormData({ ...formData, afp: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="cesantias" className="block text-sm font-medium text-gray-700">
+                    Cesantías
+                  </label>
+                  <div className="mt-1">
+                    <input
+                      id="cesantias"
+                      name="cesantias"
+                      type="text"
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      value={formData.cesantias}
+                      onChange={(e) => setFormData({ ...formData, cesantias: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="caja_de_compensacion" className="block text-sm font-medium text-gray-700">
+                    Caja de Compensación
+                  </label>
+                  <div className="mt-1">
+                    <input
+                      id="caja_de_compensacion"
+                      name="caja_de_compensacion"
+                      type="text"
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      value={formData.caja_de_compensacion}
+                      onChange={(e) => setFormData({ ...formData, caja_de_compensacion: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label htmlFor="direccion_residencia" className="block text-sm font-medium text-gray-700">
+                    Dirección de Residencia
+                  </label>
+                  <div className="mt-1">
+                    <input
+                      id="direccion_residencia"
+                      name="direccion_residencia"
+                      type="text"
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      value={formData.direccion_residencia}
+                      onChange={(e) => setFormData({ ...formData, direccion_residencia: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div>
               <button
                 type="submit"

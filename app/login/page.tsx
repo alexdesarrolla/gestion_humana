@@ -161,6 +161,11 @@ export default function Login() {
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
               </Button>
+              <div className="mt-4 text-center">
+                <a href="/validacion" className="text-sm font-medium text-primary hover:underline">
+                  Primera vez que voy a ingresar
+                </a>
+              </div>
             </form>
           </CardContent>
           <CardFooter className="flex justify-center">

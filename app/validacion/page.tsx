@@ -86,6 +86,11 @@ export default function Validacion() {
       );
 
       // Crear cuenta en Auth
+      if (!userData) {
+        setError('Datos del usuario no encontrados');
+        setIsLoading(false);
+        return;
+      }
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: userData.correo_electronico,
         password: password,

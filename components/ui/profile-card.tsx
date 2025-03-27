@@ -31,18 +31,18 @@ export function ProfileCard({ userData }: ProfileCardProps) {
               <User className="h-10 w-10 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-2xl">{userData?.colaborador}</CardTitle>
-              <p className="text-muted-foreground">{userData?.cargo || "Sin cargo asignado"}</p>
-            </div>
-          </div>
-          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-3 py-1 text-sm">
+              <CardTitle className="text-2xl md:text-2xl font-bold text-sm">{userData?.colaborador}</CardTitle>
+              <p className="text-muted-foreground text-sm">{userData?.cargo || "Sin cargo asignado"}</p>
+              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-3 py-1 mt-2 text-sm">
             {userData?.empresas?.nombre || "Empresa no asignada"}
           </Badge>
+            </div>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="pt-6">
         <Tabs defaultValue="personal" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-3 h-auto [&>*]:whitespace-normal [&>*]:">
             <TabsTrigger value="personal">Información Personal</TabsTrigger>
             <TabsTrigger value="laboral">Información Laboral</TabsTrigger>
             <TabsTrigger value="afiliaciones">Afiliaciones</TabsTrigger>

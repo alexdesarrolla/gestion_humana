@@ -1,10 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
 export default function Register() {
+  const [empresas, setEmpresas] = useState([]);
+  const [sedes, setSedes] = useState([]);
+  const [eps, setEps] = useState([]);
+  const [afps, setAfps] = useState([]);
+  const [cajaDeCompensacionOptions, setCajaDeCompensacionOptions] = useState([]);
   const [formData, setFormData] = useState({
     nombre: '',
     correo: '',
@@ -15,22 +20,93 @@ export default function Register() {
     genero: '',
     cedula: '',
     fecha_ingreso: '',
-    empresa: '',
+    empresa_id: '',
     cargo: '',
-    sede: '',
+    sede_id: '',
     fecha_nacimiento: '',
     edad: '',
     rh: '',
-    eps: '',
-    afp: '',
-    cesantias: '',
-    caja_de_compensacion: '',
+    eps_id: '',
+    afp_id: '',
+    cesantias_id: '',
+    caja_de_compensacion_id: '',
     direccion_residencia: ''
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+      );
+      
+      const { data: empresasData, error: empresasError } = await supabase
+        .from('empresas')
+        .select('id, nombre')
+        .order('nombre');
+
+      if (empresasError) {
+        console.error('Error al obtener empresas:', empresasError);
+        return;
+      }
+
+      setEmpresas(empresasData || []);
+
+      const { data: sedesData, error: sedesError } = await supabase
+        .from('sedes')
+        .select('id, nombre')
+        .order('nombre');
+
+      if (sedesError) {
+        console.error('Error al obtener sedes:', sedesError);
+        return;
+      }
+
+      setSedes(sedesData || []);
+
+      const { data: epsData, error: epsError } = await supabase
+        .from('eps')
+        .select('id, nombre')
+        .order('nombre');
+
+      if (epsError) {
+        console.error('Error al obtener eps:', epsError);
+        return;
+      }
+
+      setEps(epsData || []);
+
+      const { data: afpsData, error: afpsError } = await supabase
+        .from('afp')
+        .select('id, nombre')
+        .order('nombre');
+
+      if (afpsError) {
+        console.error('Error al obtener afps:', afpsError);
+        return;
+      }
+
+      setAfps(afpsData || []);
+
+      const { data: cajasData, error: cajasError } = await supabase
+        .from('caja_de_compensacion')
+        .select('id, nombre')
+        .order('nombre');
+
+      if (cajasError) {
+        console.error('Error al obtener cajas de compensación:', cajasError);
+        return;
+      }
+
+      setCajaDeCompensacionOptions(cajasData || []);
+    };
+
+    fetchData();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,16 +145,16 @@ export default function Register() {
               genero: formData.genero || null,
               cedula: formData.cedula || null,
               fecha_ingreso: formData.fecha_ingreso || null,
-              empresa: formData.empresa || null,
+              empresa_id: formData.empresa_id ? parseInt(formData.empresa_id) : null,
               cargo: formData.cargo || null,
-              sede: formData.sede || null,
+              sede_id: formData.sede_id ? parseInt(formData.sede_id) : null,
               fecha_nacimiento: formData.fecha_nacimiento || null,
               edad: formData.edad ? parseInt(formData.edad) : null,
               rh: formData.rh || null,
-              eps: formData.eps || null,
-              afp: formData.afp || null,
-              cesantias: formData.cesantias || null,
-              caja_de_compensacion: formData.caja_de_compensacion || null,
+              eps_id: formData.eps_id || null,
+              afp_id: formData.afp_id || null,
+              cesantias_id: formData.cesantias_id ? parseInt(formData.cesantias_id) : null,
+              caja_de_compensacion_id: formData.caja_de_compensacion_id ? parseInt(formData.caja_de_compensacion_id) : null,
               direccion_residencia: formData.direccion_residencia || null
             }
           ]);
@@ -298,22 +374,28 @@ export default function Register() {
                 </div>
 
                 <div>
-                  <label htmlFor="empresa" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="empresa_id" className="block text-sm font-medium text-gray-700">
                     Empresa
                   </label>
                   <div className="mt-1">
-                    <input
-                      id="empresa"
-                      name="empresa"
-                      type="text"
-                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      value={formData.empresa}
-                      onChange={(e) => setFormData({ ...formData, empresa: e.target.value })}
-                    />
+                    <select
+                      id="empresa_id"
+                      name="empresa_id"
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      value={formData.empresa_id}
+                      onChange={(e) => setFormData({ ...formData, empresa_id: e.target.value })}
+                    >
+                      <option value="">Seleccionar</option>
+                      {empresas.map((empresa) => (
+                        <option key={empresa.id} value={empresa.id}>
+                          {empresa.nombre}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
-                <div>
+                <div className="sm:col-span-2">
                   <label htmlFor="cargo" className="block text-sm font-medium text-gray-700">
                     Cargo
                   </label>
@@ -334,14 +416,20 @@ export default function Register() {
                     Sede
                   </label>
                   <div className="mt-1">
-                    <input
+                    <select
                       id="sede"
                       name="sede"
-                      type="text"
-                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      value={formData.sede}
-                      onChange={(e) => setFormData({ ...formData, sede: e.target.value })}
-                    />
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      value={formData.sede_id || ''}
+                      onChange={(e) => setFormData({ ...formData, sede_id: e.target.value })}
+                    >
+                      <option value="">Seleccione una sede</option>
+                      {sedes.map((sede) => (
+                        <option key={sede.id} value={sede.id}>
+                          {sede.nombre}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -407,14 +495,20 @@ export default function Register() {
                     EPS
                   </label>
                   <div className="mt-1">
-                    <input
+                    <select
                       id="eps"
                       name="eps"
-                      type="text"
-                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      value={formData.eps}
-                      onChange={(e) => setFormData({ ...formData, eps: e.target.value })}
-                    />
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      value={formData.eps_id}
+                      onChange={(e) => setFormData({ ...formData, eps_id: e.target.value })}
+                    >
+                      <option value="">Seleccione una EPS</option>
+                      {eps.map((eps) => (
+                        <option key={eps.id} value={eps.id}>
+                          {eps.nombre}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -423,30 +517,43 @@ export default function Register() {
                     AFP
                   </label>
                   <div className="mt-1">
-                    <input
+                    <select
                       id="afp"
                       name="afp"
-                      type="text"
-                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      value={formData.afp}
-                      onChange={(e) => setFormData({ ...formData, afp: e.target.value })}
-                    />
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      value={formData.afp_id}
+                      onChange={(e) => setFormData({ ...formData, afp_id: e.target.value })}
+                    >
+                      <option value="">Seleccione una AFP</option>
+                      {afps.map((afp) => (
+                        <option key={afp.id} value={afp.id}>
+                          {afp.nombre}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
                 <div>
-                  <label htmlFor="cesantias" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="cesantias_id" className="block text-sm font-medium text-gray-700">
                     Cesantías
                   </label>
                   <div className="mt-1">
-                    <input
-                      id="cesantias"
-                      name="cesantias"
-                      type="text"
-                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      value={formData.cesantias}
-                      onChange={(e) => setFormData({ ...formData, cesantias: e.target.value })}
-                    />
+                    <select
+                      id="cesantias_id"
+                      name="cesantias_id"
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      value={formData.cesantias_id}
+                      onChange={(e) => setFormData({ ...formData, cesantias_id: e.target.value })}
+                    >
+                      <option value="">Seleccione una opción</option>
+                      <option value="1">COLFONDOS</option>
+                      <option value="2">COLPENSIONES</option>
+                      <option value="3">FNA</option>
+                      <option value="4">NA</option>
+                      <option value="5">PORVENIR</option>
+                      <option value="6">PROTECCION</option>
+                    </select>
                   </div>
                 </div>
 
@@ -455,16 +562,23 @@ export default function Register() {
                     Caja de Compensación
                   </label>
                   <div className="mt-1">
-                    <input
+                    <select
                       id="caja_de_compensacion"
                       name="caja_de_compensacion"
-                      type="text"
-                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      value={formData.caja_de_compensacion}
-                      onChange={(e) => setFormData({ ...formData, caja_de_compensacion: e.target.value })}
-                    />
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      value={formData.caja_de_compensacion_id}
+                      onChange={(e) => setFormData({ ...formData, caja_de_compensacion_id: e.target.value })}
+                    >
+                      <option value="">Seleccione una opción</option>
+                      {cajaDeCompensacionOptions.map((caja) => (
+                        <option key={caja.id} value={caja.id}>
+                          {caja.nombre}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
+
 
                 <div className="sm:col-span-2">
                   <label htmlFor="direccion_residencia" className="block text-sm font-medium text-gray-700">
@@ -497,4 +611,5 @@ export default function Register() {
       </div>
     </div>
   );
+
 }

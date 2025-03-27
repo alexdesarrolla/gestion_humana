@@ -184,7 +184,7 @@ export function Sidebar({ userName = "Usuario" }: SidebarProps) {
           onClick={() => setSidebarOpen(false)}
         ></div>
 
-        <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white">
+        <div className="relative flex w-full max-w-xs flex-1 flex-col bg-white h-screen">
           <div className="absolute top-0 right-0 -mr-12 pt-2">
             <button
               type="button"

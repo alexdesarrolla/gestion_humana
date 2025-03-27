@@ -24,11 +24,15 @@ export function ProfileCard({ userData }: ProfileCardProps) {
 
   return (
     <Card className="border-none shadow-md">
-      <CardHeader className="bg-primary/5 pb-2">
+      <CardHeader className="bg-primary/5 pb-5">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="bg-primary/10 p-3 rounded-full">
-              <User className="h-10 w-10 text-primary" />
+          <div className="flex items-center gap-5">
+            <div className="h-20 w-20 rounded-full overflow-hidden">
+              <img 
+                src="/img/avatar.webp" 
+                alt="User avatar"
+                className="h-full w-full object-cover"
+              />
             </div>
             <div>
               <CardTitle className="text-2xl md:text-2xl font-bold text-sm">{userData?.colaborador}</CardTitle>

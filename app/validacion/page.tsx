@@ -18,7 +18,12 @@ export default function Validacion() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(1); // 1: Ingresar cédula, 2: Crear contraseña
-  const [userData, setUserData] = useState(null);
+  interface UserData {
+  correo_electronico: string;
+  cedula: string;
+}
+
+const [userData, setUserData] = useState<UserData | null>(null);
   const [showModal, setShowModal] = useState(false);
 
   const handleValidarCedula = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -86,13 +91,13 @@ export default function Validacion() {
       );
 
       // Crear cuenta en Auth
-      if (!userData) {
+      if (!userData?.correo_electronico) {
         setError('Datos del usuario no encontrados');
         setIsLoading(false);
         return;
       }
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: userData.correo_electronico,
+        email: userData?.correo_electronico || '',
         password: password,
       });
 
@@ -111,7 +116,7 @@ export default function Validacion() {
         router.push('/login');
       }
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : 'Error al crear la cuenta');
     } finally {
       setIsLoading(false);
     }

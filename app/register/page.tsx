@@ -4,12 +4,37 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
+interface Empresa {
+  id: number;
+  nombre: string;
+}
+
+interface Sede {
+  id: number;
+  nombre: string;
+}
+
+interface EPS {
+  id: number;
+  nombre: string;
+}
+
+interface AFP {
+  id: number;
+  nombre: string;
+}
+
+interface CajaCompensacion {
+  id: number;
+  nombre: string;
+}
+
 export default function Register() {
-  const [empresas, setEmpresas] = useState([]);
-  const [sedes, setSedes] = useState([]);
-  const [eps, setEps] = useState([]);
-  const [afps, setAfps] = useState([]);
-  const [cajaDeCompensacionOptions, setCajaDeCompensacionOptions] = useState([]);
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [sedes, setSedes] = useState<Sede[]>([]);
+  const [eps, setEps] = useState<EPS[]>([]);
+  const [afps, setAfps] = useState<AFP[]>([]);
+  const [cajaDeCompensacionOptions, setCajaDeCompensacionOptions] = useState<CajaCompensacion[]>([]);
   const [formData, setFormData] = useState({
     nombre: '',
     correo: '',

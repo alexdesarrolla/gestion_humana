@@ -1,13 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-);
+import { createSupabaseClient } from '@/lib/supabase';
 
 export default function Administracion() {
   const router = useRouter();
@@ -16,6 +11,7 @@ export default function Administracion() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      const supabase = createSupabaseClient();
       const { data: { session }, error } = await supabase.auth.getSession();
 
       if (error || !session) {
@@ -80,6 +76,7 @@ export default function Administracion() {
           <div className="mt-8 flex justify-center">
             <button
               onClick={async () => {
+                const supabase = createSupabaseClient();
                 const { error } = await supabase.auth.signOut();
                 if (!error) {
                   router.push('/login');

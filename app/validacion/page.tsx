@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { createSupabaseClient } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,10 +32,7 @@ const [userData, setUserData] = useState<UserData | null>(null);
     setIsLoading(true);
 
     try {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-      );
+      const supabase = createSupabaseClient();
 
       // Verificar si el usuario existe en la tabla usuario_nomina
       const { data, error: queryError } = await supabase
@@ -85,10 +82,7 @@ const [userData, setUserData] = useState<UserData | null>(null);
     }
 
     try {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-      );
+      const supabase = createSupabaseClient();
 
       // Crear cuenta en Auth
       if (!userData?.correo_electronico) {

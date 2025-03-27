@@ -21,7 +21,7 @@ export default function Validacion() {
   const [userData, setUserData] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
-  const handleValidarCedula = async (e) => {
+  const handleValidarCedula = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
@@ -68,7 +68,7 @@ export default function Validacion() {
     }
   };
 
-  const handleCrearCuenta = async (e) => {
+  const handleCrearCuenta = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);

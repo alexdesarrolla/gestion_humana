@@ -1,16 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { createClient } from "@supabase/supabase-js"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/ui/sidebar"
 import { ProfileCard } from "@/components/ui/profile-card"
 import { Skeleton } from "@/components/ui/skeleton"
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-)
+import { createSupabaseClient } from "@/lib/supabase"
 
 export default function Perfil() {
   const router = useRouter()
@@ -19,6 +14,7 @@ export default function Perfil() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      const supabase = createSupabaseClient();
       const {
         data: { session },
         error,

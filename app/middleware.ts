@@ -1,15 +1,23 @@
 import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export async function middleware(request: NextRequest) {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-  );
+// Función segura para crear el cliente de Supabase
+const createSupabaseClientSafe = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Las variables de entorno de Supabase no están configuradas');
+  }
+  
+  return createClient(supabaseUrl, supabaseAnonKey);
+};
 
+export async function middleware(request: NextRequest) {
   try {
+    const supabase = createSupabaseClientSafe();
+
     // Verificar si el usuario está autenticado
     const { data: { session }, error } = await supabase.auth.getSession();
 

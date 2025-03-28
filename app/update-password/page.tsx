@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Lock, AlertCircle, CheckCircle2 } from "lucide-react"
 
-export default function UpdatePassword() {
+function UpdatePasswordContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [password, setPassword] = useState("")
@@ -112,5 +112,13 @@ export default function UpdatePassword() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function UpdatePassword() {
+  return (
+    <Suspense fallback={<div>Cargando...</div>}>
+      <UpdatePasswordContent />
+    </Suspense>
   )
 }

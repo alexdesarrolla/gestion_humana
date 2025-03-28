@@ -57,7 +57,9 @@ export default function Usuarios() {
         .select(`
           id,
           colaborador,
+          cargo,
           correo_electronico,
+          avatar_path,
           empresas:empresa_id(nombre),
           sedes:sede_id(nombre)
         `)
@@ -112,21 +114,39 @@ export default function Usuarios() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>ID</TableHead>
+                          <TableHead>Avatar</TableHead>
                           <TableHead>Nombre</TableHead>
-                          <TableHead>Email</TableHead>
+                          <TableHead>Cargo</TableHead>
                           <TableHead>Empresa</TableHead>
-                          <TableHead>Sede</TableHead>
+                          <TableHead>Correo</TableHead>
+                          <TableHead>Acciones</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {users.map((user) => (
                           <TableRow key={user.id}>
-                            <TableCell>{user.id}</TableCell>
+                            <TableCell>
+                              {user.avatar_path ? (
+                                <img 
+                                  src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatar/${user.avatar_path}`}
+                                  className="h-10 w-10 rounded-full object-cover"
+                                  alt="Avatar"
+                                />
+                              ) : (
+                                <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                  {user.colaborador?.charAt(0) || '?'}
+                                </div>
+                              )}
+                            </TableCell>
                             <TableCell>{user.colaborador}</TableCell>
-                            <TableCell>{user.email}</TableCell>
+                            <TableCell>{user.cargo || 'N/A'}</TableCell>
                             <TableCell>{user.empresas?.nombre}</TableCell>
-                            <TableCell>{user.sedes?.nombre}</TableCell>
+                            <TableCell>{user.correo_electronico}</TableCell>
+                            <TableCell>
+                              <button className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">
+                                Ver detalles
+                              </button>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>

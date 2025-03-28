@@ -14,6 +14,7 @@ import {
   MapPinned,
   CreditCard,
   X,
+  Search,
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { createSupabaseClient } from "@/lib/supabase"
@@ -43,12 +44,15 @@ export function ProfileCard({ userData }: ProfileCardProps) {
       <CardHeader className="bg-primary/5 pb-5">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-5">
-            <div className="h-20 w-20 rounded-lg overflow-hidden cursor-pointer" onClick={() => setIsModalOpen(true)}>
+            <div className="h-20 w-20 rounded-lg overflow-hidden cursor-pointer relative group" onClick={() => setIsModalOpen(true)}>
               <img 
                 src={avatarUrl || ''} 
                 alt="User avatar"
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover border border-gray-200"
               />
+              <div className="absolute bottom-1 right-1 bg-black/50 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Search className="h-3 w-3 text-white" />
+              </div>
             </div>
             
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>

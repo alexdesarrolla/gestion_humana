@@ -3,7 +3,7 @@ import { useState } from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { type VariantProps, cva } from "class-variance-authority"
 import { PanelLeft, Menu, X, LogOut, User } from "lucide-react"
-import { useRouter } from "next/router"
+import { useRouter } from "next/navigation"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"

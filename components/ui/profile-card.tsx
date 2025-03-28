@@ -29,7 +29,7 @@ export function ProfileCard({ userData }: ProfileCardProps) {
           <div className="flex items-center gap-5">
             <div className="h-20 w-20 rounded-full overflow-hidden">
               <img 
-                src="/img/avatar.webp" 
+                src={userData?.genero === 'F' ? '/img/avatar-f.webp' : '/img/avatar-m.webp'} 
                 alt="User avatar"
                 className="h-full w-full object-cover"
               />

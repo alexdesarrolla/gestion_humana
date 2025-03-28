@@ -2,20 +2,19 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Sidebar } from "@/components/ui/sidebar"
+import { AdminSidebar } from "@/components/ui/admin-sidebar"
 import { ProfileCard } from "@/components/ui/profile-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { createSupabaseClient } from "@/lib/supabase"
-import { AdminSidebar } from "@/components/ui/admin-sidebar"
 
-export default function Administracion() {
+export default function Perfil() {
   const router = useRouter()
   const [userData, setUserData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const checkAuth = async () => {
-      const supabase = createSupabaseClient()
+      const supabase = createSupabaseClient();
       const {
         data: { session },
         error,
@@ -46,12 +45,6 @@ export default function Administracion() {
         return
       }
 
-      // Verificar si el usuario es administrador
-      if (userData.rol !== 'administrador') {
-        router.push('/perfil')
-        return
-      }
-
       setUserData(userData)
       setLoading(false)
     }
@@ -69,7 +62,7 @@ export default function Administracion() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <AdminSidebar userName="Administrador" />
+      <AdminSidebar userName={userData?.colaborador} />
 
       {/* Main content */}
       <div className="md:pl-64 flex flex-col flex-1">
@@ -78,8 +71,8 @@ export default function Administracion() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
               <div className="space-y-6">
                 <div>
-                  <h1 className="text-2xl font-bold tracking-tight">Panel de Administración</h1>
-                  <p className="text-muted-foreground">Gestiona usuarios y configuración del sistema.</p>
+                  <h1 className="text-2xl font-bold tracking-tight">Mis Datos</h1>
+                  <p className="text-muted-foreground">Visualiza tu información personal, laboral y de afiliaciones.</p>
                 </div>
 
                 <div className="divide-y divide-border rounded-md border">
@@ -111,3 +104,4 @@ export default function Administracion() {
     </div>
   )
 }
+

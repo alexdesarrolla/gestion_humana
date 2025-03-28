@@ -42,10 +42,12 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
     }
   }
 
+  const currentPath = router.pathname;
+
   const menuItems = [
-    { name: "Escritorio", href: "/administracion", icon: User, current: true },
-    { name: "Usuarios", href: "/administracion/usuarios", icon: User, current: false },
-    { name: "Mis datos", href: "/administracion/perfil", icon: User, current: false },
+    { name: "Escritorio", href: "/administracion", icon: User, current: currentPath === "/administracion" },
+    { name: "Usuarios", href: "/administracion/usuarios", icon: User, current: currentPath === "/administracion/usuarios" },
+    { name: "Mis datos", href: "/administracion/perfil", icon: User, current: currentPath === "/administracion/perfil" },
   ]
 
   return (

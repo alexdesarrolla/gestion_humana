@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { UserCircle2, Lock, AlertCircle } from "lucide-react"
+import { UserCircle2, Lock, AlertCircle, Eye, EyeOff } from "lucide-react"
 import { createSupabaseClient } from "@/lib/supabase"
 
 export default function Login() {
@@ -21,6 +21,7 @@ export default function Login() {
   })
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => {
     const checkSession = async () => {
@@ -170,12 +171,23 @@ export default function Login() {
                   </div>
                   <Input
                     id="password"
-                    type="password"
-                    className="pl-10"
+                    type={showPassword ? "text" : "password"}
+                    className="pl-10 pr-10"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     required
                   />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5 text-slate-400" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-slate-400" />
+                    )}
+                  </button>
                 </div>
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>

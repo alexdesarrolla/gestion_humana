@@ -14,12 +14,25 @@ import {
   MapPinned,
   CreditCard,
 } from "lucide-react"
+import { useEffect, useState } from "react"
+import { createSupabaseClient } from "@/lib/supabase"
 
 interface ProfileCardProps {
   userData: any
 }
 
 export function ProfileCard({ userData }: ProfileCardProps) {
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const supabase = createSupabaseClient()
+
+  useEffect(() => {
+    if (userData?.genero) {
+      const path = userData.genero === 'F' ? 'defecto/avatar-f.webp' : 'defecto/avatar-m.webp'
+      const { data } = supabase.storage.from('avatar').getPublicUrl(path)
+      setAvatarUrl(data.publicUrl)
+    }
+  }, [userData])
+
   if (!userData) return null
 
   return (
@@ -29,7 +42,7 @@ export function ProfileCard({ userData }: ProfileCardProps) {
           <div className="flex items-center gap-5">
             <div className="h-20 w-20 rounded-full overflow-hidden">
               <img 
-                src={userData?.genero === 'F' ? '/img/avatar-f.webp' : '/img/avatar-m.webp'} 
+                src={avatarUrl || ''} 
                 alt="User avatar"
                 className="h-full w-full object-cover"
               />

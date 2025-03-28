@@ -13,9 +13,11 @@ import {
   Building,
   MapPinned,
   CreditCard,
+  X,
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { createSupabaseClient } from "@/lib/supabase"
+import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog"
 
 interface ProfileCardProps {
   userData: any
@@ -23,6 +25,7 @@ interface ProfileCardProps {
 
 export function ProfileCard({ userData }: ProfileCardProps) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
   const supabase = createSupabaseClient()
 
   useEffect(() => {
@@ -40,13 +43,31 @@ export function ProfileCard({ userData }: ProfileCardProps) {
       <CardHeader className="bg-primary/5 pb-5">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-5">
-            <div className="h-20 w-20 rounded-full overflow-hidden">
+            <div className="h-20 w-20 rounded-lg overflow-hidden cursor-pointer" onClick={() => setIsModalOpen(true)}>
               <img 
                 src={avatarUrl || ''} 
                 alt="User avatar"
                 className="h-full w-full object-cover"
               />
             </div>
+            
+            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+              <DialogContent className="max-w-[90vw] max-h-[90vh] p-0">
+                <div className="relative">
+                  <button 
+                    className="absolute top-2 right-2 p-1 rounded-full bg-black/50 hover:bg-black/70 text-white z-10"
+                    onClick={() => setIsModalOpen(false)}
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                  <img 
+                    src={avatarUrl || ''} 
+                    alt="User avatar"
+                    className="w-full h-full max-h-[80vh] object-contain"
+                  />
+                </div>
+              </DialogContent>
+            </Dialog>
             <div>
               <CardTitle className="text-2xl md:text-2xl font-bold text-sm">{userData?.colaborador}</CardTitle>
               <p className="text-muted-foreground text-sm">{userData?.cargo || "Sin cargo asignado"}</p>

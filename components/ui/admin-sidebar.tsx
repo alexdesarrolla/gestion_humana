@@ -3,6 +3,7 @@ import { useState } from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { type VariantProps, cva } from "class-variance-authority"
 import { PanelLeft, Menu, X, LogOut, User } from "lucide-react"
+import { useRouter } from "next/router"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -12,7 +13,7 @@ import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { createClient } from "@supabase/supabase-js"
-import { useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import Link from "next/link"
 
 const SIDEBAR_COOKIE_NAME = "sidebar:state"
@@ -42,7 +43,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
     }
   }
 
-  const currentPath = router.pathname;
+  const currentPath = usePathname();
 
   const menuItems = [
     { name: "Escritorio", href: "/administracion", icon: User, current: currentPath === "/administracion" },

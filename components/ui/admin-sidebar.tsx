@@ -88,57 +88,65 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
 
           <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
             <div className="flex-shrink-0 flex items-center px-4">
-              <div className="flex items-center">
-                <div className="ml-3">
-                  <p className="text-base font-medium text-gray-700">{userName}</p>
-                </div>
-              </div>
+              <h1 className="text-xl font-bold text-primary">Gestión Humana 360</h1>
             </div>
-
             <nav className="mt-5 px-2 space-y-1">
               {menuItems.map((item) => (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                  className={cn(
+                    item.current ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                    "group flex items-center px-2 py-2 text-base font-medium rounded-md",
+                  )}
                 >
-                  <item.icon className="mr-4 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
+                  <item.icon
+                    className={cn(
+                      item.current ? "text-primary" : "text-gray-400 group-hover:text-gray-500",
+                      "mr-4 flex-shrink-0 h-6 w-6",
+                    )}
+                    aria-hidden="true"
+                  />
                   {item.name}
                 </Link>
               ))}
             </nav>
           </div>
-
           <div className="flex-shrink-0 flex border-t border-gray-200 p-4">
-            <button
-              onClick={handleSignOut}
-              className="group flex items-center rounded-md bg-gray-100 px-2 py-2 text-base font-medium text-gray-600 hover:bg-gray-200 hover:text-gray-900 w-full"
-            >
-              <LogOut className="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
+            <Button variant="destructive" className="flex items-center w-full" onClick={handleSignOut}>
+              <LogOut className="mr-2 h-4 w-4" />
               Cerrar sesión
-            </button>
+            </Button>
           </div>
         </div>
+
+        <div className="flex-shrink-0 w-14"></div>
       </div>
 
       {/* Static sidebar for desktop */}
       <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
-        <div className="flex-1 flex flex-col min-h-0 border-r border-gray-200 bg-white">
+        <div className="flex-1 flex flex-col min-h-0 border-r border-gray-200 bg-white px-2">
           <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
             <div className="flex items-center flex-shrink-0 px-4">
-              <div className="ml-3">
-                <p className="text-lg font-medium text-gray-900">{userName}</p>
-              </div>
+              <h1 className="text-xl font-bold text-primary">Gestión Humana 360</h1>
             </div>
-
-            <nav className="mt-5 flex-1 px-2 space-y-1">
+            <nav className="mt-8 flex-1 px-2 space-y-1">
               {menuItems.map((item) => (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                  className={cn(
+                    item.current ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                    "group flex items-center px-2 py-2 text-sm font-medium rounded-md",
+                  )}
                 >
-                  <item.icon className="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
+                  <item.icon
+                    className={cn(
+                      item.current ? "text-primary" : "text-gray-400 group-hover:text-gray-500",
+                      "mr-3 flex-shrink-0 h-5 w-5",
+                    )}
+                    aria-hidden="true"
+                  />
                   {item.name}
                 </Link>
               ))}
@@ -146,13 +154,10 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
           </div>
 
           <div className="flex-shrink-0 flex border-t border-gray-200 p-4">
-            <button
-              onClick={handleSignOut}
-              className="group flex items-center rounded-md bg-gray-100 px-2 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 hover:text-gray-900 w-full"
-            >
-              <LogOut className="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
+            <Button variant="destructive" className="group flex items-center rounded-md bg-red-500 px-2 py-2 text-sm font-medium text-white hover:bg-red-600 w-full" onClick={handleSignOut}>
+              <LogOut className="mr-3 h-5 w-5 text-white" />
               Cerrar sesión
-            </button>
+            </Button>
           </div>
         </div>
       </div>

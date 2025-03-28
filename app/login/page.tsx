@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { UserCircle2, Lock, AlertCircle } from "lucide-react"
+import { createSupabaseClient } from "@/lib/supabase"
 
 export default function Login() {
   const router = useRouter()
@@ -54,19 +55,39 @@ export default function Login() {
     checkSession()
   }, [router])
 
+  // Función para verificar si el input es una cédula o un correo electrónico
+  const isCedula = (input: string): boolean => {
+    // Verificar si el input contiene solo números (cédula)
+    return /^\d+$/.test(input)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setIsLoading(true)
 
     try {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-      )
+      const supabase = createSupabaseClient()
+      let emailToUse = formData.correo
 
+      // Si el input es una cédula, buscar el correo correspondiente en la tabla usuario_nomina
+      if (isCedula(formData.correo)) {
+        const { data: userData, error: userError } = await supabase
+          .from("usuario_nomina")
+          .select("correo_electronico")
+          .eq("cedula", formData.correo)
+          .single()
+
+        if (userError) {
+          throw new Error("No se encontró ningún usuario con esta cédula")
+        }
+
+        emailToUse = userData.correo_electronico
+      }
+
+      // Iniciar sesión con el correo (original o encontrado) y la contraseña
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.correo,
+        email: emailToUse,
         password: formData.password,
       })
 
@@ -110,7 +131,7 @@ export default function Login() {
         <Card className="border-none shadow-lg">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl text-center">Iniciar Sesión</CardTitle>
-            <CardDescription className="text-center">Ingresa tus credenciales para acceder al sistema</CardDescription>
+            <CardDescription className="text-center">Ingresa tu correo o cédula y contraseña para acceder al sistema</CardDescription>
           </CardHeader>
           <CardContent>
             {error && (
@@ -121,15 +142,14 @@ export default function Login() {
             )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Correo electrónico</Label>
+                <Label htmlFor="email">Cédula o Correo electrónico</Label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                     <UserCircle2 className="h-5 w-5 text-slate-400" />
                   </div>
                   <Input
                     id="email"
-                    type="email"
-                    placeholder="nombre@empresa.com"
+                    type="text"
                     className="pl-10"
                     value={formData.correo}
                     onChange={(e) => setFormData({ ...formData, correo: e.target.value })}

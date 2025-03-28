@@ -69,9 +69,9 @@ export function ProfileCard({ userData }: ProfileCardProps) {
       return
     }
 
-    // Validar tamaño (máximo 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      setUploadError("El archivo es demasiado grande. Máximo 2MB.")
+    // Validar tamaño (máximo 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError("El archivo es demasiado grande. Máximo 5MB.")
       return
     }
 
@@ -79,17 +79,40 @@ export function ProfileCard({ userData }: ProfileCardProps) {
       setIsUploading(true)
       setUploadError(null)
 
+      // Crear un canvas para redimensionar la imagen a exactamente 600px de ancho manteniendo relación de aspecto
+      const img = document.createElement('img')
+      img.src = URL.createObjectURL(file)
+      await new Promise((resolve) => { img.onload = resolve })
+      
+      const canvas = document.createElement('canvas')
+      const targetWidth = 600
+      const scale = targetWidth / img.width
+      canvas.width = targetWidth
+      canvas.height = Math.round(img.height * scale)
+      
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.imageSmoothingQuality = 'high'
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      }
+      
+      // Convertir a webp con 85% de calidad
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob((blob) => resolve(blob), 'image/webp', 0.85)
+      })
+      
+      if (!blob) throw new Error('Error al convertir la imagen')
+      
       // Generar un nombre único con hash para el archivo
-      const fileExt = file.name.split(".").pop()?.toLowerCase()
-      // Crear un hash único combinando ID del usuario y timestamp
-      const timestamp = Date.now().toString(36) // Convertir timestamp a base36 para acortar
-      const randomStr = Math.random().toString(36).substring(2, 8) // String aleatorio
-      const fileHash = `${userData.auth_user_id}_${timestamp}_${randomStr}`
-      const fileName = `${fileHash}.${fileExt}`
+      const fileHash = `${userData.auth_user_id}_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`
+      const fileName = `${fileHash}.webp`
       const filePath = `usuarios/${fileName}`
 
-      // Subir el archivo a Supabase Storage
-      const { error: uploadError } = await supabase.storage.from("avatar").upload(filePath, file, {
+      // Convertir el blob a File para subirlo
+      const webpFile = new File([blob], fileName, { type: 'image/webp' })
+      
+      // Subir el archivo procesado (webp) a Supabase Storage
+      const { error: uploadError } = await supabase.storage.from("avatar").upload(filePath, webpFile, {
         cacheControl: "3600",
         upsert: false,
       })
@@ -236,7 +259,7 @@ export function ProfileCard({ userData }: ProfileCardProps) {
                     />
 
                     <div className="text-xs text-gray-500">
-                      Formatos permitidos: JPG, PNG, WEBP. Tamaño máximo: 2MB.
+                      Formatos permitidos: JPG, PNG, WEBP. Tamaño máximo: 5MB.
                     </div>
                   </div>
                 </div>

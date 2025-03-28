@@ -54,12 +54,22 @@ export function ProfileCard({ userData }: ProfileCardProps) {
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
               <DialogContent className="max-w-[90vw] max-h-[90vh] p-0">
                 <div className="relative">
-                  <button 
-                    className="absolute top-2 right-2 p-1 rounded-full bg-black/50 hover:bg-black/70 text-white z-10"
-                    onClick={() => setIsModalOpen(false)}
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
+                  <div className="absolute top-2 right-2 z-10">
+                    <button 
+                      className="p-1 rounded-full bg-black/50 hover:bg-black/70 text-white"
+                      onClick={() => setIsModalOpen(false)}
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                  <div className="absolute bottom-4 right-4 z-10">
+                    <button 
+                      className="p-2 px-4 rounded-full bg-primary hover:bg-primary/90 text-white text-sm"
+                      onClick={() => console.log('Modificar avatar')}
+                    >
+                      Modificar avatar
+                    </button>
+                  </div>
                   <img 
                     src={avatarUrl || ''} 
                     alt="User avatar"

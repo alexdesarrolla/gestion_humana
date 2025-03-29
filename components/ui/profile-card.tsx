@@ -96,7 +96,7 @@ export function ProfileCard({ userData }: ProfileCardProps) {
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
       }
       
-      // Convertir a webp con 85% de calidad
+      // Convertir a webp con 85% de calidad.
       const blob = await new Promise<Blob | null>((resolve) => {
         canvas.toBlob((blob) => resolve(blob), 'image/webp', 0.85)
       })

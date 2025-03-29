@@ -428,4 +428,3 @@ export function ProfileCard({ userData }: ProfileCardProps) {
     </Card>
   )
 }
-

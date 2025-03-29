@@ -7,11 +7,16 @@ import { ProfileCard } from "@/components/ui/profile-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { createSupabaseClient } from "@/lib/supabase"
 import { AdminSidebar } from "@/components/ui/admin-sidebar"
+import { FaUser, FaBuilding } from 'react-icons/fa';
 
 export default function Administracion() {
   const router = useRouter()
   const [userData, setUserData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalCompanies: 0
+  })
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -52,6 +57,21 @@ export default function Administracion() {
         return
       }
 
+      // Obtener estadísticas
+      const { data: users } = await supabase
+        .from('usuario_nomina')
+        .select('*')
+        .eq('rol', 'usuario')
+
+      const { data: companies } = await supabase
+        .from('empresas')
+        .select('*')
+
+      setStats({
+        totalUsers: users?.length || 0,
+        totalCompanies: companies?.length || 0
+      })
+
       setUserData(userData)
       setLoading(false)
     }
@@ -82,26 +102,25 @@ export default function Administracion() {
                   <p className="text-muted-foreground">Gestiona usuarios y configuración del sistema.</p>
                 </div>
 
-                <div className="divide-y divide-border rounded-md border">
-                  {loading ? (
-                    <div className="p-6 space-y-6">
-                      <div className="flex items-center space-x-4">
-                        <Skeleton className="h-12 w-12 rounded-full" />
-                        <div className="space-y-2">
-                          <Skeleton className="h-4 w-[250px]" />
-                          <Skeleton className="h-4 w-[200px]" />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-4 w-full" />
-                      </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center">
+                      <FaUser className="mr-2 text-blue-600" /> Usuarios Registrados
+                    </h3>
+                    <div className="flex items-center">
+                      <span className="text-3xl font-bold text-blue-600">{stats.totalUsers}</span>
+                      <span className="ml-2 text-sm text-gray-500">usuarios</span>
                     </div>
-                  ) : (
-                    <ProfileCard userData={userData} />
-                  )}
+                  </div>
+                  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center">
+                      <FaBuilding className="mr-2 text-green-600" /> Empresas Registradas
+                    </h3>
+                    <div className="flex items-center">
+                      <span className="text-3xl font-bold text-green-600">{stats.totalCompanies}</span>
+                      <span className="ml-2 text-sm text-gray-500">empresas</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

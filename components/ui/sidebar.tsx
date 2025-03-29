@@ -4,7 +4,7 @@ import * as React from "react"
 import { useState } from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { type VariantProps, cva } from "class-variance-authority"
-import { PanelLeft, Menu, X, LogOut, User } from "lucide-react"
+import { PanelLeft, Menu, X, LogOut, User, Info } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -154,7 +154,7 @@ export function Sidebar({ userName = "Usuario" }: SidebarProps) {
   }
 
   const menuItems = [
-    { name: "Mis datos", href: "/perfil", icon: User, current: true },
+    { name: "Mis datos", href: "/perfil", icon: Info, current: true }, // Change User to Info
     // Aquí se pueden agregar más secciones en el futuro
   ]
 

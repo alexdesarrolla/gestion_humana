@@ -148,8 +148,12 @@ export default function CertificacionLaboral() {
 
       // Crear un elemento HTML temporal para renderizar el certificado
       const certificateContainer = document.createElement("div")
-      certificateContainer.style.width = "800px"
-      certificateContainer.style.padding = "40px"
+      // Configurar dimensiones exactas de A4 (210mm x 297mm)
+      certificateContainer.style.width = "210mm" // Ancho de tamaño A4
+      certificateContainer.style.height = "297mm" // Alto de tamaño A4
+      certificateContainer.style.padding = "0" // Sin padding para mantener dimensiones exactas
+      certificateContainer.style.margin = "0" // Sin margen para mantener dimensiones exactas
+      certificateContainer.style.overflow = "hidden" // Evitar desbordamiento
       certificateContainer.style.fontFamily = "Arial, sans-serif"
       certificateContainer.style.position = "absolute"
       certificateContainer.style.left = "-9999px"
@@ -166,39 +170,51 @@ export default function CertificacionLaboral() {
         ? `, devengando un salario básico de <strong>${salario}</strong> (<strong>${salarioEnLetras}</strong>)` 
         : '';
 
-      // Contenido del certificado basado en la plantilla proporcionada
+      // Construir la URL del membrete desde el storage de Supabase
+      const supabase = createSupabaseClient()
+      const empresaNombre = userData?.empresas?.nombre || 'BDATAM'
+      const membreteFileName = `membrete-${empresaNombre.toLowerCase().replace(/\s+/g, "-")}.jpg`
+      const membreteUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/empresas/logos/${membreteFileName}`
+      
+      // Contenido del certificado basado en la plantilla proporcionada con membrete como fondo
       certificateContainer.innerHTML = `
-        <div style="text-align: center; margin-bottom: 30px;">
-          <h1 style="font-size: 16px; font-weight: bold; text-transform: uppercase;">LA DIRECTORA DE TALENTO HUMANO DE ${userData?.empresas?.razon_social || 'BEST DATA MARKETING S.A.S'}</h1>
-        </div>
+        <div style="position: relative; width: 210mm; height: 297mm; background-image: url('${membreteUrl}'); background-size: cover; background-repeat: no-repeat; background-position: left top; background-color: rgba(255, 255, 255, 0.8); background-blend-mode: lighten;">
+          <div style="padding-top: 180px; padding-left: 100px; padding-right: 100px;">
+            <h1 style="font-size: 16px; font-weight: bold; text-transform: uppercase; text-align: center;">LA DIRECTORA DE TALENTO HUMANO DE ${userData?.empresas?.razon_social || 'BEST DATA MARKETING S.A.S'}</h1>
+          </div>
         
-        <div style="text-align: center; margin: 50px 0;">
+        <div style="text-align: center; margin: 50px 0; padding-left: 100px; padding-right: 100px;">
           <h2 style="font-size: 16px; font-weight: bold;">CERTIFICA:</h2>
         </div>
         
-        <div style="text-align: justify; line-height: 1.6; margin: 30px 0;">
+        <div style="text-align: justify; line-height: 1.6; margin: 30px 0; padding-left: 100px; padding-right: 100px;">
           <p>Que el(la) Señor(a) <strong>${userData?.colaborador || '(NOMBRE DE EMPLEADO)'}</strong> identificado(a) con cédula de ciudadanía No. <strong>${userData?.cedula || '(NUMERO DE CEDULA)'}</strong>, está vinculado(a) a esta empresa mediante contrato de trabajo a <strong>TÉRMINO INDEFINIDO</strong> desde el <strong>${userData?.fecha_ingreso || '(Fecha de ingreso)'}</strong>, donde se desempeña como <strong>${userData?.cargo || 'DISEÑADOR GRÁFICO'}</strong>${salarioParte}.</p>
         </div>
         
-        <div style="text-align: center; margin: 50px 0;">
+        <div style="text-align: left; margin: 50px 0; padding-left: 100px; padding-right: 100px;">
           <p>Se expide para el (${formData.dirigidoA}), en la ciudad de ${formData.ciudad}, ${fechaActual}.</p>
         </div>
         
-        <div style="margin-top: 80px;">
+        <div style="margin-top: 80px; padding-left: 100px; padding-right: 100px;">
           <p>Atentamente,</p>
           <div style="margin-top: 60px; border-bottom: 1px solid #000; width: 250px;"></div>
           <p style="margin-top: 10px;"><strong>LISSETTE VANESSA CALDERON</strong><br>Directora de Talento Humano<br>${userData?.empresas?.razon_social || 'BEST DATA MARKETING S.A.S'}<br>Nit ${userData?.empresas?.nit || '901303215-6'}</p>
         </div>
+      </div>
       `
 
       // Agregar el elemento al DOM para renderizarlo
       document.body.appendChild(certificateContainer)
 
-      // Convertir el HTML a canvas
+      // Convertir el HTML a canvas con dimensiones precisas para A4
       const canvas = await html2canvas(certificateContainer, {
         scale: 2, // Mayor calidad
         useCORS: true,
         logging: false,
+        width: 793, // Equivalente a 210mm a 96dpi
+        height: 1122, // Equivalente a 297mm a 96dpi
+        windowWidth: 793,
+        windowHeight: 1122
       })
 
       // Eliminar el elemento temporal
@@ -208,20 +224,20 @@ export default function CertificacionLaboral() {
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "mm",
-        format: "a4",
+        format: "a4", // Tamaño A4 (210 x 297 mm)
+        margins: { top: 10, right: 25, bottom: 10, left: 25 } // Mantener márgenes laterales
       })
 
-      // Añadir la imagen del canvas al PDF
+      // Añadir la imagen del canvas al PDF con ajuste preciso para A4
       const imgData = canvas.toDataURL("image/jpeg", 1.0)
-      const pdfWidth = pdf.internal.pageSize.getWidth()
-      const pdfHeight = pdf.internal.pageSize.getHeight()
-      const imgWidth = canvas.width
-      const imgHeight = canvas.height
-      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight)
-      const imgX = (pdfWidth - imgWidth * ratio) / 2
-      const imgY = 0
-
-      pdf.addImage(imgData, "JPEG", imgX, imgY, imgWidth * ratio, imgHeight * ratio)
+      
+      // Dimensiones del PDF en mm (A4)
+      const pdfWidth = pdf.internal.pageSize.getWidth() // 210mm
+      const pdfHeight = pdf.internal.pageSize.getHeight() // 297mm
+      
+      // Usar las dimensiones completas del PDF para la imagen
+      // Esto asegura que la imagen ocupe exactamente el tamaño A4
+      pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight)
 
       // Guardar el PDF
       pdf.save(`Certificado_Laboral_${userData?.colaborador.replace(/\s+/g, "_")}.pdf`)

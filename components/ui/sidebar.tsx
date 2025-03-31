@@ -154,7 +154,8 @@ export function Sidebar({ userName = "Usuario" }: SidebarProps) {
   }
 
   const menuItems = [
-    { name: "Mis datos", href: "/perfil", icon: Info, current: true }, // Change User to Info
+    { name: "Mis datos", href: "/perfil", icon: Info, current: false },
+    { name: "Certificación Laboral", href: "/perfil/solicitudes/certificacion-laboral", icon: User, current: false },
     // Aquí se pueden agregar más secciones en el futuro
   ]
 

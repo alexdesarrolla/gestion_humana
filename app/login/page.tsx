@@ -122,11 +122,10 @@ export default function Login() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-slate-50 to-slate-100 p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-block p-4 bg-primary/10 rounded-full mb-4">
-            <UserCircle2 className="h-12 w-12 text-primary" />
+          <div className="inline-block p-4 bg-primary/10mb-4">
+            <img src="/logo360.webp" alt="Logo" className="w-100" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-900">Gestión Humana 360</h1>
-          <p className="text-slate-500 mt-2">Sistema de administración de personal</p>
+          
         </div>
 
         <Card className="border-none shadow-lg">

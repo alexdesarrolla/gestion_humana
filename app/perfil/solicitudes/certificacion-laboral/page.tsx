@@ -18,6 +18,14 @@ import { jsPDF } from "jspdf"
 import html2canvas from "html2canvas"
 
 export default function CertificacionLaboral() {
+  const [showReasonModal, setShowReasonModal] = useState(false)
+  const [rejectionReason, setRejectionReason] = useState('')
+
+  const handleShowReason = (reason: string) => {
+    setRejectionReason(reason)
+    setShowReasonModal(true)
+  }
+
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [generatingPdf, setGeneratingPdf] = useState(false)
@@ -221,12 +229,21 @@ export default function CertificacionLaboral() {
 
   return (
     <>
+      <Dialog open={showReasonModal} onOpenChange={setShowReasonModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Motivo de rechazo</DialogTitle>
+          </DialogHeader>
+          <p>{rejectionReason}</p>
+        </DialogContent>
+      </Dialog>
       {loading && !userData ? (
         <div className="min-h-screen bg-gray-100 flex flex-col justify-center items-center">
           <div className="text-2xl font-semibold text-gray-700">Cargando...</div>
         </div>
       ) : (
         <div className="min-h-screen bg-slate-50">
+          <Sidebar userName={userData?.colaborador} />
       <Sidebar userName={userData?.colaborador} />
 
       {/* Main content */}
@@ -294,10 +311,16 @@ export default function CertificacionLaboral() {
                                   Descargar
                                 </Button>
                               )}
+                              
                               {solicitud.estado === 'rechazado' && solicitud.motivo_rechazo && (
-                                <span className="text-sm text-red-500" title={solicitud.motivo_rechazo}>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-sm text-red-500"
+                                  onClick={() => handleShowReason(solicitud.motivo_rechazo)}
+                                >
                                   Ver motivo
-                                </span>
+                                </Button>
                               )}
                             </TableCell>
                           </TableRow>

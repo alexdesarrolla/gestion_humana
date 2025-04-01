@@ -6,8 +6,12 @@ import { createSupabaseClient } from "@/lib/supabase"
 import { AdminSidebar } from "@/components/ui/admin-sidebar"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, CheckCircle2, FileText } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { AlertCircle, CheckCircle2, FileText, Plus } from "lucide-react"
 import { jsPDF } from "jspdf"
 import html2canvas from "html2canvas"
 
@@ -17,6 +21,13 @@ export default function AdminCertificacionLaboral() {
   const [solicitudes, setSolicitudes] = useState<any[]>([])
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+  const [showModal, setShowModal] = useState(false)
+  const [formData, setFormData] = useState({
+    cedula: "",
+    dirigidoA: "",
+    ciudad: ""
+  })
+  const [usuarioEncontrado, setUsuarioEncontrado] = useState<any>(null)
 
   // Obtener solicitudes pendientes
   useEffect(() => {
@@ -245,6 +256,83 @@ export default function AdminCertificacionLaboral() {
     }
   }
 
+  const buscarUsuario = async () => {
+    if (!formData.cedula) {
+      setError("Por favor ingrese un número de cédula")
+      return
+    }
+
+    setLoading(true)
+    setError("")
+
+    try {
+      const supabase = createSupabaseClient()
+      const { data, error } = await supabase
+        .from('usuario_nomina')
+        .select(`
+          *,
+          empresas:empresa_id(nombre, razon_social, nit)
+        `)
+        .eq('cedula', formData.cedula)
+        .single()
+
+      if (error) throw error
+      setUsuarioEncontrado(data)
+    } catch (err) {
+      console.error("Error al buscar usuario:", err)
+      setError("No se encontró ningún usuario con esa cédula")
+      setUsuarioEncontrado(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const crearCertificado = async () => {
+    if (!usuarioEncontrado || !formData.dirigidoA || !formData.ciudad) {
+      setError("Por favor complete todos los campos requeridos")
+      return
+    }
+
+    try {
+      setLoading(true)
+      const supabase = createSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+
+      if (!session) {
+        router.push("/login")
+        return
+      }
+
+      // Crear la solicitud y aprobarla automáticamente
+      const { data: solicitudData, error: solicitudError } = await supabase
+        .from('solicitudes_certificacion')
+        .insert([
+          {
+            usuario_id: session.user.id,
+            dirigido_a: formData.dirigidoA,
+            ciudad: formData.ciudad,
+            estado: 'pendiente'
+          }
+        ])
+        .select()
+        .single()
+
+      if (solicitudError) throw solicitudError
+
+      // Aprobar la solicitud inmediatamente
+      await aprobarSolicitud(solicitudData.id, usuarioEncontrado)
+
+      setShowModal(false)
+      setFormData({ cedula: "", dirigidoA: "", ciudad: "" })
+      setUsuarioEncontrado(null)
+    } catch (err) {
+      console.error("Error al crear certificado:", err)
+      setError("Error al crear el certificado")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   if (loading && solicitudes.length === 0) {
     return (
       <div className="min-h-screen bg-gray-100 flex flex-col justify-center items-center">
@@ -262,11 +350,17 @@ export default function AdminCertificacionLaboral() {
           <div className="py-6">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
               <div className="space-y-6">
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight">Solicitudes de Certificación Laboral</h1>
-                  <p className="text-muted-foreground">
-                    Gestiona las solicitudes pendientes de certificación laboral.
-                  </p>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h1 className="text-2xl font-bold tracking-tight">Solicitudes de Certificación Laboral</h1>
+                    <p className="text-muted-foreground">
+                      Gestiona las solicitudes pendientes de certificación laboral.
+                    </p>
+                  </div>
+                  <Button onClick={() => setShowModal(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Crear Certificación
+                  </Button>
                 </div>
 
                 {error && (
@@ -283,53 +377,127 @@ export default function AdminCertificacionLaboral() {
                   </Alert>
                 )}
 
-                {solicitudes.length === 0 ? (
-                  <Card>
-                    <CardContent className="p-6 text-center">
-                      <p>No hay solicitudes pendientes en este momento.</p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="space-y-4">
-                    {solicitudes.map((solicitud) => (
-                      <Card key={solicitud.id}>
-                        <CardHeader>
-                          <CardTitle>{solicitud.usuario.colaborador}</CardTitle>
-                          <CardDescription>
-                            Cédula: {solicitud.usuario.cedula} | Cargo: {solicitud.usuario.cargo}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <p><strong>Dirigido a:</strong> {solicitud.dirigido_a}</p>
-                              <p><strong>Ciudad:</strong> {solicitud.ciudad}</p>
-                            </div>
-                            <div>
-                              <p><strong>Fecha solicitud:</strong> {formatDate(new Date(solicitud.fecha_solicitud))}</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                        <CardFooter className="flex justify-end gap-2">
-                          <Button 
-                            variant="outline" 
-                            onClick={() => {
-                              const motivo = prompt("Ingrese el motivo del rechazo:")
-                              if (motivo) rechazarSolicitud(solicitud.id, motivo)
-                            }}
-                          >
-                            Rechazar
+                <Card>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Colaborador</TableHead>
+                          <TableHead>Cédula</TableHead>
+                          <TableHead>Cargo</TableHead>
+                          <TableHead>Dirigido a</TableHead>
+                          <TableHead>Ciudad</TableHead>
+                          <TableHead>Fecha solicitud</TableHead>
+                          <TableHead>Acciones</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {solicitudes.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center">
+                              No hay solicitudes pendientes en este momento.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          solicitudes.map((solicitud) => (
+                            <TableRow key={solicitud.id}>
+                              <TableCell>{solicitud.usuario.colaborador}</TableCell>
+                              <TableCell>{solicitud.usuario.cedula}</TableCell>
+                              <TableCell>{solicitud.usuario.cargo}</TableCell>
+                              <TableCell>{solicitud.dirigido_a}</TableCell>
+                              <TableCell>{solicitud.ciudad}</TableCell>
+                              <TableCell>{formatDate(new Date(solicitud.fecha_solicitud))}</TableCell>
+                              <TableCell>
+                                <div className="flex gap-2">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => {
+                                      const motivo = prompt("Ingrese el motivo del rechazo:")
+                                      if (motivo) rechazarSolicitud(solicitud.id, motivo)
+                                    }}
+                                  >
+                                    Rechazar
+                                  </Button>
+                                  <Button 
+                                    size="sm"
+                                    onClick={() => aprobarSolicitud(solicitud.id, solicitud.usuario)}
+                                  >
+                                    Aprobar
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+
+                <Dialog open={showModal} onOpenChange={setShowModal}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Crear Certificación Laboral</DialogTitle>
+                      <DialogDescription>
+                        Ingrese los datos para generar un nuevo certificado laboral
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="cedula">Número de Cédula</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="cedula"
+                            value={formData.cedula}
+                            onChange={(e) => setFormData({ ...formData, cedula: e.target.value })}
+                            placeholder="Ingrese el número de cédula"
+                          />
+                          <Button onClick={buscarUsuario} disabled={loading}>
+                            Buscar
                           </Button>
-                          <Button 
-                            onClick={() => aprobarSolicitud(solicitud.id, solicitud.usuario)}
-                          >
-                            Aprobar
-                          </Button>
-                        </CardFooter>
-                      </Card>
-                    ))}
-                  </div>
-                )}
+                        </div>
+                      </div>
+
+                      {usuarioEncontrado && (
+                        <div className="space-y-2 p-4 bg-slate-50 rounded-md">
+                          <p><strong>Nombre:</strong> {usuarioEncontrado.colaborador}</p>
+                          <p><strong>Cargo:</strong> {usuarioEncontrado.cargo}</p>
+                          <p><strong>Empresa:</strong> {usuarioEncontrado.empresas?.razon_social}</p>
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <Label htmlFor="dirigidoA">Dirigido a</Label>
+                        <Input
+                          id="dirigidoA"
+                          value={formData.dirigidoA}
+                          onChange={(e) => setFormData({ ...formData, dirigidoA: e.target.value })}
+                          placeholder="Ingrese a quién va dirigido"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="ciudad">Ciudad</Label>
+                        <Input
+                          id="ciudad"
+                          value={formData.ciudad}
+                          onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })}
+                          placeholder="Ingrese la ciudad"
+                        />
+                      </div>
+
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setShowModal(false)}>
+                          Cancelar
+                        </Button>
+                        <Button onClick={crearCertificado} disabled={loading || !usuarioEncontrado}>
+                          Crear Certificado
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
           </div>

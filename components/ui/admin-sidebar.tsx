@@ -2,7 +2,7 @@ import * as React from "react"
 import { useState } from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { type VariantProps, cva } from "class-variance-authority"
-import { PanelLeft, Menu, X, LogOut, User, Home, Info } from "lucide-react"
+import { PanelLeft, Menu, X, LogOut, User, Home, Info, FileText } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -49,6 +49,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
     { name: "Escritorio", href: "/administracion", icon: Home, current: currentPath === "/administracion" },
     { name: "Usuarios", href: "/administracion/usuarios", icon: User, current: currentPath === "/administracion/usuarios" },
     { name: "Mis datos", href: "/administracion/perfil", icon: Info, current: currentPath === "/administracion/perfil" },
+    { name: "Solicitudes", href: "/administracion/solicitudes/certificacion-laboral", icon: FileText, current: currentPath === "/administracion/solicitudes/certificacion-laboral" },
   ]
 
   return (

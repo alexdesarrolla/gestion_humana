@@ -8,11 +8,16 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { createSupabaseClient } from "@/lib/supabase"
 import { AdminSidebar } from "@/components/ui/admin-sidebar"
 import { FaUser, FaBuilding } from 'react-icons/fa';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { CheckCircle2, XCircle } from 'lucide-react';
 
 export default function Administracion() {
   const router = useRouter()
   const [userData, setUserData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [solicitudes, setSolicitudes] = useState<any[]>([])
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalCompanies: 0
@@ -67,11 +72,21 @@ export default function Administracion() {
         .from('empresas')
         .select('*')
 
+      // Obtener todas las solicitudes de certificación
+      const { data: solicitudesData } = await supabase
+        .from('solicitudes_certificacion')
+        .select(`
+          *,
+          usuario_nomina:usuario_id(colaborador, cedula)
+        `)
+        .order('fecha_solicitud', { ascending: false })
+
       setStats({
         totalUsers: users?.length || 0,
         totalCompanies: companies?.length || 0
       })
 
+      setSolicitudes(solicitudesData || [])
       setUserData(userData)
       setLoading(false)
     }
@@ -121,6 +136,101 @@ export default function Administracion() {
                       <span className="ml-2 text-sm text-gray-500">empresas</span>
                     </div>
                   </div>
+                </div>
+
+                {/* Tabla de Solicitudes de Certificación */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  <h2 className="text-xl font-semibold mb-4">Solicitudes de Certificación Laboral</h2>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Colaborador</TableHead>
+                        <TableHead>Cédula</TableHead>
+                        <TableHead>Dirigido a</TableHead>
+                        <TableHead>Ciudad</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead>Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {solicitudes.map((solicitud) => (
+                        <TableRow key={solicitud.id}>
+                          <TableCell>{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</TableCell>
+                          <TableCell>{solicitud.usuario_nomina?.colaborador}</TableCell>
+                          <TableCell>{solicitud.usuario_nomina?.cedula}</TableCell>
+                          <TableCell>{solicitud.dirigido_a}</TableCell>
+                          <TableCell>{solicitud.ciudad}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={solicitud.estado === 'aprobado' ? 'success' :
+                                      solicitud.estado === 'rechazado' ? 'destructive' :
+                                      'default'}
+                            >
+                              {solicitud.estado.charAt(0).toUpperCase() + solicitud.estado.slice(1)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {solicitud.estado === 'pendiente' && (
+                              <div className="flex space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-green-600 hover:text-green-700"
+                                  onClick={async () => {
+                                    const supabase = createSupabaseClient()
+                                    await supabase
+                                      .from('solicitudes_certificacion')
+                                      .update({ estado: 'aprobado' })
+                                      .eq('id', solicitud.id)
+                                    
+                                    // Actualizar la lista de solicitudes
+                                    const { data } = await supabase
+                                      .from('solicitudes_certificacion')
+                                      .select(`*, usuario_nomina:usuario_id(colaborador, cedula)`)
+                                      .order('fecha_solicitud', { ascending: false })
+                                    setSolicitudes(data || [])
+                                  }}
+                                >
+                                  <CheckCircle2 className="w-4 h-4 mr-1" />
+                                  Aprobar
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-red-600 hover:text-red-700"
+                                  onClick={async () => {
+                                    const supabase = createSupabaseClient()
+                                    await supabase
+                                      .from('solicitudes_certificacion')
+                                      .update({ estado: 'rechazado' })
+                                      .eq('id', solicitud.id)
+                                    
+                                    // Actualizar la lista de solicitudes
+                                    const { data } = await supabase
+                                      .from('solicitudes_certificacion')
+                                      .select(`*, usuario_nomina:usuario_id(colaborador, cedula)`)
+                                      .order('fecha_solicitud', { ascending: false })
+                                    setSolicitudes(data || [])
+                                  }}
+                                >
+                                  <XCircle className="w-4 h-4 mr-1" />
+                                  Denegar
+                                </Button>
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {solicitudes.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-4">
+                            No hay solicitudes registradas
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
                 </div>
               </div>
             </div>

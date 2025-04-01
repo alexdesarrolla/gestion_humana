@@ -1,0 +1,16 @@
+Color principal: 'saffron-mango': {
+    '50': '#fff9eb',
+    '100': '#fdedc8',
+    '200': '#fbda8c',
+    '300': '#f9c04e', Color principal, los demas son tonos de color.
+    '400': '#f7a828',
+    '500': '#f1870f',
+    '600': '#d5630a',
+    '700': '#b1430c',
+    '800': '#903410',
+    '900': '#762b11',
+    '950': '#441404',
+},
+Verde: #4CA546
+Azul: #1671FA
+Morado: #6B487A

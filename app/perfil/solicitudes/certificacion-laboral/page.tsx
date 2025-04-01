@@ -8,9 +8,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, CheckCircle2, FileText } from "lucide-react"
+import { AlertCircle, CheckCircle2, FileText, Download, Plus } from "lucide-react"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { jsPDF } from "jspdf"
 import html2canvas from "html2canvas"
 
@@ -19,10 +22,11 @@ export default function CertificacionLaboral() {
   const [loading, setLoading] = useState(false)
   const [generatingPdf, setGeneratingPdf] = useState(false)
   const [userData, setUserData] = useState<any>(null)
+  const [solicitudes, setSolicitudes] = useState<any[]>([])
+  const [showModal, setShowModal] = useState(false)
   const [formData, setFormData] = useState({
     dirigidoA: "",
     ciudad: "",
-    incluirSalario: true, // Nueva opción para incluir o no el salario
   })
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -57,6 +61,19 @@ export default function CertificacionLaboral() {
         console.error("Error al obtener datos del usuario:", userError)
         setLoading(false)
         return
+      }
+
+      // Obtener solicitudes del usuario
+      const { data: solicitudesData, error: solicitudesError } = await supabase
+        .from('solicitudes_certificacion')
+        .select('*')
+        .eq('usuario_id', session.user.id)
+        .order('fecha_solicitud', { ascending: false })
+
+      if (solicitudesError) {
+        console.error("Error al obtener solicitudes:", solicitudesError)
+      } else {
+        setSolicitudes(solicitudesData)
       }
 
       setUserData(userData)
@@ -136,7 +153,7 @@ export default function CertificacionLaboral() {
     }).format(amount);
   };
 
-  const generatePDF = async () => {
+  const enviarSolicitud = async () => {
     if (!formData.dirigidoA || !formData.ciudad) {
       setError("Por favor complete todos los campos requeridos.")
       return
@@ -145,122 +162,71 @@ export default function CertificacionLaboral() {
     try {
       setGeneratingPdf(true)
       setError("")
-
-      // Crear un elemento HTML temporal para renderizar el certificado
-      const certificateContainer = document.createElement("div")
-      // Configurar dimensiones exactas de A4 (210mm x 297mm)
-      certificateContainer.style.width = "210mm" // Ancho de tamaño A4
-      certificateContainer.style.height = "297mm" // Alto de tamaño A4
-      certificateContainer.style.padding = "0" // Sin padding para mantener dimensiones exactas
-      certificateContainer.style.margin = "0" // Sin margen para mantener dimensiones exactas
-      certificateContainer.style.overflow = "hidden" // Evitar desbordamiento
-      certificateContainer.style.fontFamily = "Arial, sans-serif"
-      certificateContainer.style.position = "absolute"
-      certificateContainer.style.left = "-9999px"
       
-      // Obtener la fecha actual formateada
-      const fechaActual = formatDate(new Date())
-
-      // Formatear el salario
-      const salario = userData?.salario ? formatCurrency(userData.salario) : '(VALOR DE SALARIO)';
-      const salarioEnLetras = userData?.salario ? numeroALetras(userData.salario) + ' PESOS M/CTE' : '(VALOR DE SUELDO ESCRITO)';
-      
-      // Preparar la parte del salario (condicional)
-      const salarioParte = formData.incluirSalario 
-        ? `, devengando un salario básico de <strong>${salario}</strong> (<strong>${salarioEnLetras}</strong>)` 
-        : '';
-
-      // Construir la URL del membrete desde el storage de Supabase
       const supabase = createSupabaseClient()
-      const empresaNombre = userData?.empresas?.nombre || 'BDATAM'
-      const membreteFileName = `membrete-${empresaNombre.toLowerCase().replace(/\s+/g, "-")}.jpg`
-      const membreteUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/empresas/logos/${membreteFileName}`
+      const { data: { session } } = await supabase.auth.getSession()
       
-      // Contenido del certificado basado en la plantilla proporcionada con membrete como fondo
-      certificateContainer.innerHTML = `
-        <div style="position: relative; width: 210mm; height: 297mm; background-image: url('${membreteUrl}'); background-size: cover; background-repeat: no-repeat; background-position: left top; background-color: rgba(255, 255, 255, 0.8); background-blend-mode: lighten;">
-          <div style="padding-top: 180px; padding-left: 100px; padding-right: 100px;">
-            <h1 style="font-size: 16px; font-weight: bold; text-transform: uppercase; text-align: center;">LA DIRECTORA DE TALENTO HUMANO DE ${userData?.empresas?.razon_social || 'BEST DATA MARKETING S.A.S'}</h1>
-          </div>
-        
-        <div style="text-align: center; margin: 50px 0; padding-left: 100px; padding-right: 100px;">
-          <h2 style="font-size: 16px; font-weight: bold;">CERTIFICA:</h2>
-        </div>
-        
-        <div style="text-align: justify; line-height: 1.6; margin: 30px 0; padding-left: 100px; padding-right: 100px;">
-          <p>Que el(la) Señor(a) <strong>${userData?.colaborador || '(NOMBRE DE EMPLEADO)'}</strong> identificado(a) con cédula de ciudadanía No. <strong>${userData?.cedula || '(NUMERO DE CEDULA)'}</strong>, está vinculado(a) a esta empresa mediante contrato de trabajo a <strong>TÉRMINO INDEFINIDO</strong> desde el <strong>${userData?.fecha_ingreso || '(Fecha de ingreso)'}</strong>, donde se desempeña como <strong>${userData?.cargo || 'DISEÑADOR GRÁFICO'}</strong>${salarioParte}.</p>
-        </div>
-        
-        <div style="text-align: left; margin: 50px 0; padding-left: 100px; padding-right: 100px;">
-          <p>Se expide para el (${formData.dirigidoA}), en la ciudad de ${formData.ciudad}, ${fechaActual}.</p>
-        </div>
-        
-        <div style="margin-top: 80px; padding-left: 100px; padding-right: 100px;">
-          <p>Atentamente,</p>
-          <div style="margin-top: 60px; border-bottom: 1px solid #000; width: 250px;"></div>
-          <p style="margin-top: 10px;"><strong>LISSETTE VANESSA CALDERON</strong><br>Directora de Talento Humano<br>${userData?.empresas?.razon_social || 'BEST DATA MARKETING S.A.S'}<br>Nit ${userData?.empresas?.nit || '901303215-6'}</p>
-        </div>
-      </div>
-      `
+      if (!session) {
+        router.push("/login")
+        return
+      }
 
-      // Agregar el elemento al DOM para renderizarlo
-      document.body.appendChild(certificateContainer)
+      // Crear la solicitud en la base de datos
+      const { data, error } = await supabase
+        .from('solicitudes_certificacion')
+        .insert([{
+          usuario_id: session.user.id,
+          dirigido_a: formData.dirigidoA,
+          ciudad: formData.ciudad,
+          estado: 'pendiente'
+        }])
+        .select()
 
-      // Convertir el HTML a canvas con dimensiones precisas para A4
-      const canvas = await html2canvas(certificateContainer, {
-        scale: 2, // Mayor calidad
-        useCORS: true,
-        logging: false,
-        width: 793, // Equivalente a 210mm a 96dpi
-        height: 1122, // Equivalente a 297mm a 96dpi
-        windowWidth: 793,
-        windowHeight: 1122
-      })
+      if (error) throw error
 
-      // Eliminar el elemento temporal
-      document.body.removeChild(certificateContainer)
+      // Actualizar la lista de solicitudes
+      const { data: solicitudesData } = await supabase
+        .from('solicitudes_certificacion')
+        .select('*')
+        .eq('usuario_id', session.user.id)
+        .order('fecha_solicitud', { ascending: false })
 
-      // Crear el PDF
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4", // Tamaño A4 (210 x 297 mm)
-        margins: { top: 10, right: 25, bottom: 10, left: 25 } // Mantener márgenes laterales
-      })
-
-      // Añadir la imagen del canvas al PDF con ajuste preciso para A4
-      const imgData = canvas.toDataURL("image/jpeg", 1.0)
-      
-      // Dimensiones del PDF en mm (A4)
-      const pdfWidth = pdf.internal.pageSize.getWidth() // 210mm
-      const pdfHeight = pdf.internal.pageSize.getHeight() // 297mm
-      
-      // Usar las dimensiones completas del PDF para la imagen
-      // Esto asegura que la imagen ocupe exactamente el tamaño A4
-      pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight)
-
-      // Guardar el PDF
-      pdf.save(`Certificado_Laboral_${userData?.colaborador.replace(/\s+/g, "_")}.pdf`)
-
-      setSuccess("Certificado laboral generado correctamente.")
+      setSolicitudes(solicitudesData || [])
+      setSuccess("Solicitud de certificado enviada correctamente. Espera la aprobación del administrador.")
     } catch (err: any) {
-      console.error("Error al generar el PDF:", err)
-      setError("Error al generar el certificado. Por favor intente nuevamente.")
+      console.error("Error al enviar la solicitud:", err)
+      setError("Error al enviar la solicitud. Por favor intente nuevamente.")
     } finally {
       setGeneratingPdf(false)
     }
   }
 
-  if (loading && !userData) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex flex-col justify-center items-center">
-        <div className="text-2xl font-semibold text-gray-700">Cargando...</div>
-      </div>
-    )
+  const descargarCertificado = async (pdfUrl: string) => {
+    try {
+      const response = await fetch(pdfUrl)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'certificado-laboral.pdf'
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('Error al descargar el certificado:', error)
+      setError('Error al descargar el certificado. Por favor intente nuevamente.')
+    }
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <>
+      {loading && !userData ? (
+        <div className="min-h-screen bg-gray-100 flex flex-col justify-center items-center">
+          <div className="text-2xl font-semibold text-gray-700">Cargando...</div>
+        </div>
+      ) : (
+        <div className="min-h-screen bg-slate-50">
       <Sidebar userName={userData?.colaborador} />
 
       {/* Main content */}
@@ -276,18 +242,96 @@ export default function CertificacionLaboral() {
                   </p>
                 </div>
 
+                {/* Tabla de solicitudes */}
                 <Card>
-                  <CardHeader>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <div>
+                      <CardTitle>Mis Solicitudes</CardTitle>
+                      <CardDescription>Historial de solicitudes de certificación laboral</CardDescription>
+                    </div>
+                    <Button
+                      onClick={() => setShowModal(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Nueva solicitud
+                    </Button>
                   </CardHeader>
                   <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Dirigido a</TableHead>
+                          <TableHead>Ciudad</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead>Acciones</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {solicitudes.map((solicitud) => (
+                          <TableRow key={solicitud.id}>
+                            <TableCell>{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</TableCell>
+                            <TableCell>{solicitud.dirigido_a}</TableCell>
+                            <TableCell>{solicitud.ciudad}</TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={solicitud.estado === 'aprobado' ? 'success' :
+                                        solicitud.estado === 'rechazado' ? 'destructive' :
+                                        'default'}
+                              >
+                                {solicitud.estado.charAt(0).toUpperCase() + solicitud.estado.slice(1)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {solicitud.estado === 'aprobado' && solicitud.pdf_url && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => descargarCertificado(solicitud.pdf_url)}
+                                >
+                                  <Download className="w-4 h-4 mr-2" />
+                                  Descargar
+                                </Button>
+                              )}
+                              {solicitud.estado === 'rechazado' && solicitud.motivo_rechazo && (
+                                <span className="text-sm text-red-500" title={solicitud.motivo_rechazo}>
+                                  Ver motivo
+                                </span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {solicitudes.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-4">
+                              No hay solicitudes registradas
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+
+                {/* Modal de nueva solicitud */}
+                <Dialog open={showModal} onOpenChange={setShowModal}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Nueva Solicitud de Certificación</DialogTitle>
+                      <DialogDescription>
+                        Complete el formulario para solicitar su certificado laboral
+                      </DialogDescription>
+                    </DialogHeader>
+
                     {error && (
-                      <Alert variant="destructive" className="mb-6">
+                      <Alert variant="destructive">
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription>{error}</AlertDescription>
                       </Alert>
                     )}
                     {success && (
-                      <Alert className="mb-6 bg-green-50 text-green-800 border-green-200">
+                      <Alert className="bg-green-50 text-green-800 border-green-200">
                         <CheckCircle2 className="h-4 w-4 text-green-600" />
                         <AlertDescription>{success}</AlertDescription>
                       </Alert>
@@ -316,47 +360,34 @@ export default function CertificacionLaboral() {
                         />
                       </div>
 
-                      <div className="flex items-center space-x-2 pt-2">
-                        <input
-                          type="checkbox"
-                          id="incluirSalario"
-                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                          checked={formData.incluirSalario}
-                          onChange={(e) => setFormData({ ...formData, incluirSalario: e.target.checked })}
-                        />
-                        <Label htmlFor="incluirSalario" className="text-sm font-medium text-gray-700">
-                          Incluir información de salario en el certificado
-                        </Label>
-                      </div>
-
-                      <CardFooter className="px-0 pt-4">
-                        <Button 
-                          type="button" 
-                          className="w-full flex items-center justify-center gap-2" 
-                          onClick={generatePDF}
-                          disabled={generatingPdf}
-                        >
-                          {generatingPdf ? (
-                            <>
-                              <span className="animate-spin mr-1">⏳</span>
-                              Generando PDF...
-                            </>
-                          ) : (
-                            <>
-                              <FileText className="h-4 w-4" />
-                              Generar Certificado Laboral
-                            </>
-                          )}
-                        </Button>
-                      </CardFooter>
+                      <Button 
+                        type="button" 
+                        className="w-full flex items-center justify-center gap-2" 
+                        onClick={enviarSolicitud}
+                        disabled={generatingPdf}
+                      >
+                        {generatingPdf ? (
+                          <>
+                            <span className="animate-spin mr-1">⏳</span>
+                            Generando PDF...
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="h-4 w-4" />
+                            Generar Certificado Laboral
+                          </>
+                        )}
+                      </Button>
                     </div>
-                  </CardContent>
-                </Card>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
           </div>
         </main>
       </div>
     </div>
+    )}
+  </>
   )
 }

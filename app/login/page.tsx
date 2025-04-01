@@ -119,11 +119,11 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-slate-50 to-slate-100 p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[url('/fondosecciones.webp')] bg-cover bg-center bg-no-repeat p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-block p-4 bg-primary/10mb-4">
-            <img src="/logo360.webp" alt="Logo" className="w-100" />
+            <img src="/logo360.webp" alt="Logo" className="max-w-[250px] w-full" />
           </div>
           
         </div>

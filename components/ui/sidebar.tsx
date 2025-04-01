@@ -142,7 +142,7 @@ const SidebarProvider = React.forwardRef<
 })
 SidebarProvider.displayName = "SidebarProvider"
 
-export function Sidebar({ userName = "Usuario" }: SidebarProps) {
+export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const router = useRouter()
 

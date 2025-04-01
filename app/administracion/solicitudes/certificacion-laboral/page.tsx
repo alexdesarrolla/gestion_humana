@@ -28,6 +28,11 @@ export default function AdminCertificacionLaboral() {
     ciudad: ""
   })
   const [usuarioEncontrado, setUsuarioEncontrado] = useState<any>(null)
+  const [showApprovalModal, setShowApprovalModal] = useState(false)
+  const [approvalData, setApprovalData] = useState({
+    salario: '',
+    tipoContrato: ''
+  })
 
   // Obtener solicitudes pendientes
   useEffect(() => {
@@ -408,24 +413,15 @@ export default function AdminCertificacionLaboral() {
                               <TableCell>{solicitud.ciudad}</TableCell>
                               <TableCell>{formatDate(new Date(solicitud.fecha_solicitud))}</TableCell>
                               <TableCell>
-                                <div className="flex gap-2">
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => {
-                                      const motivo = prompt("Ingrese el motivo del rechazo:")
-                                      if (motivo) rechazarSolicitud(solicitud.id, motivo)
-                                    }}
-                                  >
-                                    Rechazar
-                                  </Button>
-                                  <Button 
-                                    size="sm"
-                                    onClick={() => aprobarSolicitud(solicitud.id, solicitud.usuario)}
-                                  >
-                                    Aprobar
-                                  </Button>
-                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-green-600 hover:text-green-700"
+                                  onClick={() => setShowApprovalModal(true)}
+                                >
+                                  <CheckCircle2 className="w-4 h-4 mr-1" />
+                                  Aprobar
+                                </Button>
                               </TableCell>
                             </TableRow>
                           ))
@@ -493,6 +489,43 @@ export default function AdminCertificacionLaboral() {
                         </Button>
                         <Button onClick={crearCertificado} disabled={loading || !usuarioEncontrado}>
                           Crear Certificado
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={showApprovalModal} onOpenChange={setShowApprovalModal}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Detalles de Aprobación</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label>Salario del Empleado</Label>
+                        <Input
+                          type="text"
+                          value={approvalData.salario}
+                          onChange={(e) => setApprovalData({ ...approvalData, salario: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label>Tipo de Contrato</Label>
+                        <Input
+                          type="text"
+                          value={approvalData.tipoContrato}
+                          onChange={(e) => setApprovalData({ ...approvalData, tipoContrato: e.target.value })}
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setShowApprovalModal(false)}>
+                          Cancelar
+                        </Button>
+                        <Button onClick={() => {
+                          // Aquí iría la lógica para aprobar con los datos adicionales
+                          setShowApprovalModal(false);
+                        }}>
+                          Aprobar
                         </Button>
                       </div>
                     </div>

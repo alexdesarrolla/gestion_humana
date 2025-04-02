@@ -31,8 +31,11 @@ export default function AdminCertificacionLaboral() {
   const [showApprovalModal, setShowApprovalModal] = useState(false)
   const [approvalData, setApprovalData] = useState({
     salario: '',
-    tipoContrato: ''
+    tipoContrato: '',
+    incluirSalario: true,
+    incluirContrato: true
   })
+  const [solicitudSeleccionada, setSolicitudSeleccionada] = useState<any>(null)
 
   // Obtener solicitudes pendientes
   useEffect(() => {
@@ -67,10 +70,77 @@ export default function AdminCertificacionLaboral() {
     return new Date(date).toLocaleDateString('es-CO', options)
   }
 
+  // Función para convertir número a texto
+  const numeroALetras = (numero: number) => {
+    const unidades = ['', 'UN', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE'];
+    const decenas = ['', 'DIEZ', 'VEINTE', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
+    const especiales = ['DIEZ', 'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISÉIS', 'DIECISIETE', 'DIECIOCHO', 'DIECINUEVE'];
+    const centenas = ['', 'CIENTO', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS', 'SEISCIENTOS', 'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS'];
+
+    if (numero === 0) return 'CERO';
+    if (numero < 0) return 'MENOS ' + numeroALetras(Math.abs(numero));
+
+    let letras = '';
+
+    // Millones
+    if (numero >= 1000000) {
+      const millones = Math.floor(numero / 1000000);
+      numero %= 1000000;
+      letras += numeroALetras(millones) + (millones === 1 ? ' MILLÓN ' : ' MILLONES ');
+    }
+
+    // Miles
+    if (numero >= 1000) {
+      const miles = Math.floor(numero / 1000);
+      numero %= 1000;
+      letras += (miles === 1 ? 'MIL ' : numeroALetras(miles) + ' MIL ');
+    }
+
+    // Centenas
+    if (numero >= 100) {
+      if (numero === 100) {
+        letras += 'CIEN ';
+      } else {
+        letras += centenas[Math.floor(numero / 100)] + ' ';
+      }
+      numero %= 100;
+    }
+
+    // Decenas y unidades
+    if (numero > 0) {
+      if (numero < 10) {
+        letras += unidades[numero];
+      } else if (numero < 20) {
+        letras += especiales[numero - 10];
+      } else {
+        const unidad = numero % 10;
+        const decena = Math.floor(numero / 10);
+        if (unidad === 0) {
+          letras += decenas[decena];
+        } else {
+          letras += decenas[decena] + ' Y ' + unidades[unidad];
+        }
+      }
+    }
+
+    return letras.trim();
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
   const aprobarSolicitud = async (solicitudId: string, usuarioData: any) => {
     try {
-      if (!usuarioData || !usuarioData.empresas) {
-        setError("Datos del usuario o empresa no disponibles")
+      if (!usuarioData || !usuarioData.empresas || 
+          (approvalData.incluirSalario && !approvalData.salario) || 
+          (approvalData.incluirContrato && !approvalData.tipoContrato)) {
+        setError("Datos del usuario, empresa o campos requeridos no disponibles")
         return
       }
 
@@ -132,7 +202,7 @@ export default function AdminCertificacionLaboral() {
         </div>
         
         <div style="text-align: justify; line-height: 1.6; margin: 30px 0; padding-left: 100px; padding-right: 100px;">
-          <p>Que el(la) Señor(a) <strong>${usuarioData.colaborador || '(NOMBRE DE EMPLEADO)'}</strong> identificado(a) con cédula de ciudadanía No. <strong>${usuarioData.cedula || '(NUMERO DE CEDULA)'}</strong>, está vinculado(a) a esta empresa desde el <strong>${usuarioData.fecha_ingreso || '(Fecha de ingreso)'}</strong>, donde se desempeña como <strong>${usuarioData.cargo || 'DISEÑADOR GRÁFICO'}</strong>.</p>
+          <p>Que el(la) Señor(a) <strong>${usuarioData.colaborador || '(NOMBRE DE EMPLEADO)'}</strong> identificado(a) con cédula de ciudadanía No. <strong>${usuarioData.cedula || '(NUMERO DE CEDULA)'}</strong>, está vinculado(a) a esta empresa desde el <strong>${usuarioData.fecha_ingreso || '(Fecha de ingreso)'}</strong>, donde se desempeña como <strong>${usuarioData.cargo || 'DISEÑADOR GRÁFICO'}</strong>${approvalData.incluirContrato ? `, con contrato <strong>${approvalData.tipoContrato}</strong>` : ''}${approvalData.incluirSalario ? ` y un salario mensual de <strong>${formatCurrency(Number(approvalData.salario))}</strong> (${numeroALetras(Number(approvalData.salario))} PESOS M/CTE)` : ''}.</p>
         </div>
         
         <div style="text-align: left; margin: 50px 0; padding-left: 100px; padding-right: 100px;">
@@ -215,6 +285,8 @@ export default function AdminCertificacionLaboral() {
 
         setSuccess("Solicitud aprobada y certificado generado correctamente.")
         setSolicitudes(solicitudes.filter(s => s.id !== solicitudId))
+        setShowApprovalModal(false)
+        setApprovalData({ salario: '', tipoContrato: '' })
       } catch (err: any) {
         throw err
       }
@@ -417,7 +489,11 @@ export default function AdminCertificacionLaboral() {
                                   variant="outline"
                                   size="sm"
                                   className="text-green-600 hover:text-green-700"
-                                  onClick={() => setShowApprovalModal(true)}
+                                  onClick={() => {
+                                    // Guardar la solicitud actual para usarla en el modal
+                                    setSolicitudSeleccionada(solicitud);
+                                    setShowApprovalModal(true);
+                                  }}
                                 >
                                   <CheckCircle2 className="w-4 h-4 mr-1" />
                                   Aprobar
@@ -508,6 +584,16 @@ export default function AdminCertificacionLaboral() {
                           value={approvalData.salario}
                           onChange={(e) => setApprovalData({ ...approvalData, salario: e.target.value })}
                         />
+                        <div className="flex items-center space-x-2 mt-2">
+                          <input
+                            type="checkbox"
+                            id="incluirSalario"
+                            checked={approvalData.incluirSalario}
+                            onChange={(e) => setApprovalData({ ...approvalData, incluirSalario: e.target.checked })}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                          />
+                          <Label htmlFor="incluirSalario" className="text-sm font-normal">Incluir salario en el certificado</Label>
+                        </div>
                       </div>
                       <div>
                         <Label>Tipo de Contrato</Label>
@@ -516,14 +602,28 @@ export default function AdminCertificacionLaboral() {
                           value={approvalData.tipoContrato}
                           onChange={(e) => setApprovalData({ ...approvalData, tipoContrato: e.target.value })}
                         />
+                        <div className="flex items-center space-x-2 mt-2">
+                          <input
+                            type="checkbox"
+                            id="incluirContrato"
+                            checked={approvalData.incluirContrato}
+                            onChange={(e) => setApprovalData({ ...approvalData, incluirContrato: e.target.checked })}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                          />
+                          <Label htmlFor="incluirContrato" className="text-sm font-normal">Incluir tipo de contrato en el certificado</Label>
+                        </div>
                       </div>
                       <div className="flex justify-end gap-2">
                         <Button variant="outline" onClick={() => setShowApprovalModal(false)}>
                           Cancelar
                         </Button>
                         <Button onClick={() => {
-                          // Aquí iría la lógica para aprobar con los datos adicionales
-                          setShowApprovalModal(false);
+                          if (solicitudSeleccionada) {
+                            aprobarSolicitud(solicitudSeleccionada.id, solicitudSeleccionada.usuario);
+                          } else {
+                            setError("No se ha seleccionado ninguna solicitud para aprobar");
+                            setShowApprovalModal(false);
+                          }
                         }}>
                           Aprobar
                         </Button>

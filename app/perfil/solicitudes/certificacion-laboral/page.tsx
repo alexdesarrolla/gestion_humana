@@ -35,6 +35,7 @@ export default function CertificacionLaboral() {
   const [formData, setFormData] = useState({
     dirigidoA: "",
     ciudad: "",
+    salario_contrato: false
   })
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -186,7 +187,8 @@ export default function CertificacionLaboral() {
           usuario_id: session.user.id,
           dirigido_a: formData.dirigidoA,
           ciudad: formData.ciudad,
-          estado: 'pendiente'
+          estado: 'pendiente',
+          salario_contrato: formData.salario_contrato
         }])
         .select()
 
@@ -381,6 +383,17 @@ export default function CertificacionLaboral() {
                           onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })}
                           required
                         />
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="salario_contrato"
+                          checked={formData.salario_contrato}
+                          onChange={(e) => setFormData({ ...formData, salario_contrato: e.target.checked })}
+                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        />
+                        <Label htmlFor="salario_contrato">Incluir salario y tipo de contrato en el certificado</Label>
                       </div>
 
                       <Button 

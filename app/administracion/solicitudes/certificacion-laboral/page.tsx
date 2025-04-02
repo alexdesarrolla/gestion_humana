@@ -22,10 +22,17 @@ export default function AdminCertificacionLaboral() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [showModal, setShowModal] = useState(false)
+  const [showApprovalModal, setShowApprovalModal] = useState(false)
   const [formData, setFormData] = useState({
     cedula: "",
     dirigidoA: "",
     ciudad: ""
+  })
+  const [approvalData, setApprovalData] = useState({
+    solicitudId: "",
+    usuarioData: null,
+    salario: "",
+    tipo_contrato: ""
   })
   const [usuarioEncontrado, setUsuarioEncontrado] = useState<any>(null)
 
@@ -62,7 +69,22 @@ export default function AdminCertificacionLaboral() {
     return new Date(date).toLocaleDateString('es-CO', options)
   }
 
-  const aprobarSolicitud = async (solicitudId: string, usuarioData: any) => {
+  const handleShowApprovalModal = (solicitudId: string, usuarioData: any) => {
+    setApprovalData({
+      solicitudId,
+      usuarioData,
+      salario: "",
+      tipo_contrato: ""
+    })
+    setShowApprovalModal(true)
+  }
+
+  const aprobarSolicitud = async () => {
+    const { solicitudId, usuarioData, salario, tipo_contrato } = approvalData
+    if (!solicitudId || !usuarioData) {
+      setError("Datos de la solicitud no disponibles")
+      return
+    }
     try {
       if (!usuarioData || !usuarioData.empresas) {
         setError("Datos del usuario o empresa no disponibles")
@@ -127,7 +149,7 @@ export default function AdminCertificacionLaboral() {
         </div>
         
         <div style="text-align: justify; line-height: 1.6; margin: 30px 0; padding-left: 100px; padding-right: 100px;">
-          <p>Que el(la) Señor(a) <strong>${usuarioData.colaborador || '(NOMBRE DE EMPLEADO)'}</strong> identificado(a) con cédula de ciudadanía No. <strong>${usuarioData.cedula || '(NUMERO DE CEDULA)'}</strong>, está vinculado(a) a esta empresa desde el <strong>${usuarioData.fecha_ingreso || '(Fecha de ingreso)'}</strong>, donde se desempeña como <strong>${usuarioData.cargo || 'DISEÑADOR GRÁFICO'}</strong>.</p>
+          <p>Que el(la) Señor(a) <strong>${usuarioData.colaborador || '(NOMBRE DE EMPLEADO)'}</strong> identificado(a) con cédula de ciudadanía No. <strong>${usuarioData.cedula || '(NUMERO DE CEDULA)'}</strong>, está vinculado(a) a esta empresa desde el <strong>${usuarioData.fecha_ingreso || '(Fecha de ingreso)'}</strong>, donde se desempeña como <strong>${usuarioData.cargo || 'DISEÑADOR GRÁFICO'}</strong>${solicitudData.salario_contrato ? `, con un contrato a ${tipo_contrato} y un salario mensual de ${salario} pesos M/CTE.` : ''}.</p>
         </div>
         
         <div style="text-align: left; margin: 50px 0; padding-left: 100px; padding-right: 100px;">
@@ -421,7 +443,7 @@ export default function AdminCertificacionLaboral() {
                                   </Button>
                                   <Button 
                                     size="sm"
-                                    onClick={() => aprobarSolicitud(solicitud.id, solicitud.usuario)}
+                                    onClick={() => handleShowApprovalModal(solicitud.id, solicitud.usuario)}
                                   >
                                     Aprobar
                                   </Button>
@@ -502,6 +524,57 @@ export default function AdminCertificacionLaboral() {
             </div>
           </div>
         </main>
+        {/* Modal de Aprobación */}
+        <Dialog open={showApprovalModal} onOpenChange={setShowApprovalModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Aprobar Certificación</DialogTitle>
+              <DialogDescription>
+                Complete la información adicional para generar el certificado
+              </DialogDescription>
+            </DialogHeader>
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="salario">Salario Mensual</Label>
+                <Input
+                  id="salario"
+                  type="text"
+                  placeholder="Ej: 2.500.000"
+                  value={approvalData.salario}
+                  onChange={(e) => setApprovalData({ ...approvalData, salario: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="tipo_contrato">Tipo de Contrato</Label>
+                <Input
+                  id="tipo_contrato"
+                  type="text"
+                  placeholder="Ej: Término Indefinido"
+                  value={approvalData.tipo_contrato}
+                  onChange={(e) => setApprovalData({ ...approvalData, tipo_contrato: e.target.value })}
+                />
+              </div>
+
+              <Button 
+                type="button" 
+                className="w-full" 
+                onClick={aprobarSolicitud}
+                disabled={loading}
+              >
+                {loading ? "Generando..." : "Generar Certificado"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )

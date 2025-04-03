@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertCircle, CheckCircle2, FileText, Plus } from "lucide-react"
 import { jsPDF } from "jspdf"
 import html2canvas from "html2canvas"
+import { Badge } from "@/components/ui/badge"
 
 export default function AdminCertificacionLaboral() {
   const router = useRouter()
@@ -387,6 +388,7 @@ export default function AdminCertificacionLaboral() {
                           <TableHead>Cargo</TableHead>
                           <TableHead>Dirigido a</TableHead>
                           <TableHead>Ciudad</TableHead>
+                          <TableHead>SyT</TableHead>
                           <TableHead>Fecha solicitud</TableHead>
                           <TableHead>Acciones</TableHead>
                         </TableRow>
@@ -394,7 +396,7 @@ export default function AdminCertificacionLaboral() {
                       <TableBody>
                         {solicitudes.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={7} className="text-center">
+                            <TableCell colSpan={8} className="text-center">
                               No hay solicitudes pendientes en este momento.
                             </TableCell>
                           </TableRow>
@@ -406,6 +408,14 @@ export default function AdminCertificacionLaboral() {
                               <TableCell>{solicitud.usuario.cargo}</TableCell>
                               <TableCell>{solicitud.dirigido_a}</TableCell>
                               <TableCell>{solicitud.ciudad}</TableCell>
+                              <TableCell>
+                                <Badge 
+                                  variant={solicitud.salario_contrato === "Si" ? "success" : "destructive"}
+                                  className={solicitud.salario_contrato === "Si" ? "bg-green-100 text-green-800 hover:bg-green-100" : "bg-red-100 text-red-800 hover:bg-red-100"}
+                                >
+                                  {solicitud.salario_contrato || "No"}
+                                </Badge>
+                              </TableCell>
                               <TableCell>{formatDate(new Date(solicitud.fecha_solicitud))}</TableCell>
                               <TableCell>
                                 <div className="flex gap-2">

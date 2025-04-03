@@ -23,6 +23,8 @@ export default function AdminCertificacionLaboral() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [showModal, setShowModal] = useState(false)
+  const [showTipoModal, setShowTipoModal] = useState(false)
+  const [solicitudSeleccionada, setSolicitudSeleccionada] = useState<{id: string, usuario: any} | null>(null)
   const [formData, setFormData] = useState({
     cedula: "",
     dirigidoA: "",
@@ -431,7 +433,10 @@ export default function AdminCertificacionLaboral() {
                                   </Button>
                                   <Button 
                                     size="sm"
-                                    onClick={() => aprobarSolicitud(solicitud.id, solicitud.usuario)}
+                                    onClick={() => {
+                                      setSolicitudSeleccionada({id: solicitud.id, usuario: solicitud.usuario})
+                                      setShowTipoModal(true)
+                                    }}
                                   >
                                     Aprobar
                                   </Button>
@@ -503,6 +508,50 @@ export default function AdminCertificacionLaboral() {
                         </Button>
                         <Button onClick={crearCertificado} disabled={loading || !usuarioEncontrado}>
                           Crear Certificado
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Modal para seleccionar tipo de certificación */}
+                <Dialog open={showTipoModal} onOpenChange={setShowTipoModal}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Tipo de Certificación</DialogTitle>
+                      <DialogDescription>
+                        Seleccione el tipo de certificación que desea generar
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="flex flex-col gap-4">
+                        <Button 
+                          onClick={() => {
+                            setShowTipoModal(false)
+                            if (solicitudSeleccionada) {
+                              aprobarSolicitud(solicitudSeleccionada.id, solicitudSeleccionada.usuario)
+                            }
+                          }}
+                          className="py-6"
+                        >
+                          Sin Salario y tipo de contrato
+                        </Button>
+                        <Button 
+                          onClick={() => {
+                            setShowTipoModal(false)
+                            if (solicitudSeleccionada) {
+                              // Por ahora, ambos botones hacen lo mismo
+                              aprobarSolicitud(solicitudSeleccionada.id, solicitudSeleccionada.usuario)
+                            }
+                          }}
+                          className="py-6"
+                        >
+                          Con Salario y tipo de contrato
+                        </Button>
+                      </div>
+                      <div className="flex justify-end">
+                        <Button variant="outline" onClick={() => setShowTipoModal(false)}>
+                          Cancelar
                         </Button>
                       </div>
                     </div>

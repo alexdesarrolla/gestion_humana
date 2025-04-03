@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, CheckCircle2, FileText, Download, Plus } from "lucide-react"
@@ -35,7 +36,7 @@ export default function CertificacionLaboral() {
   const [formData, setFormData] = useState({
     dirigidoA: "",
     ciudad: "",
-    salario_contrato: false,
+    incluirSalario: false,
   })
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -187,8 +188,7 @@ export default function CertificacionLaboral() {
           usuario_id: session.user.id,
           dirigido_a: formData.dirigidoA,
           ciudad: formData.ciudad,
-          estado: 'pendiente',
-          salario_contrato: formData.salario_contrato
+          estado: 'pendiente'
         }])
         .select()
 
@@ -385,15 +385,36 @@ export default function CertificacionLaboral() {
                         />
                       </div>
 
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id="salario_contrato"
-                          checked={formData.salario_contrato}
-                          onChange={(e) => setFormData({ ...formData, salario_contrato: e.target.checked })}
-                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                        />
-                        <Label htmlFor="salario_contrato">Incluir salario y tipo de contrato en la certificación</Label>
+                      <div className="space-y-2 py-2">
+                        <Label className="block mb-2">¿Incluir salario y tipo de contrato en la certificación?</Label>
+                        <div className="flex items-center space-x-4">
+                          <div className="flex items-center">
+                            <Label htmlFor="opcionSi" className="flex items-center space-x-2 cursor-pointer">
+                              <input 
+                                type="radio" 
+                                id="opcionSi" 
+                                name="incluirSalarioOpcion" 
+                                className="h-4 w-4"
+                                checked={formData.incluirSalario === true}
+                                onChange={() => setFormData({ ...formData, incluirSalario: true })}
+                              />
+                              <span>Sí</span>
+                            </Label>
+                          </div>
+                          <div className="flex items-center">
+                            <Label htmlFor="opcionNo" className="flex items-center space-x-2 cursor-pointer">
+                              <input 
+                                type="radio" 
+                                id="opcionNo" 
+                                name="incluirSalarioOpcion" 
+                                className="h-4 w-4"
+                                checked={formData.incluirSalario === false}
+                                onChange={() => setFormData({ ...formData, incluirSalario: false })}
+                              />
+                              <span>No</span>
+                            </Label>
+                          </div>
+                        </div>
                       </div>
 
                       <Button 

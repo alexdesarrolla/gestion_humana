@@ -188,7 +188,8 @@ export default function CertificacionLaboral() {
           usuario_id: session.user.id,
           dirigido_a: formData.dirigidoA,
           ciudad: formData.ciudad,
-          estado: 'pendiente'
+          estado: 'pendiente',
+          salario_contrato: formData.incluirSalario ? "Si" : "No"
         }])
         .select()
 
@@ -283,6 +284,7 @@ export default function CertificacionLaboral() {
                           <TableHead>Fecha</TableHead>
                           <TableHead>Dirigido a</TableHead>
                           <TableHead>Ciudad</TableHead>
+                          <TableHead>Incluye Salario</TableHead>
                           <TableHead>Estado</TableHead>
                           <TableHead>Acciones</TableHead>
                         </TableRow>
@@ -293,6 +295,11 @@ export default function CertificacionLaboral() {
                             <TableCell>{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</TableCell>
                             <TableCell>{solicitud.dirigido_a}</TableCell>
                             <TableCell>{solicitud.ciudad}</TableCell>
+                            <TableCell>
+                              <Badge variant={solicitud.salario_contrato === "Si" ? "outline" : "secondary"}>
+                                {solicitud.salario_contrato}
+                              </Badge>
+                            </TableCell>
                             <TableCell>
                               <Badge
                                 variant={solicitud.estado === 'aprobado' ? 'success' :

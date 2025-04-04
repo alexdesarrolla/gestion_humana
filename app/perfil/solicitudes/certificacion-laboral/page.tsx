@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, CheckCircle2, FileText, Download, Plus } from "lucide-react"
@@ -36,7 +35,6 @@ export default function CertificacionLaboral() {
   const [formData, setFormData] = useState({
     dirigidoA: "",
     ciudad: "",
-    incluirSalario: false,
   })
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -188,8 +186,7 @@ export default function CertificacionLaboral() {
           usuario_id: session.user.id,
           dirigido_a: formData.dirigidoA,
           ciudad: formData.ciudad,
-          estado: 'pendiente',
-          salario_contrato: formData.incluirSalario ? "Si" : "No"
+          estado: 'pendiente'
         }])
         .select()
 
@@ -284,7 +281,6 @@ export default function CertificacionLaboral() {
                           <TableHead>Fecha</TableHead>
                           <TableHead>Dirigido a</TableHead>
                           <TableHead>Ciudad</TableHead>
-                          <TableHead>Incluye Salario</TableHead>
                           <TableHead>Estado</TableHead>
                           <TableHead>Acciones</TableHead>
                         </TableRow>
@@ -295,11 +291,6 @@ export default function CertificacionLaboral() {
                             <TableCell>{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</TableCell>
                             <TableCell>{solicitud.dirigido_a}</TableCell>
                             <TableCell>{solicitud.ciudad}</TableCell>
-                            <TableCell>
-                              <Badge variant={solicitud.salario_contrato === "Si" ? "outline" : "secondary"}>
-                                {solicitud.salario_contrato}
-                              </Badge>
-                            </TableCell>
                             <TableCell>
                               <Badge
                                 variant={solicitud.estado === 'aprobado' ? 'success' :
@@ -390,38 +381,6 @@ export default function CertificacionLaboral() {
                           onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })}
                           required
                         />
-                      </div>
-
-                      <div className="space-y-2 py-2">
-                        <Label className="block mb-2">¿Incluir salario y tipo de contrato en la certificación?</Label>
-                        <div className="flex items-center space-x-4">
-                          <div className="flex items-center">
-                            <Label htmlFor="opcionSi" className="flex items-center space-x-2 cursor-pointer">
-                              <input 
-                                type="radio" 
-                                id="opcionSi" 
-                                name="incluirSalarioOpcion" 
-                                className="h-4 w-4"
-                                checked={formData.incluirSalario === true}
-                                onChange={() => setFormData({ ...formData, incluirSalario: true })}
-                              />
-                              <span>Sí</span>
-                            </Label>
-                          </div>
-                          <div className="flex items-center">
-                            <Label htmlFor="opcionNo" className="flex items-center space-x-2 cursor-pointer">
-                              <input 
-                                type="radio" 
-                                id="opcionNo" 
-                                name="incluirSalarioOpcion" 
-                                className="h-4 w-4"
-                                checked={formData.incluirSalario === false}
-                                onChange={() => setFormData({ ...formData, incluirSalario: false })}
-                              />
-                              <span>No</span>
-                            </Label>
-                          </div>
-                        </div>
                       </div>
 
                       <Button 

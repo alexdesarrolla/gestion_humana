@@ -51,14 +51,12 @@ function UpdatePasswordContent() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-slate-50 to-slate-100 p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[url('/fondosecciones.webp')] bg-cover bg-center bg-no-repeat p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-block p-4 bg-primary/10 rounded-full mb-4">
-            <Lock className="h-12 w-12 text-primary" />
+        <div className="inline-block p-4 bg-primary/10mb-4">
+            <img src="/logo360.webp" alt="Logo" className="max-w-[250px] w-full" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-900">Actualizar Contraseña</h1>
-          <p className="text-slate-500 mt-2">Ingresa tu nueva contraseña</p>
         </div>
 
         <Card className="border-none shadow-lg">

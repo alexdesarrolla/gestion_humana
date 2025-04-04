@@ -207,7 +207,7 @@ export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
 
           <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
             <div className="flex-shrink-0 flex items-center px-4">
-              <h1 className="text-xl font-bold text-primary">Gestión Humana 360</h1>
+            <img src="/logo-h-n.webp" alt="Logo" className="max-w-[150px]" />
             </div>
             <nav className="mt-5 px-2 space-y-1">
               {menuItems.map((item) => (
@@ -270,8 +270,8 @@ export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
     <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
       <div className="flex-1 flex flex-col min-h-0 border-r border-gray-200 bg-white px-2">
         <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
-          <div className="flex items-center flex-shrink-0 px-4">
-            <h1 className="text-xl font-bold text-primary">Gestión Humana 360</h1>
+          <div className="flex items-center justify-center flex-shrink-0 px-4">
+            <img src="/logo-h-n.webp" alt="Logo" className="max-w-[150px]" />
           </div>
           <nav className="mt-8 flex-1 px-2 space-y-1">
             {menuItems.map((item) => (

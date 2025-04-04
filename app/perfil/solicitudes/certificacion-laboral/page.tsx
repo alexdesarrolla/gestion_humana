@@ -263,9 +263,7 @@ export default function CertificacionLaboral() {
                               </TableCell>
                               <TableCell>
                                 <Badge
-                                  variant={solicitud.estado === 'aprobado' ? 'success' :
-                                          solicitud.estado === 'rechazado' ? 'destructive' :
-                                          'default'}
+                                  variant={solicitud.estado === 'aprobado' ? 'secondary' : solicitud.estado === 'rechazado' ? 'destructive' : 'default'}
                                 >
                                   {solicitud.estado.charAt(0).toUpperCase() + solicitud.estado.slice(1)}
                                 </Badge>

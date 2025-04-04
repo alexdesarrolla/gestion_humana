@@ -172,7 +172,7 @@ export default function Administracion() {
                           <TableCell>{solicitud.ciudad}</TableCell>
                           <TableCell>
                             <Badge
-                              variant={solicitud.estado === 'aprobado' ? 'success' :
+                              variant={solicitud.estado === 'aprobado' ? 'secondary' :
                                       solicitud.estado === 'rechazado' ? 'destructive' :
                                       'default'}
                             >

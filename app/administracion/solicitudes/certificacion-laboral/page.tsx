@@ -459,7 +459,7 @@ export default function AdminCertificacionLaboral() {
                               <TableCell>{solicitud.ciudad}</TableCell>
                               <TableCell>
                                 <Badge 
-                                  variant={solicitud.salario_contrato === "Si" ? "success" : "destructive"}
+                                  variant={solicitud.salario_contrato === "Si" ? "secondary" : "destructive"}
                                   className={solicitud.salario_contrato === "Si" ? "bg-green-100 text-green-800 hover:bg-green-100" : "bg-red-100 text-red-800 hover:bg-red-100"}
                                 >
                                   {solicitud.salario_contrato || "No"}
@@ -560,9 +560,9 @@ export default function AdminCertificacionLaboral() {
                         <Checkbox
                           id="incluirSalario"
                           checked={formData.incluirSalario}
-                          onCheckedChange={(checked) => {
-                            console.log('Checkbox changed:', checked);
-                            setFormData({ ...formData, incluirSalario: checked === true });
+                          onChange={(event) => {
+                            console.log('Checkbox changed:', event.target.checked);
+                            setFormData({ ...formData, incluirSalario: event.target.checked });
                           }}
                         />
                         <Label htmlFor="incluirSalario" className="cursor-pointer" onClick={() => {

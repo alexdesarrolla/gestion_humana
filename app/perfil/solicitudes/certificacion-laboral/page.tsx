@@ -98,62 +98,6 @@ export default function CertificacionLaboral() {
     return new Date(date).toLocaleDateString('es-CO', options)
   }
 
-  // Función para convertir número a texto
-  const numeroALetras = (numero: number) => {
-    const unidades = ['', 'UN', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE'];
-    const decenas = ['', 'DIEZ', 'VEINTE', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
-    const especiales = ['DIEZ', 'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISÉIS', 'DIECISIETE', 'DIECIOCHO', 'DIECINUEVE'];
-    const centenas = ['', 'CIENTO', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS', 'SEISCIENTOS', 'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS'];
-
-    if (numero === 0) return 'CERO';
-    if (numero < 0) return 'MENOS ' + numeroALetras(Math.abs(numero));
-
-    let letras = '';
-
-    // Millones
-    if (numero >= 1000000) {
-      const millones = Math.floor(numero / 1000000);
-      numero %= 1000000;
-      letras += numeroALetras(millones) + (millones === 1 ? ' MILLÓN ' : ' MILLONES ');
-    }
-
-    // Miles
-    if (numero >= 1000) {
-      const miles = Math.floor(numero / 1000);
-      numero %= 1000;
-      letras += (miles === 1 ? 'MIL ' : numeroALetras(miles) + ' MIL ');
-    }
-
-    // Centenas
-    if (numero >= 100) {
-      if (numero === 100) {
-        letras += 'CIEN ';
-      } else {
-        letras += centenas[Math.floor(numero / 100)] + ' ';
-      }
-      numero %= 100;
-    }
-
-    // Decenas y unidades
-    if (numero > 0) {
-      if (numero < 10) {
-        letras += unidades[numero];
-      } else if (numero < 20) {
-        letras += especiales[numero - 10];
-      } else {
-        const unidad = numero % 10;
-        const decena = Math.floor(numero / 10);
-        if (unidad === 0) {
-          letras += decenas[decena];
-        } else {
-          letras += decenas[decena] + ' Y ' + unidades[unidad];
-        }
-      }
-    }
-
-    return letras.trim();
-  };
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
@@ -311,7 +255,7 @@ export default function CertificacionLaboral() {
                               <TableCell>{solicitud.ciudad}</TableCell>
                               <TableCell>
                                 <Badge 
-                                  variant={solicitud.salario_contrato === "Si" ? "success" : "destructive"}
+                                  variant={solicitud.salario_contrato === "Si" ? "secondary" : "destructive"}
                                   className={solicitud.salario_contrato === "Si" ? "bg-green-100 text-green-800 hover:bg-green-100" : "bg-red-100 text-red-800 hover:bg-red-100"}
                                 >
                                   {solicitud.salario_contrato || "No"}

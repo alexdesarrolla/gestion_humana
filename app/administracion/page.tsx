@@ -72,7 +72,7 @@ export default function Administracion() {
         .from('empresas')
         .select('*')
 
-      // Obtener todas las solicitudes de certificación
+      // Obtener las últimas 5 solicitudes de certificación
       const { data: solicitudesData } = await supabase
         .from('solicitudes_certificacion')
         .select(`
@@ -80,6 +80,7 @@ export default function Administracion() {
           usuario_nomina:usuario_id(colaborador, cedula)
         `)
         .order('fecha_solicitud', { ascending: false })
+        .limit(5)
 
       setStats({
         totalUsers: users?.length || 0,
@@ -140,7 +141,16 @@ export default function Administracion() {
 
                 {/* Tabla de Solicitudes de Certificación */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                  <h2 className="text-xl font-semibold mb-4">Solicitudes de Certificación Laboral</h2>
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-semibold">Solicitudes de Certificación Laboral</h2>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => router.push('/administracion/solicitudes/certificacion-laboral')}
+                    >
+                      Ver todas las solicitudes
+                    </Button>
+                  </div>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -150,7 +160,6 @@ export default function Administracion() {
                         <TableHead>Dirigido a</TableHead>
                         <TableHead>Ciudad</TableHead>
                         <TableHead>Estado</TableHead>
-                        <TableHead>Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -163,63 +172,14 @@ export default function Administracion() {
                           <TableCell>{solicitud.ciudad}</TableCell>
                           <TableCell>
                             <Badge
-                              variant={solicitud.estado === 'aprobado' ? 'success' :
+                              variant={solicitud.estado === 'aprobado' ? 'secondary' :
                                       solicitud.estado === 'rechazado' ? 'destructive' :
                                       'default'}
                             >
                               {solicitud.estado.charAt(0).toUpperCase() + solicitud.estado.slice(1)}
                             </Badge>
                           </TableCell>
-                          <TableCell>
-                            {solicitud.estado === 'pendiente' && (
-                              <div className="flex space-x-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-green-600 hover:text-green-700"
-                                  onClick={async () => {
-                                    const supabase = createSupabaseClient()
-                                    await supabase
-                                      .from('solicitudes_certificacion')
-                                      .update({ estado: 'aprobado' })
-                                      .eq('id', solicitud.id)
-                                    
-                                    // Actualizar la lista de solicitudes
-                                    const { data } = await supabase
-                                      .from('solicitudes_certificacion')
-                                      .select(`*, usuario_nomina:usuario_id(colaborador, cedula)`)
-                                      .order('fecha_solicitud', { ascending: false })
-                                    setSolicitudes(data || [])
-                                  }}
-                                >
-                                  <CheckCircle2 className="w-4 h-4 mr-1" />
-                                  Aprobar
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-red-600 hover:text-red-700"
-                                  onClick={async () => {
-                                    const supabase = createSupabaseClient()
-                                    await supabase
-                                      .from('solicitudes_certificacion')
-                                      .update({ estado: 'rechazado' })
-                                      .eq('id', solicitud.id)
-                                    
-                                    // Actualizar la lista de solicitudes
-                                    const { data } = await supabase
-                                      .from('solicitudes_certificacion')
-                                      .select(`*, usuario_nomina:usuario_id(colaborador, cedula)`)
-                                      .order('fecha_solicitud', { ascending: false })
-                                    setSolicitudes(data || [])
-                                  }}
-                                >
-                                  <XCircle className="w-4 h-4 mr-1" />
-                                  Denegar
-                                </Button>
-                              </div>
-                            )}
-                          </TableCell>
+
                         </TableRow>
                       ))}
                       {solicitudes.length === 0 && (

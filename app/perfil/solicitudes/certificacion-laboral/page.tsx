@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, CheckCircle2, FileText, Download, Plus } from "lucide-react"
@@ -35,6 +36,7 @@ export default function CertificacionLaboral() {
   const [formData, setFormData] = useState({
     dirigidoA: "",
     ciudad: "",
+    incluirSalario: false,
   })
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -96,62 +98,6 @@ export default function CertificacionLaboral() {
     return new Date(date).toLocaleDateString('es-CO', options)
   }
 
-  // Función para convertir número a texto
-  const numeroALetras = (numero: number) => {
-    const unidades = ['', 'UN', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE'];
-    const decenas = ['', 'DIEZ', 'VEINTE', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
-    const especiales = ['DIEZ', 'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISÉIS', 'DIECISIETE', 'DIECIOCHO', 'DIECINUEVE'];
-    const centenas = ['', 'CIENTO', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS', 'SEISCIENTOS', 'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS'];
-
-    if (numero === 0) return 'CERO';
-    if (numero < 0) return 'MENOS ' + numeroALetras(Math.abs(numero));
-
-    let letras = '';
-
-    // Millones
-    if (numero >= 1000000) {
-      const millones = Math.floor(numero / 1000000);
-      numero %= 1000000;
-      letras += numeroALetras(millones) + (millones === 1 ? ' MILLÓN ' : ' MILLONES ');
-    }
-
-    // Miles
-    if (numero >= 1000) {
-      const miles = Math.floor(numero / 1000);
-      numero %= 1000;
-      letras += (miles === 1 ? 'MIL ' : numeroALetras(miles) + ' MIL ');
-    }
-
-    // Centenas
-    if (numero >= 100) {
-      if (numero === 100) {
-        letras += 'CIEN ';
-      } else {
-        letras += centenas[Math.floor(numero / 100)] + ' ';
-      }
-      numero %= 100;
-    }
-
-    // Decenas y unidades
-    if (numero > 0) {
-      if (numero < 10) {
-        letras += unidades[numero];
-      } else if (numero < 20) {
-        letras += especiales[numero - 10];
-      } else {
-        const unidad = numero % 10;
-        const decena = Math.floor(numero / 10);
-        if (unidad === 0) {
-          letras += decenas[decena];
-        } else {
-          letras += decenas[decena] + ' Y ' + unidades[unidad];
-        }
-      }
-    }
-
-    return letras.trim();
-  };
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
@@ -186,7 +132,8 @@ export default function CertificacionLaboral() {
           usuario_id: session.user.id,
           dirigido_a: formData.dirigidoA,
           ciudad: formData.ciudad,
-          estado: 'pendiente'
+          estado: 'pendiente',
+          salario_contrato: formData.incluirSalario ? "Si" : "No"
         }])
         .select()
 
@@ -252,85 +199,99 @@ export default function CertificacionLaboral() {
           <div className="py-6">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
               <div className="space-y-6">
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight">Solicitud de Certificación Laboral</h1>
-                  <p className="text-muted-foreground">
-                    Completa el formulario para solicitar tu certificado laboral.
-                  </p>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h1 className="text-2xl font-bold tracking-tight">Solicitudes de Certificación Laboral</h1>
+                    <p className="text-muted-foreground">
+                      Historial de solicitudes de certificación laboral
+                    </p>
+                  </div>
+                  <Button onClick={() => setShowModal(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nueva solicitud
+                  </Button>
                 </div>
 
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+
+                {success && (
+                  <Alert className="bg-green-50 text-green-800 border-green-200">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <AlertDescription>{success}</AlertDescription>
+                  </Alert>
+                )}
+                
                 {/* Tabla de solicitudes */}
                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <div>
-                      <CardTitle>Mis Solicitudes</CardTitle>
-                      <CardDescription>Historial de solicitudes de certificación laboral</CardDescription>
-                    </div>
-                    <Button
-                      onClick={() => setShowModal(true)}
-                      className="flex items-center gap-2"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Nueva solicitud
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-0">
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>Fecha</TableHead>
                           <TableHead>Dirigido a</TableHead>
                           <TableHead>Ciudad</TableHead>
+                          <TableHead>Incluye Salario</TableHead>
                           <TableHead>Estado</TableHead>
                           <TableHead>Acciones</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {solicitudes.map((solicitud) => (
-                          <TableRow key={solicitud.id}>
-                            <TableCell>{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</TableCell>
-                            <TableCell>{solicitud.dirigido_a}</TableCell>
-                            <TableCell>{solicitud.ciudad}</TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={solicitud.estado === 'aprobado' ? 'success' :
-                                        solicitud.estado === 'rechazado' ? 'destructive' :
-                                        'default'}
-                              >
-                                {solicitud.estado.charAt(0).toUpperCase() + solicitud.estado.slice(1)}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              {solicitud.estado === 'aprobado' && solicitud.pdf_url && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => descargarCertificado(solicitud.pdf_url)}
-                                >
-                                  <Download className="w-4 h-4 mr-2" />
-                                  Descargar
-                                </Button>
-                              )}
-                              
-                              {solicitud.estado === 'rechazado' && solicitud.motivo_rechazo && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-sm text-red-500"
-                                  onClick={() => handleShowReason(solicitud.motivo_rechazo)}
-                                >
-                                  Ver motivo
-                                </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                        {solicitudes.length === 0 && (
+                        {solicitudes.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={5} className="text-center py-4">
+                            <TableCell colSpan={6} className="text-center">
                               No hay solicitudes registradas
                             </TableCell>
                           </TableRow>
+                        ) : (
+                          solicitudes.map((solicitud) => (
+                            <TableRow key={solicitud.id}>
+                              <TableCell>{formatDate(new Date(solicitud.fecha_solicitud))}</TableCell>
+                              <TableCell>{solicitud.dirigido_a}</TableCell>
+                              <TableCell>{solicitud.ciudad}</TableCell>
+                              <TableCell>
+                                <Badge 
+                                  variant={solicitud.salario_contrato === "Si" ? "secondary" : "destructive"}
+                                  className={solicitud.salario_contrato === "Si" ? "bg-green-100 text-green-800 hover:bg-green-100" : "bg-red-100 text-red-800 hover:bg-red-100"}
+                                >
+                                  {solicitud.salario_contrato || "No"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant={solicitud.estado === 'aprobado' ? 'secondary' : solicitud.estado === 'rechazado' ? 'destructive' : 'default'}
+                                >
+                                  {solicitud.estado.charAt(0).toUpperCase() + solicitud.estado.slice(1)}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {solicitud.estado === 'aprobado' && solicitud.pdf_url && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => descargarCertificado(solicitud.pdf_url)}
+                                  >
+                                    <Download className="w-4 h-4 mr-2" />
+                                    Descargar
+                                  </Button>
+                                )}
+                                
+                                {solicitud.estado === 'rechazado' && solicitud.motivo_rechazo && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleShowReason(solicitud.motivo_rechazo)}
+                                  >
+                                    Ver motivo
+                                  </Button>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))
                         )}
                       </TableBody>
                     </Table>
@@ -346,19 +307,6 @@ export default function CertificacionLaboral() {
                         Complete el formulario para solicitar su certificado laboral
                       </DialogDescription>
                     </DialogHeader>
-
-                    {error && (
-                      <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>{error}</AlertDescription>
-                      </Alert>
-                    )}
-                    {success && (
-                      <Alert className="bg-green-50 text-green-800 border-green-200">
-                        <CheckCircle2 className="h-4 w-4 text-green-600" />
-                        <AlertDescription>{success}</AlertDescription>
-                      </Alert>
-                    )}
 
                     <div className="space-y-4">
                       <div className="space-y-2">
@@ -381,6 +329,38 @@ export default function CertificacionLaboral() {
                           onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })}
                           required
                         />
+                      </div>
+
+                      <div className="space-y-2 py-2">
+                        <Label className="block mb-2">¿Incluir salario y tipo de contrato en la certificación?</Label>
+                        <div className="flex items-center space-x-4">
+                          <div className="flex items-center">
+                            <Label htmlFor="opcionSi" className="flex items-center space-x-2 cursor-pointer">
+                              <input 
+                                type="radio" 
+                                id="opcionSi" 
+                                name="incluirSalarioOpcion" 
+                                className="h-4 w-4"
+                                checked={formData.incluirSalario === true}
+                                onChange={() => setFormData({ ...formData, incluirSalario: true })}
+                              />
+                              <span>Sí</span>
+                            </Label>
+                          </div>
+                          <div className="flex items-center">
+                            <Label htmlFor="opcionNo" className="flex items-center space-x-2 cursor-pointer">
+                              <input 
+                                type="radio" 
+                                id="opcionNo" 
+                                name="incluirSalarioOpcion" 
+                                className="h-4 w-4"
+                                checked={formData.incluirSalario === false}
+                                onChange={() => setFormData({ ...formData, incluirSalario: false })}
+                              />
+                              <span>No</span>
+                            </Label>
+                          </div>
+                        </div>
                       </div>
 
                       <Button 

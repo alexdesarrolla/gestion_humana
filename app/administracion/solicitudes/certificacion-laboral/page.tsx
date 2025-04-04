@@ -14,6 +14,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertCircle, CheckCircle2, FileText, Plus } from "lucide-react"
 import { jsPDF } from "jspdf"
 import html2canvas from "html2canvas"
+import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
 
 export default function AdminCertificacionLaboral() {
   const router = useRouter()
@@ -22,10 +25,18 @@ export default function AdminCertificacionLaboral() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [showModal, setShowModal] = useState(false)
+  const [showTipoModal, setShowTipoModal] = useState(false)
+  const [solicitudSeleccionada, setSolicitudSeleccionada] = useState<{id: string, usuario: any} | null>(null)
+  const [showSalarioModal, setShowSalarioModal] = useState(false)
+  const [salarioData, setSalarioData] = useState({
+    salario: "",
+    tipoContrato: "Contrato a término indefinido"
+  })
   const [formData, setFormData] = useState({
     cedula: "",
     dirigidoA: "",
-    ciudad: ""
+    ciudad: "",
+    incluirSalario: false
   })
   const [usuarioEncontrado, setUsuarioEncontrado] = useState<any>(null)
 
@@ -80,10 +91,16 @@ export default function AdminCertificacionLaboral() {
         return
       }
 
+      // Obtener datos de salario y tipo de contrato del localStorage si existen
+      const salario = localStorage.getItem('certificacion_salario')
+      const tipoContrato = localStorage.getItem('certificacion_tipoContrato')
+      const incluirDatosSalariales = salario && tipoContrato
+
       // Crear un elemento HTML temporal para renderizar el certificado
       const certificateContainer = document.createElement("div")
-      certificateContainer.style.width = "210mm"
-      certificateContainer.style.height = "297mm"
+      // Configurar dimensiones exactas de tamaño carta (215.9mm x 279.4mm)
+      certificateContainer.style.width = "215.9mm"
+      certificateContainer.style.height = "279.4mm"
       certificateContainer.style.padding = "0"
       certificateContainer.style.margin = "0"
       certificateContainer.style.overflow = "hidden"
@@ -96,16 +113,12 @@ export default function AdminCertificacionLaboral() {
       const membreteFileName = `membrete-${empresaNombre.toLowerCase().replace(/\s+/g, "-")}.jpg`
       const membreteUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/empresas/logos/${membreteFileName}`
       
-      // Verificar si existe el membrete
-      const { data: membreteExists } = await supabase
-        .storage
-        .from('empresas')
-        .list(`logos/${membreteFileName}`)
-
-      // Definir el estilo del contenedor según la existencia del membrete
-      const containerStyle = membreteExists && membreteExists.length > 0
-        ? `position: relative; width: 210mm; height: 297mm; background-image: url('${membreteUrl}'); background-size: cover; background-repeat: no-repeat; background-position: left top; background-color: rgba(255, 255, 255, 0.8); background-blend-mode: lighten;`
-        : `position: relative; width: 210mm; height: 297mm; background-color: white;`
+      // Construir la ruta a la imagen de membrete local
+      const empresaId = usuarioData.empresa_id || 1
+      const membreteLocalPath = `/img/membrete/membrete-${empresaId}.jpg`
+      
+      // Definir el estilo del contenedor con la imagen de membrete local
+      const containerStyle = `position: relative; width: 215.9mm; height: 279.4mm; background-image: url('${membreteLocalPath}'); background-size: cover; background-repeat: no-repeat; background-position: left top; background-color: rgba(255, 255, 255, 0.8); background-blend-mode: lighten;`
       
       // Obtener los datos de la solicitud
       const { data: solicitudData, error: solicitudError } = await supabase
@@ -116,7 +129,8 @@ export default function AdminCertificacionLaboral() {
 
       if (solicitudError) throw solicitudError
 
-      certificateContainer.innerHTML = `
+      // Preparar el contenido del certificado
+      let certificadoHTML = `
         <div style="${containerStyle}">
           <div style="padding-top: 180px; padding-left: 100px; padding-right: 100px;">
             <h1 style="font-size: 16px; font-weight: bold; text-transform: uppercase; text-align: center;">LA DIRECTORA DE TALENTO HUMANO DE ${usuarioData.empresas?.razon_social || 'BEST DATA MARKETING S.A.S'}</h1>
@@ -127,43 +141,71 @@ export default function AdminCertificacionLaboral() {
         </div>
         
         <div style="text-align: justify; line-height: 1.6; margin: 30px 0; padding-left: 100px; padding-right: 100px;">
-          <p>Que el(la) Señor(a) <strong>${usuarioData.colaborador || '(NOMBRE DE EMPLEADO)'}</strong> identificado(a) con cédula de ciudadanía No. <strong>${usuarioData.cedula || '(NUMERO DE CEDULA)'}</strong>, está vinculado(a) a esta empresa desde el <strong>${usuarioData.fecha_ingreso || '(Fecha de ingreso)'}</strong>, donde se desempeña como <strong>${usuarioData.cargo || 'DISEÑADOR GRÁFICO'}</strong>.</p>
+          <p>Que el(la) Señor(a) <strong>${usuarioData.colaborador || '(NOMBRE DE EMPLEADO)'}</strong> identificado(a) con cédula de ciudadanía No. <strong>${usuarioData.cedula || '(NUMERO DE CEDULA)'}</strong>, está vinculado(a) a esta empresa desde el <strong>${usuarioData.fecha_ingreso || '(Fecha de ingreso)'}</strong>, donde se desempeña como <strong>${usuarioData.cargo || 'DISEÑADOR GRÁFICO'}</strong>`
+      
+      // Agregar información de salario y tipo de contrato si está disponible
+      if (incluirDatosSalariales) {
+        const salarioFormateado = new Intl.NumberFormat('es-CO', {
+          style: 'currency',
+          currency: 'COP',
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0
+        }).format(Number(salario))
+        
+        certificadoHTML += `, con un salario mensual de <strong>${salarioFormateado}</strong> y vinculado(a) mediante <strong>${tipoContrato}</strong>`
+      }
+      
+      certificadoHTML += `.</p>
         </div>
         
         <div style="text-align: left; margin: 50px 0; padding-left: 100px; padding-right: 100px;">
-          <p>Se expide para el (${solicitudData.dirigido_a}), en la ciudad de ${solicitudData.ciudad}, ${fechaActual}.</p>
+          <p>Se expide para ${solicitudData.dirigido_a}, en la ciudad de ${solicitudData.ciudad}, ${fechaActual}.</p>
         </div>
         
         <div style="margin-top: 80px; padding-left: 100px; padding-right: 100px;">
           <p>Atentamente,</p>
-          <div style="margin-top: 60px; border-bottom: 1px solid #000; width: 250px;"></div>
-          <p style="margin-top: 10px;"><strong>LISSETTE VANESSA CALDERON</strong><br>Directora de Talento Humano<br>${usuarioData.empresas?.razon_social || 'BEST DATA MARKETING S.A.S'}<br>Nit ${usuarioData.empresas?.nit || '901303215-6'}</p>
+          <div style="position: relative;">
+            <div style="position: relative; height: 100px;">
+              <img src="/img/firma/firma-lissette.png" alt="Firma" style="width: 200px; position: absolute; top: 50px; left: 0; z-index: 1;" />
+            </div>
+            <p style="margin-top: 10px;"><strong>LISSETTE VANESSA CALDERON</strong><br>Directora de Talento Humano<br>${usuarioData.empresas?.razon_social || 'BEST DATA MARKETING S.A.S'}<br>Nit ${usuarioData.empresas?.nit || '901303215-6'}</p>
+          </div>
         </div>
       </div>
       `
+      
+      certificateContainer.innerHTML = certificadoHTML
 
       document.body.appendChild(certificateContainer)
+      // Configurar html2canvas para capturar exactamente el tamaño carta
+      // Carta en píxeles a 96 DPI: 816 x 1056 (215.9mm x 279.4mm)
       const canvas = await html2canvas(certificateContainer, {
-        scale: 2,
+        scale: 2, // Mayor escala para mejor calidad
         useCORS: true,
         logging: false,
-        width: 793,
-        height: 1122,
-        windowWidth: 793,
-        windowHeight: 1122
+        width: 816, // Ancho exacto de carta en píxeles (215.9mm)
+        height: 1056, // Alto exacto de carta en píxeles (279.4mm)
+        windowWidth: 816,
+        windowHeight: 1056
       })
       document.body.removeChild(certificateContainer)
 
+      // Crear documento PDF con formato carta estándar
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "mm",
-        format: "a4",
-        margins: { top: 10, right: 25, bottom: 10, left: 25 }
+        format: "letter", // Formato carta estándar (215.9mm x 279.4mm)
+        compress: true // Comprimir para reducir tamaño
       })
 
+      // Convertir canvas a imagen con alta calidad
       const imgData = canvas.toDataURL("image/jpeg", 1.0)
-      const pdfWidth = pdf.internal.pageSize.getWidth()
-      const pdfHeight = pdf.internal.pageSize.getHeight()
+      
+      // Obtener dimensiones exactas del PDF
+      const pdfWidth = pdf.internal.pageSize.getWidth() // 210mm
+      const pdfHeight = pdf.internal.pageSize.getHeight() // 297mm
+      
+      // Añadir imagen al PDF ajustando al tamaño exacto de A4
       pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight)
 
       // Intentar subir directamente el PDF sin verificar el bucket
@@ -207,6 +249,10 @@ export default function AdminCertificacionLaboral() {
           .eq('id', solicitudId)
 
         if (error) throw error
+
+        // Limpiar localStorage después de generar el PDF
+        localStorage.removeItem('certificacion_salario')
+        localStorage.removeItem('certificacion_tipoContrato')
 
         setSuccess("Solicitud aprobada y certificado generado correctamente.")
         setSolicitudes(solicitudes.filter(s => s.id !== solicitudId))
@@ -311,7 +357,8 @@ export default function AdminCertificacionLaboral() {
             usuario_id: session.user.id,
             dirigido_a: formData.dirigidoA,
             ciudad: formData.ciudad,
-            estado: 'pendiente'
+            estado: 'pendiente',
+            salario_contrato: formData.incluirSalario ? "Si" : "No"
           }
         ])
         .select()
@@ -319,11 +366,18 @@ export default function AdminCertificacionLaboral() {
 
       if (solicitudError) throw solicitudError
 
+      // Si se incluye salario y tipo de contrato, guardar en localStorage
+      if (formData.incluirSalario) {
+        localStorage.setItem('certificacion_salario', salarioData.salario);
+        localStorage.setItem('certificacion_tipoContrato', salarioData.tipoContrato);
+      }
+
       // Aprobar la solicitud inmediatamente
       await aprobarSolicitud(solicitudData.id, usuarioEncontrado)
 
       setShowModal(false)
-      setFormData({ cedula: "", dirigidoA: "", ciudad: "" })
+      setFormData({ cedula: "", dirigidoA: "", ciudad: "", incluirSalario: false })
+      setSalarioData({ salario: "", tipoContrato: "Contrato a término indefinido" })
       setUsuarioEncontrado(null)
     } catch (err) {
       console.error("Error al crear certificado:", err)
@@ -357,10 +411,6 @@ export default function AdminCertificacionLaboral() {
                       Gestiona las solicitudes pendientes de certificación laboral.
                     </p>
                   </div>
-                  <Button onClick={() => setShowModal(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Crear Certificación
-                  </Button>
                 </div>
 
                 {error && (
@@ -387,6 +437,7 @@ export default function AdminCertificacionLaboral() {
                           <TableHead>Cargo</TableHead>
                           <TableHead>Dirigido a</TableHead>
                           <TableHead>Ciudad</TableHead>
+                          <TableHead>SyT</TableHead>
                           <TableHead>Fecha solicitud</TableHead>
                           <TableHead>Acciones</TableHead>
                         </TableRow>
@@ -394,7 +445,7 @@ export default function AdminCertificacionLaboral() {
                       <TableBody>
                         {solicitudes.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={7} className="text-center">
+                            <TableCell colSpan={8} className="text-center">
                               No hay solicitudes pendientes en este momento.
                             </TableCell>
                           </TableRow>
@@ -406,6 +457,14 @@ export default function AdminCertificacionLaboral() {
                               <TableCell>{solicitud.usuario.cargo}</TableCell>
                               <TableCell>{solicitud.dirigido_a}</TableCell>
                               <TableCell>{solicitud.ciudad}</TableCell>
+                              <TableCell>
+                                <Badge 
+                                  variant={solicitud.salario_contrato === "Si" ? "secondary" : "destructive"}
+                                  className={solicitud.salario_contrato === "Si" ? "bg-green-100 text-green-800 hover:bg-green-100" : "bg-red-100 text-red-800 hover:bg-red-100"}
+                                >
+                                  {solicitud.salario_contrato || "No"}
+                                </Badge>
+                              </TableCell>
                               <TableCell>{formatDate(new Date(solicitud.fecha_solicitud))}</TableCell>
                               <TableCell>
                                 <div className="flex gap-2">
@@ -421,7 +480,17 @@ export default function AdminCertificacionLaboral() {
                                   </Button>
                                   <Button 
                                     size="sm"
-                                    onClick={() => aprobarSolicitud(solicitud.id, solicitud.usuario)}
+                                    onClick={() => {
+                                      setSolicitudSeleccionada({id: solicitud.id, usuario: solicitud.usuario})
+                                      // Verificar si el certificado requiere información salarial
+                                      if (solicitud.salario_contrato === "Si") {
+                                        // Si requiere salario, mostrar el modal de salario
+                                        setShowSalarioModal(true)
+                                      } else {
+                                        // Si no requiere salario, generar directamente el PDF
+                                        aprobarSolicitud(solicitud.id, solicitud.usuario)
+                                      }
+                                    }}
                                   >
                                     Aprobar
                                   </Button>
@@ -487,12 +556,171 @@ export default function AdminCertificacionLaboral() {
                         />
                       </div>
 
+                      <div className="flex items-center space-x-2 mb-4">
+                        <Checkbox
+                          id="incluirSalario"
+                          checked={formData.incluirSalario}
+                          onChange={(event) => {
+                            console.log('Checkbox changed:', event.target.checked);
+                            setFormData({ ...formData, incluirSalario: event.target.checked });
+                          }}
+                        />
+                        <Label htmlFor="incluirSalario" className="cursor-pointer" onClick={() => {
+                          setFormData({ ...formData, incluirSalario: !formData.incluirSalario });
+                        }}>Con salario y tipo de contrato</Label>
+                      </div>
+
+                      {formData.incluirSalario && (
+                        <div className="space-y-4 p-4 border rounded-md">
+                          <div className="space-y-2">
+                            <Label htmlFor="salario">Salario</Label>
+                            <Input
+                              id="salario"
+                              type="number"
+                              value={salarioData.salario}
+                              onChange={(e) => setSalarioData({ ...salarioData, salario: e.target.value })}
+                              placeholder="Ingrese el salario"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="tipoContrato">Tipo de Contrato</Label>
+                            <Select 
+                              value={salarioData.tipoContrato} 
+                              onValueChange={(value) => setSalarioData({ ...salarioData, tipoContrato: value })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleccione el tipo de contrato" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Contrato a Término Fijo">Contrato a Término Fijo</SelectItem>
+                                <SelectItem value="Contrato a término indefinido">Contrato a término indefinido</SelectItem>
+                                <SelectItem value="Contrato de Obra o labor">Contrato de Obra o labor</SelectItem>
+                                <SelectItem value="Contrato civil por prestación de servicios">Contrato civil por prestación de servicios</SelectItem>
+                                <SelectItem value="Contrato de aprendizaje">Contrato de aprendizaje</SelectItem>
+                                <SelectItem value="Contrato ocasional de trabajo">Contrato ocasional de trabajo</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex justify-end gap-2">
                         <Button variant="outline" onClick={() => setShowModal(false)}>
                           Cancelar
                         </Button>
                         <Button onClick={crearCertificado} disabled={loading || !usuarioEncontrado}>
                           Crear Certificado
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Modal para seleccionar tipo de certificación */}
+                <Dialog open={showTipoModal} onOpenChange={setShowTipoModal}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Tipo de Certificación</DialogTitle>
+                      <DialogDescription>
+                        Seleccione el tipo de certificación que desea generar
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="flex flex-col gap-4">
+                        <Button 
+                          onClick={() => {
+                            setShowTipoModal(false)
+                            if (solicitudSeleccionada) {
+                              aprobarSolicitud(solicitudSeleccionada.id, solicitudSeleccionada.usuario)
+                            }
+                          }}
+                          className="py-6"
+                        >
+                          Sin Salario y tipo de contrato
+                        </Button>
+                        <Button 
+                          onClick={() => {
+                            setShowTipoModal(false)
+                            if (solicitudSeleccionada) {
+                              // Abrir el modal de salario y tipo de contrato
+                              setShowSalarioModal(true)
+                            }
+                          }}
+                          className="py-6"
+                        >
+                          Con Salario y tipo de contrato
+                        </Button>
+                      </div>
+                      <div className="flex justify-end">
+                        <Button variant="outline" onClick={() => setShowTipoModal(false)}>
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Modal para ingresar salario y tipo de contrato */}
+                <Dialog open={showSalarioModal} onOpenChange={setShowSalarioModal}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Información Salarial y Contractual</DialogTitle>
+                      <DialogDescription>
+                        Ingrese el salario y tipo de contrato para incluir en la certificación
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="salario">Salario</Label>
+                        <Input
+                          id="salario"
+                          type="number"
+                          value={salarioData.salario}
+                          onChange={(e) => setSalarioData({ ...salarioData, salario: e.target.value })}
+                          placeholder="Ingrese el salario"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="tipoContrato">Tipo de Contrato</Label>
+                        <Select 
+                          value={salarioData.tipoContrato} 
+                          onValueChange={(value) => setSalarioData({ ...salarioData, tipoContrato: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccione el tipo de contrato" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Contrato a Término Fijo">Contrato a Término Fijo</SelectItem>
+                            <SelectItem value="Contrato a término indefinido">Contrato a término indefinido</SelectItem>
+                            <SelectItem value="Contrato de Obra o labor">Contrato de Obra o labor</SelectItem>
+                            <SelectItem value="Contrato civil por prestación de servicios">Contrato civil por prestación de servicios</SelectItem>
+                            <SelectItem value="Contrato de aprendizaje">Contrato de aprendizaje</SelectItem>
+                            <SelectItem value="Contrato ocasional de trabajo">Contrato ocasional de trabajo</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setShowSalarioModal(false)}>
+                          Cancelar
+                        </Button>
+                        <Button 
+                          onClick={() => {
+                            // Guardar datos en localStorage
+                            localStorage.setItem('certificacion_salario', salarioData.salario);
+                            localStorage.setItem('certificacion_tipoContrato', salarioData.tipoContrato);
+                            
+                            // Cerrar modal y generar certificado
+                            setShowSalarioModal(false);
+                            if (solicitudSeleccionada) {
+                              aprobarSolicitud(solicitudSeleccionada.id, solicitudSeleccionada.usuario);
+                            }
+                          }} 
+                          disabled={!salarioData.salario || !salarioData.tipoContrato}
+                        >
+                          Generar certificación
                         </Button>
                       </div>
                     </div>

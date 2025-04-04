@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { createClient } from "@supabase/supabase-js"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 
 const SIDEBAR_COOKIE_NAME = "sidebar:state"
@@ -144,7 +144,9 @@ SidebarProvider.displayName = "SidebarProvider"
 
 export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [expandedMenus, setExpandedMenus] = useState<{[key: string]: boolean}>({})
   const router = useRouter()
+  const currentPath = usePathname()
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut()
@@ -154,18 +156,45 @@ export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
   }
 
   const menuItems = [
-    { name: "Mis datos", href: "/perfil", icon: Info, current: false },
+    { name: "Mis datos", href: "/perfil", icon: Info, current: currentPath === "/perfil" },
     {
       name: "Solicitudes",
-      icon: FileText, // Use an appropriate icon for "Solicitudes"
+      icon: FileText,
+      // El menú principal no se marca como activo, solo se expande
       current: false,
       subItems: [
-        { name: "Certificación Laboral", href: "/perfil/solicitudes/certificacion-laboral", icon: Newspaper, current: false },
+        { 
+          name: "Certificación Laboral", 
+          href: "/perfil/solicitudes/certificacion-laboral", 
+          icon: Newspaper, 
+          current: currentPath === "/perfil/solicitudes/certificacion-laboral" 
+        },
         // Add more sub-items here if needed
       ],
     },
     // Aquí se pueden agregar más secciones en el futuro
   ]
+  
+  // Inicializar el estado de expansión basado en la ruta actual
+  React.useEffect(() => {
+    const newExpandedMenus = {...expandedMenus};
+    menuItems.forEach((item, index) => {
+      if (item.subItems) {
+        const hasActiveSubItem = item.subItems.some(subItem => subItem.current);
+        if (hasActiveSubItem) {
+          newExpandedMenus[index] = true;
+        }
+      }
+    });
+    setExpandedMenus(newExpandedMenus);
+  }, [currentPath]);
+  
+  const toggleMenu = (index: number) => {
+    setExpandedMenus(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  }
 
   return (
     <>
@@ -212,31 +241,69 @@ export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
             <nav className="mt-5 px-2 space-y-1">
               {menuItems.map((item) => (
                 <div key={item.name}>
-                  <Link
-                    href={item.href || "#"}
-                    className={cn(
-                      item.current ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
-                      "group flex items-center px-2 py-2 text-base font-medium rounded-md",
-                    )}
-                  >
-                    <item.icon
+                  {item.subItems ? (
+                    <button
+                      onClick={() => toggleMenu(menuItems.indexOf(item))}
                       className={cn(
-                        item.current ? "text-primary" : "text-gray-400 group-hover:text-gray-500",
-                        "mr-4 flex-shrink-0 h-6 w-6",
+                        "w-full text-left group flex items-center justify-between px-2 py-2 text-sm font-medium rounded-md",
+                        "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                       )}
-                      aria-hidden="true"
-                    />
-                    {item.name}
-                  </Link>
-                  {item.subItems && (
-                    <div className="ml-6 space-y-1">
+                    >
+                      <div className="flex items-center">
+                        <item.icon
+                          className={cn(
+                            "text-gray-400 group-hover:text-gray-500",
+                            "mr-3 flex-shrink-0 h-5 w-5",
+                          )}
+                          aria-hidden="true"
+                        />
+                        {item.name}
+                      </div>
+                      <svg
+                        className={cn(
+                          "h-4 w-4 text-gray-400 transition-transform",
+                          expandedMenus[menuItems.indexOf(item)] ? "transform rotate-180" : ""
+                        )}
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        aria-hidden="true"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </button>
+                  ) : (
+                    <Link
+                      href={item.href || "#"}
+                      className={cn(
+                        item.current ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                        "group flex items-center px-2 py-2 text-sm font-medium rounded-md",
+                      )}
+                    >
+                      <item.icon
+                        className={cn(
+                          item.current ? "text-primary" : "text-gray-400 group-hover:text-gray-500",
+                          "mr-3 flex-shrink-0 h-5 w-5",
+                        )}
+                        aria-hidden="true"
+                      />
+                      {item.name}
+                    </Link>
+                  )}
+                  
+                  {item.subItems && expandedMenus[menuItems.indexOf(item)] && (
+                    <div className="ml-6 space-y-1 mt-1">
                       {item.subItems.map((subItem) => (
                         <Link
                           key={subItem.name}
                           href={subItem.href}
                           className={cn(
                             subItem.current ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
-                            "group flex items-center px-2 py-2 text-sm font-medium rounded-md",
+                            "group flex items-center px-2 py-2 text-xs font-medium rounded-md",
                           )}
                         >
                           <subItem.icon
@@ -256,8 +323,8 @@ export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
           </nav>
         </div>
         <div className="flex-shrink-0 flex border-t border-gray-200 p-4">
-          <Button variant="destructive" className="flex items-center w-full" onClick={handleSignOut}>
-            <LogOut className="mr-2 h-4 w-4" />
+          <Button variant="destructive" className="group flex items-center rounded-md bg-red-500 px-2 py-2 text-sm font-medium text-white hover:bg-red-600 w-full" onClick={handleSignOut}>
+            <LogOut className="mr-3 h-5 w-5 text-white" />
             Cerrar sesión
           </Button>
         </div>
@@ -276,24 +343,62 @@ export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
           <nav className="mt-8 flex-1 px-2 space-y-1">
             {menuItems.map((item) => (
               <div key={item.name}>
-                <Link
-                  href={item.href || "#"}
-                  className={cn(
-                    item.current ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
-                    "group flex items-center px-2 py-2 text-sm font-medium rounded-md",
-                  )}
-                >
-                  <item.icon
+                {item.subItems ? (
+                  <button
+                    onClick={() => toggleMenu(menuItems.indexOf(item))}
                     className={cn(
-                      item.current ? "text-primary" : "text-gray-400 group-hover:text-gray-500",
-                      "mr-3 flex-shrink-0 h-5 w-5",
+                      "w-full text-left group flex items-center justify-between px-2 py-2 text-sm font-medium rounded-md",
+                      "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                     )}
-                    aria-hidden="true"
-                  />
-                  {item.name}
-                </Link>
-                {item.subItems && (
-                  <div className="ml-6 space-y-1">
+                  >
+                    <div className="flex items-center">
+                      <item.icon
+                        className={cn(
+                          "text-gray-400 group-hover:text-gray-500",
+                          "mr-3 flex-shrink-0 h-5 w-5",
+                        )}
+                        aria-hidden="true"
+                      />
+                      {item.name}
+                    </div>
+                    <svg
+                      className={cn(
+                        "h-4 w-4 text-gray-400 transition-transform",
+                        expandedMenus[menuItems.indexOf(item)] ? "transform rotate-180" : ""
+                      )}
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
+                ) : (
+                  <Link
+                    href={item.href || "#"}
+                    className={cn(
+                      item.current ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                      "group flex items-center px-2 py-2 text-sm font-medium rounded-md",
+                    )}
+                  >
+                    <item.icon
+                      className={cn(
+                        item.current ? "text-primary" : "text-gray-400 group-hover:text-gray-500",
+                        "mr-3 flex-shrink-0 h-5 w-5",
+                      )}
+                      aria-hidden="true"
+                    />
+                    {item.name}
+                  </Link>
+                )}
+                
+                {item.subItems && expandedMenus[menuItems.indexOf(item)] && (
+                  <div className="ml-6 space-y-1 mt-1">
                     {item.subItems.map((subItem) => (
                       <Link
                         key={subItem.name}
@@ -320,8 +425,8 @@ export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
           </nav>
         </div>
         <div className="flex-shrink-0 flex border-t border-gray-200 p-4">
-          <Button variant="destructive" className="flex items-center w-full" onClick={handleSignOut}>
-            <LogOut className="mr-2 h-4 w-4" />
+          <Button variant="destructive" className="group flex items-center rounded-md bg-red-500 px-2 py-2 text-sm font-medium text-white hover:bg-red-600 w-full" onClick={handleSignOut}>
+            <LogOut className="mr-3 h-5 w-5 text-white" />
             Cerrar sesión
           </Button>
         </div>

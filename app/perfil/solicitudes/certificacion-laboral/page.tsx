@@ -256,9 +256,9 @@ export default function CertificacionLaboral() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
               <div className="space-y-6">
                 <div>
-                  <h1 className="text-2xl font-bold tracking-tight">Solicitud de Certificación Laboral</h1>
+                  <h1 className="text-2xl font-bold tracking-tight">Solicitudes de Certificación Laboral</h1>
                   <p className="text-muted-foreground">
-                    Completa el formulario para solicitar tu certificado laboral.
+                  Historial de solicitudes de certificación laboral
                   </p>
                 </div>
 
@@ -266,8 +266,7 @@ export default function CertificacionLaboral() {
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <div>
-                      <CardTitle>Mis Solicitudes</CardTitle>
-                      <CardDescription>Historial de solicitudes de certificación laboral</CardDescription>
+                      <CardDescription>Completa el formulario para solicitar tu certificado laboral.</CardDescription>
                     </div>
                     <Button
                       onClick={() => setShowModal(true)}

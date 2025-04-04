@@ -467,7 +467,14 @@ export default function AdminCertificacionLaboral() {
                                     size="sm"
                                     onClick={() => {
                                       setSolicitudSeleccionada({id: solicitud.id, usuario: solicitud.usuario})
-                                      setShowTipoModal(true)
+                                      // Verificar si el certificado requiere información salarial
+                                      if (solicitud.salario_contrato === "Si") {
+                                        // Si requiere salario, mostrar el modal de salario
+                                        setShowSalarioModal(true)
+                                      } else {
+                                        // Si no requiere salario, generar directamente el PDF
+                                        aprobarSolicitud(solicitud.id, solicitud.usuario)
+                                      }
                                     }}
                                   >
                                     Aprobar

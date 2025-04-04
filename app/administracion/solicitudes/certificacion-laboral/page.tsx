@@ -411,13 +411,6 @@ export default function AdminCertificacionLaboral() {
                       Gestiona las solicitudes pendientes de certificación laboral.
                     </p>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => router.push('/administracion/solicitudes/certificacion-laboral')}
-                  >
-                    Ver todas las solicitudes
-                  </Button>
                 </div>
 
                 {error && (

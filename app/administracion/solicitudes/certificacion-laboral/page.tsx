@@ -164,8 +164,12 @@ export default function AdminCertificacionLaboral() {
         
         <div style="margin-top: 80px; padding-left: 100px; padding-right: 100px;">
           <p>Atentamente,</p>
-          <div style="margin-top: 60px; border-bottom: 1px solid #000; width: 250px;"></div>
-          <p style="margin-top: 10px;"><strong>LISSETTE VANESSA CALDERON</strong><br>Directora de Talento Humano<br>${usuarioData.empresas?.razon_social || 'BEST DATA MARKETING S.A.S'}<br>Nit ${usuarioData.empresas?.nit || '901303215-6'}</p>
+          <div style="position: relative;">
+            <div style="position: relative; height: 100px;">
+              <img src="/img/firma/firma-lissette.png" alt="Firma" style="width: 200px; position: absolute; top: 50px; left: 0; z-index: 1;" />
+            </div>
+            <p style="margin-top: 10px;"><strong>LISSETTE VANESSA CALDERON</strong><br>Directora de Talento Humano<br>${usuarioData.empresas?.razon_social || 'BEST DATA MARKETING S.A.S'}<br>Nit ${usuarioData.empresas?.nit || '901303215-6'}</p>
+          </div>
         </div>
       </div>
       `
@@ -407,10 +411,6 @@ export default function AdminCertificacionLaboral() {
                       Gestiona las solicitudes pendientes de certificación laboral.
                     </p>
                   </div>
-                  <Button onClick={() => setShowModal(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Crear Certificación
-                  </Button>
                 </div>
 
                 {error && (

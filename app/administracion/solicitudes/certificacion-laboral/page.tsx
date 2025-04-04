@@ -96,8 +96,9 @@ export default function AdminCertificacionLaboral() {
 
       // Crear un elemento HTML temporal para renderizar el certificado
       const certificateContainer = document.createElement("div")
-      certificateContainer.style.width = "210mm"
-      certificateContainer.style.height = "297mm"
+      // Configurar dimensiones exactas de tamaño carta (215.9mm x 279.4mm)
+      certificateContainer.style.width = "215.9mm"
+      certificateContainer.style.height = "279.4mm"
       certificateContainer.style.padding = "0"
       certificateContainer.style.margin = "0"
       certificateContainer.style.overflow = "hidden"
@@ -110,16 +111,12 @@ export default function AdminCertificacionLaboral() {
       const membreteFileName = `membrete-${empresaNombre.toLowerCase().replace(/\s+/g, "-")}.jpg`
       const membreteUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/empresas/logos/${membreteFileName}`
       
-      // Verificar si existe el membrete
-      const { data: membreteExists } = await supabase
-        .storage
-        .from('empresas')
-        .list(`logos/${membreteFileName}`)
-
-      // Definir el estilo del contenedor según la existencia del membrete
-      const containerStyle = membreteExists && membreteExists.length > 0
-        ? `position: relative; width: 210mm; height: 297mm; background-image: url('${membreteUrl}'); background-size: cover; background-repeat: no-repeat; background-position: left top; background-color: rgba(255, 255, 255, 0.8); background-blend-mode: lighten;`
-        : `position: relative; width: 210mm; height: 297mm; background-color: white;`
+      // Construir la ruta a la imagen de membrete local
+      const empresaId = usuarioData.empresa_id || 1
+      const membreteLocalPath = `/img/membrete/membrete-${empresaId}.jpg`
+      
+      // Definir el estilo del contenedor con la imagen de membrete local
+      const containerStyle = `position: relative; width: 215.9mm; height: 279.4mm; background-image: url('${membreteLocalPath}'); background-size: cover; background-repeat: no-repeat; background-position: left top; background-color: rgba(255, 255, 255, 0.8); background-blend-mode: lighten;`
       
       // Obtener los datos de la solicitud
       const { data: solicitudData, error: solicitudError } = await supabase
@@ -174,27 +171,35 @@ export default function AdminCertificacionLaboral() {
       certificateContainer.innerHTML = certificadoHTML
 
       document.body.appendChild(certificateContainer)
+      // Configurar html2canvas para capturar exactamente el tamaño carta
+      // Carta en píxeles a 96 DPI: 816 x 1056 (215.9mm x 279.4mm)
       const canvas = await html2canvas(certificateContainer, {
-        scale: 2,
+        scale: 2, // Mayor escala para mejor calidad
         useCORS: true,
         logging: false,
-        width: 793,
-        height: 1122,
-        windowWidth: 793,
-        windowHeight: 1122
+        width: 816, // Ancho exacto de carta en píxeles (215.9mm)
+        height: 1056, // Alto exacto de carta en píxeles (279.4mm)
+        windowWidth: 816,
+        windowHeight: 1056
       })
       document.body.removeChild(certificateContainer)
 
+      // Crear documento PDF con formato carta estándar
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "mm",
-        format: "a4",
-        margins: { top: 10, right: 25, bottom: 10, left: 25 }
+        format: "letter", // Formato carta estándar (215.9mm x 279.4mm)
+        compress: true // Comprimir para reducir tamaño
       })
 
+      // Convertir canvas a imagen con alta calidad
       const imgData = canvas.toDataURL("image/jpeg", 1.0)
-      const pdfWidth = pdf.internal.pageSize.getWidth()
-      const pdfHeight = pdf.internal.pageSize.getHeight()
+      
+      // Obtener dimensiones exactas del PDF
+      const pdfWidth = pdf.internal.pageSize.getWidth() // 210mm
+      const pdfHeight = pdf.internal.pageSize.getHeight() // 297mm
+      
+      // Añadir imagen al PDF ajustando al tamaño exacto de A4
       pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight)
 
       // Intentar subir directamente el PDF sin verificar el bucket

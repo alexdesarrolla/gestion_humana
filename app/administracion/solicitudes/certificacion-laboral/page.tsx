@@ -16,6 +16,7 @@ import { jsPDF } from "jspdf"
 import html2canvas from "html2canvas"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
 
 export default function AdminCertificacionLaboral() {
   const router = useRouter()
@@ -34,7 +35,8 @@ export default function AdminCertificacionLaboral() {
   const [formData, setFormData] = useState({
     cedula: "",
     dirigidoA: "",
-    ciudad: ""
+    ciudad: "",
+    incluirSalario: false
   })
   const [usuarioEncontrado, setUsuarioEncontrado] = useState<any>(null)
 
@@ -351,7 +353,8 @@ export default function AdminCertificacionLaboral() {
             usuario_id: session.user.id,
             dirigido_a: formData.dirigidoA,
             ciudad: formData.ciudad,
-            estado: 'pendiente'
+            estado: 'pendiente',
+            salario_contrato: formData.incluirSalario ? "Si" : "No"
           }
         ])
         .select()
@@ -359,11 +362,18 @@ export default function AdminCertificacionLaboral() {
 
       if (solicitudError) throw solicitudError
 
+      // Si se incluye salario y tipo de contrato, guardar en localStorage
+      if (formData.incluirSalario) {
+        localStorage.setItem('certificacion_salario', salarioData.salario);
+        localStorage.setItem('certificacion_tipoContrato', salarioData.tipoContrato);
+      }
+
       // Aprobar la solicitud inmediatamente
       await aprobarSolicitud(solicitudData.id, usuarioEncontrado)
 
       setShowModal(false)
-      setFormData({ cedula: "", dirigidoA: "", ciudad: "" })
+      setFormData({ cedula: "", dirigidoA: "", ciudad: "", incluirSalario: false })
+      setSalarioData({ salario: "", tipoContrato: "Contrato a término indefinido" })
       setUsuarioEncontrado(null)
     } catch (err) {
       console.error("Error al crear certificado:", err)
@@ -545,6 +555,55 @@ export default function AdminCertificacionLaboral() {
                           placeholder="Ingrese la ciudad"
                         />
                       </div>
+
+                      <div className="flex items-center space-x-2 mb-4">
+                        <Checkbox
+                          id="incluirSalario"
+                          checked={formData.incluirSalario}
+                          onCheckedChange={(checked) => {
+                            console.log('Checkbox changed:', checked);
+                            setFormData({ ...formData, incluirSalario: checked === true });
+                          }}
+                        />
+                        <Label htmlFor="incluirSalario" className="cursor-pointer" onClick={() => {
+                          setFormData({ ...formData, incluirSalario: !formData.incluirSalario });
+                        }}>Con salario y tipo de contrato</Label>
+                      </div>
+
+                      {formData.incluirSalario && (
+                        <div className="space-y-4 p-4 border rounded-md">
+                          <div className="space-y-2">
+                            <Label htmlFor="salario">Salario</Label>
+                            <Input
+                              id="salario"
+                              type="number"
+                              value={salarioData.salario}
+                              onChange={(e) => setSalarioData({ ...salarioData, salario: e.target.value })}
+                              placeholder="Ingrese el salario"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="tipoContrato">Tipo de Contrato</Label>
+                            <Select 
+                              value={salarioData.tipoContrato} 
+                              onValueChange={(value) => setSalarioData({ ...salarioData, tipoContrato: value })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleccione el tipo de contrato" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Contrato a Término Fijo">Contrato a Término Fijo</SelectItem>
+                                <SelectItem value="Contrato a término indefinido">Contrato a término indefinido</SelectItem>
+                                <SelectItem value="Contrato de Obra o labor">Contrato de Obra o labor</SelectItem>
+                                <SelectItem value="Contrato civil por prestación de servicios">Contrato civil por prestación de servicios</SelectItem>
+                                <SelectItem value="Contrato de aprendizaje">Contrato de aprendizaje</SelectItem>
+                                <SelectItem value="Contrato ocasional de trabajo">Contrato ocasional de trabajo</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      )}
 
                       <div className="flex justify-end gap-2">
                         <Button variant="outline" onClick={() => setShowModal(false)}>

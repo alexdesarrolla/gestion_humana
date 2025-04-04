@@ -159,7 +159,7 @@ export default function AdminCertificacionLaboral() {
         </div>
         
         <div style="text-align: left; margin: 50px 0; padding-left: 100px; padding-right: 100px;">
-          <p>Se expide para el (${solicitudData.dirigido_a}), en la ciudad de ${solicitudData.ciudad}, ${fechaActual}.</p>
+          <p>Se expide para ${solicitudData.dirigido_a}, en la ciudad de ${solicitudData.ciudad}, ${fechaActual}.</p>
         </div>
         
         <div style="margin-top: 80px; padding-left: 100px; padding-right: 100px;">
@@ -411,6 +411,13 @@ export default function AdminCertificacionLaboral() {
                       Gestiona las solicitudes pendientes de certificación laboral.
                     </p>
                   </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => router.push('/administracion/solicitudes/certificacion-laboral')}
+                  >
+                    Ver todas las solicitudes
+                  </Button>
                 </div>
 
                 {error && (

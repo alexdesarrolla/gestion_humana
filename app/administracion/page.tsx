@@ -74,33 +74,36 @@ export default function Administracion() {
         .from('empresas')
         .select('*')
 
-      // Obtener las últimas 5 solicitudes de certificación
+      // Obtener las últimas 5 solicitudes de certificación pendientes
       const { data: solicitudesCertificacionData } = await supabase
         .from('solicitudes_certificacion')
         .select(`
           *,
           usuario_nomina:usuario_id(colaborador, cedula)
         `)
+        .eq('estado', 'pendiente')
         .order('fecha_solicitud', { ascending: false })
         .limit(5)
 
-      // Obtener las últimas 5 solicitudes de vacaciones
+      // Obtener las últimas 5 solicitudes de vacaciones pendientes
       const { data: solicitudesVacacionesData } = await supabase
         .from('solicitudes_vacaciones')
         .select(`
           *,
           usuario:usuario_id(colaborador, cedula, cargo, fecha_ingreso)
         `)
+        .eq('estado', 'pendiente')
         .order('fecha_solicitud', { ascending: false })
         .limit(5)
-        
-      // Obtener las últimas 5 solicitudes de permisos
+
+      // Obtener las últimas 5 solicitudes de permisos pendientes
       const { data: solicitudesPermisosData } = await supabase
         .from('solicitudes_permisos')
         .select(`
           *,
-          usuario:usuario_id(colaborador, cedula, cargo)
+          usuario:usuario_id(colaborador, cedula, cargo, fecha_ingreso, empresa_id, empresas(nombre))
         `)
+        .eq('estado', 'pendiente')
         .order('fecha_solicitud', { ascending: false })
         .limit(5)
 
@@ -161,63 +164,10 @@ export default function Administracion() {
                       <span className="ml-2 text-sm text-gray-500">empresas</span>
                     </div>
                   </div>
-                  
-                  {/* Tabla de Solicitudes de Permisos */}
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                    <div className="flex justify-between items-center mb-4">
-                      <h2 className="text-xl font-semibold">Solicitudes de Permisos</h2>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => router.push('/administracion/solicitudes/permisos')}
-                      >
-                        Ver todas las solicitudes
-                      </Button>
-                    </div>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Fecha</TableHead>
-                          <TableHead>Colaborador</TableHead>
-                          <TableHead>Tipo</TableHead>
-                          <TableHead>Estado</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {solicitudesPermisos.map((solicitud) => (
-                          <TableRow key={solicitud.id}>
-                            <TableCell>{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</TableCell>
-                            <TableCell>{solicitud.usuario?.colaborador}</TableCell>
-                            <TableCell>
-                              {solicitud.tipo_permiso === 'no_remunerado' ? 'No remunerado' :
-                               solicitud.tipo_permiso === 'remunerado' ? 'Remunerado' :
-                               'Actividad interna'}
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={solicitud.estado === 'aprobado' ? 'secondary' :
-                                        solicitud.estado === 'rechazado' ? 'destructive' :
-                                        'default'}
-                              >
-                                {solicitud.estado.charAt(0).toUpperCase() + solicitud.estado.slice(1)}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                        {solicitudesPermisos.length === 0 && (
-                          <TableRow>
-                            <TableCell colSpan={4} className="text-center py-4">
-                              No hay solicitudes registradas
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
                 </div>
 
                 {/* Grid de Solicitudes */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
                   {/* Tabla de Solicitudes de Certificación */}
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                     <div className="flex justify-between items-center mb-4">
@@ -321,60 +271,7 @@ export default function Administracion() {
                       </TableBody>
                     </Table>
                   </div>
-                  
-                  {/* Tabla de Solicitudes de Permisos */}
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                    <div className="flex justify-between items-center mb-4">
-                      <h2 className="text-xl font-semibold">Solicitudes de Permisos</h2>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => router.push('/administracion/solicitudes/permisos')}
-                      >
-                        Ver todas las solicitudes
-                      </Button>
-                    </div>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Fecha</TableHead>
-                          <TableHead>Colaborador</TableHead>
-                          <TableHead>Tipo</TableHead>
-                          <TableHead>Estado</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {solicitudesPermisos.map((solicitud) => (
-                          <TableRow key={solicitud.id}>
-                            <TableCell>{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</TableCell>
-                            <TableCell>{solicitud.usuario?.colaborador}</TableCell>
-                            <TableCell>
-                              {solicitud.tipo_permiso === 'no_remunerado' ? 'No remunerado' :
-                               solicitud.tipo_permiso === 'remunerado' ? 'Remunerado' :
-                               'Actividad interna'}
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={solicitud.estado === 'aprobado' ? 'secondary' :
-                                        solicitud.estado === 'rechazado' ? 'destructive' :
-                                        'default'}
-                              >
-                                {solicitud.estado.charAt(0).toUpperCase() + solicitud.estado.slice(1)}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                        {solicitudesPermisos.length === 0 && (
-                          <TableRow>
-                            <TableCell colSpan={4} className="text-center py-4">
-                              No hay solicitudes registradas
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
                   </div>
-                </div>
               </div>
             </div>
           </div>

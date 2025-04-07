@@ -349,22 +349,22 @@ export default function AdminSolicitudesPermisos() {
               <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
                 <div>
                   <span style="font-weight: bold;">Ciudad: </span>
-                  <span style="text-decoration: underline;">${usuarioData.empresas?.ciudad || ''}</span>
+                  <span>${usuarioData.empresas?.ciudad || ''}</span>
                 </div>
                 <div>
                   <span style="font-weight: bold;">Fecha: </span>
-                  <span style="text-decoration: underline;">${fechaActual}</span>
+                  <span>${fechaActual}</span>
                 </div>
               </div>
               
               <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
                 <div>
                   <span style="font-weight: bold;">Nombre del funcionario: </span>
-                  <span style="text-decoration: underline;">${usuarioData.colaborador || ''}</span>
+                  <span>${usuarioData.colaborador || ''}</span>
                 </div>
                 <div>
                   <span style="font-weight: bold;">Cargo: </span>
-                  <span style="text-decoration: underline;">${usuarioData.cargo || ''}</span>
+                  <span>${usuarioData.cargo || ''}</span>
                 </div>
               </div>
               
@@ -401,7 +401,7 @@ export default function AdminSolicitudesPermisos() {
               </div>
               
               <div style="margin-bottom: 20px;">
-                <p>Este permiso/actividad interna será tomado a partir del día <u>${diaInicio}</u> mes <u>${mesInicio}</u> del año 20<u>${anioInicio.toString().substr(2)}</u> hasta el día <u>${diaFin}</u> mes <u>${mesFin}</u> del año 20<u>${anioFin.toString().substr(2)}</u></p>
+                <p>Este permiso/actividad interna será tomado a partir del día ${diaInicio} mes ${mesInicio} del año 20${anioInicio.toString().substr(2)} hasta el día ${diaFin} mes ${mesFin} del año 20${anioFin.toString().substr(2)}</p>
                 <p style="font-weight: bold;">Motivo del Permiso/Actividad Interna: </p>
                 <p style="border-bottom: 1px solid #000; padding-bottom: 5px;">${solicitudData.motivo || ''}</p>
               </div>
@@ -795,6 +795,11 @@ export default function AdminSolicitudesPermisos() {
                                       Aprobar
                                     </Button>
                                   </div>
+                                )}
+                                {solicitud.estado === "aprobado" ? (
+                                  <Button onClick={() => window.open(solicitud.pdf_url, '_blank')}>Ver PDF</Button>
+                                ) : (
+                                  <Button onClick={() => aprobarSolicitud(solicitud.id, solicitud.usuario)}>Aprobar</Button>
                                 )}
                               </TableCell>
                             </TableRow>

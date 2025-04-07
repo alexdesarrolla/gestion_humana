@@ -50,7 +50,6 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
   const menuItems = [
     { name: "Escritorio", href: "/administracion", icon: Home, current: currentPath === "/administracion" },
     { name: "Usuarios", href: "/administracion/usuarios", icon: User, current: currentPath === "/administracion/usuarios" },
-    { name: "Mis datos", href: "/administracion/perfil", icon: Info, current: currentPath === "/administracion/perfil" },
     { 
       name: "Solicitudes", 
       icon: FileText, 
@@ -76,6 +75,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
         },
       ],
     },
+    { name: "Mis datos", href: "/administracion/perfil", icon: Info, current: currentPath === "/administracion/perfil" },
   ]
   
   // Inicializar el estado de expansión basado en la ruta actual

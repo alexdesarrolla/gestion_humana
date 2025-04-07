@@ -189,7 +189,7 @@ export default function Login() {
                   </button>
                 </div>
               </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full bg-[#6B487A]" disabled={isLoading}>
                 {isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
               </Button>
               <div className="mt-4 text-center">
@@ -200,7 +200,7 @@ export default function Login() {
             </form>
           </CardContent>
           <CardFooter className="flex justify-center">
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-500 text-center">
               © {new Date().getFullYear()} Gestión Humana 360. Todos los derechos reservados.
             </p>
           </CardFooter>

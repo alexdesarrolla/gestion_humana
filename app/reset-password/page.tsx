@@ -80,7 +80,7 @@ export default function ResetPassword() {
                   required
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full bg-[#6B487A]" disabled={isLoading}>
                 {isLoading ? "Enviando..." : "Enviar enlace"}
               </Button>
             </form>

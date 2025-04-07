@@ -102,7 +102,7 @@ function UpdatePasswordContent() {
                   required
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full bg-[#6B487A]" disabled={isLoading}>
                 {isLoading ? "Actualizando..." : "Actualizar Contraseña"}
               </Button>
             </form>

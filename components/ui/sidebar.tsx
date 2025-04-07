@@ -4,7 +4,7 @@ import * as React from "react"
 import { useState } from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { type VariantProps, cva } from "class-variance-authority"
-import { PanelLeft, Menu, X, LogOut, Newspaper, Info, FileText } from "lucide-react"
+import { PanelLeft, Menu, X, LogOut, Newspaper, Info, FileText, Calendar } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -168,6 +168,12 @@ export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
           href: "/perfil/solicitudes/certificacion-laboral", 
           icon: Newspaper, 
           current: currentPath === "/perfil/solicitudes/certificacion-laboral" 
+        },
+        { 
+          name: "Vacaciones", 
+          href: "/perfil/solicitudes/vacaciones", 
+          icon: Calendar, 
+          current: currentPath === "/perfil/solicitudes/vacaciones" 
         },
         // Add more sub-items here if needed
       ],

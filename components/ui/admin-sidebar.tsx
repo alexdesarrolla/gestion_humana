@@ -1,8 +1,8 @@
 import * as React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { type VariantProps, cva } from "class-variance-authority"
-import { PanelLeft, Menu, X, LogOut, User, Home, Info, FileText } from "lucide-react"
+import { PanelLeft, Menu, X, LogOut, User, Home, Info, FileText, Newspaper, Calendar, ChevronDown } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -34,6 +34,7 @@ const supabase = createClient(
 
 export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [expandedMenus, setExpandedMenus] = useState<{[key: string]: boolean}>({})
   const router = useRouter()
 
   const handleSignOut = async () => {
@@ -49,8 +50,47 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
     { name: "Escritorio", href: "/administracion", icon: Home, current: currentPath === "/administracion" },
     { name: "Usuarios", href: "/administracion/usuarios", icon: User, current: currentPath === "/administracion/usuarios" },
     { name: "Mis datos", href: "/administracion/perfil", icon: Info, current: currentPath === "/administracion/perfil" },
-    { name: "Solicitudes", href: "/administracion/solicitudes/certificacion-laboral", icon: FileText, current: currentPath === "/administracion/solicitudes/certificacion-laboral" },
+    { 
+      name: "Solicitudes", 
+      icon: FileText, 
+      current: false,
+      subItems: [
+        { 
+          name: "Certificación Laboral", 
+          href: "/administracion/solicitudes/certificacion-laboral", 
+          icon: Newspaper, 
+          current: currentPath === "/administracion/solicitudes/certificacion-laboral" 
+        },
+        { 
+          name: "Vacaciones", 
+          href: "/administracion/solicitudes/vacaciones", 
+          icon: Calendar, 
+          current: currentPath === "/administracion/solicitudes/vacaciones" 
+        },
+      ],
+    },
   ]
+  
+  // Inicializar el estado de expansión basado en la ruta actual
+  useEffect(() => {
+    const newExpandedMenus = {...expandedMenus};
+    menuItems.forEach((item, index) => {
+      if (item.subItems) {
+        const hasActiveSubItem = item.subItems.some(subItem => subItem.current);
+        if (hasActiveSubItem) {
+          newExpandedMenus[index] = true;
+        }
+      }
+    });
+    setExpandedMenus(newExpandedMenus);
+  }, [currentPath]);
+  
+  const toggleMenu = (index: number) => {
+    setExpandedMenus(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  }
 
   return (
     <>
@@ -95,24 +135,77 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
             <img src="/logo-h-n.webp" alt="Logo" className="max-w-[150px]" />
             </div>
             <nav className="mt-5 px-2 space-y-1">
-              {menuItems.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={cn(
-                    item.current ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
-                    "group flex items-center px-2 py-2 text-base font-medium rounded-md",
+              {menuItems.map((item, index) => (
+                <div key={item.name}>
+                  {item.subItems ? (
+                    <>
+                      <button
+                        onClick={() => toggleMenu(index)}
+                        className={cn(
+                          item.current ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                          "group flex items-center justify-between w-full px-2 py-2 text-base font-medium rounded-md",
+                        )}
+                      >
+                        <div className="flex items-center">
+                          <item.icon
+                            className={cn(
+                              item.current ? "text-primary" : "text-gray-400 group-hover:text-gray-500",
+                              "mr-4 flex-shrink-0 h-6 w-6",
+                            )}
+                            aria-hidden="true"
+                          />
+                          {item.name}
+                        </div>
+                        <ChevronDown
+                          className={cn(
+                            "h-5 w-5 text-gray-400 transition-transform duration-200",
+                            expandedMenus[index] ? "transform rotate-180" : ""
+                          )}
+                        />
+                      </button>
+                      {expandedMenus[index] && (
+                        <div className="pl-8 mt-1 space-y-1">
+                          {item.subItems.map((subItem) => (
+                            <Link
+                              key={subItem.name}
+                              href={subItem.href}
+                              className={cn(
+                                subItem.current ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                                "group flex items-center px-2 py-2 text-sm font-medium rounded-md",
+                              )}
+                            >
+                              <subItem.icon
+                                className={cn(
+                                  subItem.current ? "text-primary" : "text-gray-400 group-hover:text-gray-500",
+                                  "mr-3 flex-shrink-0 h-5 w-5",
+                                )}
+                                aria-hidden="true"
+                              />
+                              {subItem.name}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        item.current ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                        "group flex items-center px-2 py-2 text-base font-medium rounded-md",
+                      )}
+                    >
+                      <item.icon
+                        className={cn(
+                          item.current ? "text-primary" : "text-gray-400 group-hover:text-gray-500",
+                          "mr-4 flex-shrink-0 h-6 w-6",
+                        )}
+                        aria-hidden="true"
+                      />
+                      {item.name}
+                    </Link>
                   )}
-                >
-                  <item.icon
-                    className={cn(
-                      item.current ? "text-primary" : "text-gray-400 group-hover:text-gray-500",
-                      "mr-4 flex-shrink-0 h-6 w-6",
-                    )}
-                    aria-hidden="true"
-                  />
-                  {item.name}
-                </Link>
+                </div>
               ))}
             </nav>
           </div>
@@ -135,24 +228,77 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
             <img src="/logo-h-n.webp" alt="Logo" className="max-w-[150px]" />
             </div>
             <nav className="mt-8 flex-1 px-2 space-y-1">
-              {menuItems.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={cn(
-                    item.current ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
-                    "group flex items-center px-2 py-2 text-sm font-medium rounded-md",
+              {menuItems.map((item, index) => (
+                <div key={item.name}>
+                  {item.subItems ? (
+                    <>
+                      <button
+                        onClick={() => toggleMenu(index)}
+                        className={cn(
+                          item.current ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                          "group flex items-center justify-between w-full px-2 py-2 text-sm font-medium rounded-md",
+                        )}
+                      >
+                        <div className="flex items-center">
+                          <item.icon
+                            className={cn(
+                              item.current ? "text-primary" : "text-gray-400 group-hover:text-gray-500",
+                              "mr-3 flex-shrink-0 h-5 w-5",
+                            )}
+                            aria-hidden="true"
+                          />
+                          {item.name}
+                        </div>
+                        <ChevronDown
+                          className={cn(
+                            "h-5 w-5 text-gray-400 transition-transform duration-200",
+                            expandedMenus[index] ? "transform rotate-180" : ""
+                          )}
+                        />
+                      </button>
+                      {expandedMenus[index] && (
+                        <div className="pl-8 mt-1 space-y-1">
+                          {item.subItems.map((subItem) => (
+                            <Link
+                              key={subItem.name}
+                              href={subItem.href}
+                              className={cn(
+                                subItem.current ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                                "group flex items-center px-2 py-2 text-sm font-medium rounded-md",
+                              )}
+                            >
+                              <subItem.icon
+                                className={cn(
+                                  subItem.current ? "text-primary" : "text-gray-400 group-hover:text-gray-500",
+                                  "mr-3 flex-shrink-0 h-5 w-5",
+                                )}
+                                aria-hidden="true"
+                              />
+                              {subItem.name}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        item.current ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                        "group flex items-center px-2 py-2 text-sm font-medium rounded-md",
+                      )}
+                    >
+                      <item.icon
+                        className={cn(
+                          item.current ? "text-primary" : "text-gray-400 group-hover:text-gray-500",
+                          "mr-3 flex-shrink-0 h-5 w-5",
+                        )}
+                        aria-hidden="true"
+                      />
+                      {item.name}
+                    </Link>
                   )}
-                >
-                  <item.icon
-                    className={cn(
-                      item.current ? "text-primary" : "text-gray-400 group-hover:text-gray-500",
-                      "mr-3 flex-shrink-0 h-5 w-5",
-                    )}
-                    aria-hidden="true"
-                  />
-                  {item.name}
-                </Link>
+                </div>
               ))}
             </nav>
           </div>

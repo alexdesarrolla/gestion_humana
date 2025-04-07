@@ -3,6 +3,7 @@ import { useState, useEffect } from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { type VariantProps, cva } from "class-variance-authority"
 import { PanelLeft, Menu, X, LogOut, User, Home, Info, FileText, Newspaper, Calendar, ChevronDown } from "lucide-react"
+import { FaUser, FaBuilding, FaFileAlt, FaCalendarAlt, FaIdCard } from 'react-icons/fa'
 import { useRouter } from "next/navigation"
 
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -66,6 +67,12 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
           href: "/administracion/solicitudes/vacaciones", 
           icon: Calendar, 
           current: currentPath === "/administracion/solicitudes/vacaciones" 
+        },
+        { 
+          name: "Permisos", 
+          href: "/administracion/solicitudes/permisos", 
+          icon: FileText, 
+          current: currentPath === "/administracion/solicitudes/permisos" 
         },
       ],
     },

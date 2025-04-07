@@ -17,7 +17,8 @@ export default function Administracion() {
   const router = useRouter()
   const [userData, setUserData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [solicitudes, setSolicitudes] = useState<any[]>([])
+  const [solicitudesCertificacion, setSolicitudesCertificacion] = useState<any[]>([])
+  const [solicitudesVacaciones, setSolicitudesVacaciones] = useState<any[]>([])
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalCompanies: 0
@@ -73,11 +74,21 @@ export default function Administracion() {
         .select('*')
 
       // Obtener las últimas 5 solicitudes de certificación
-      const { data: solicitudesData } = await supabase
+      const { data: solicitudesCertificacionData } = await supabase
         .from('solicitudes_certificacion')
         .select(`
           *,
           usuario_nomina:usuario_id(colaborador, cedula)
+        `)
+        .order('fecha_solicitud', { ascending: false })
+        .limit(5)
+
+      // Obtener las últimas 5 solicitudes de vacaciones
+      const { data: solicitudesVacacionesData } = await supabase
+        .from('solicitudes_vacaciones')
+        .select(`
+          *,
+          usuario:usuario_id(colaborador, cedula, cargo, fecha_ingreso)
         `)
         .order('fecha_solicitud', { ascending: false })
         .limit(5)
@@ -87,7 +98,8 @@ export default function Administracion() {
         totalCompanies: companies?.length || 0
       })
 
-      setSolicitudes(solicitudesData || [])
+      setSolicitudesCertificacion(solicitudesCertificacionData || [])
+      setSolicitudesVacaciones(solicitudesVacacionesData || [])
       setUserData(userData)
       setLoading(false)
     }
@@ -111,7 +123,7 @@ export default function Administracion() {
       <div className="md:pl-64 flex flex-col flex-1">
         <main className="flex-1">
           <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+            <div className="max-w-[90%] mx-auto px-4 sm:px-6 md:px-8">
               <div className="space-y-6">
                 <div>
                   <h1 className="text-2xl font-bold tracking-tight">Panel de Administración</h1>
@@ -139,58 +151,111 @@ export default function Administracion() {
                   </div>
                 </div>
 
-                {/* Tabla de Solicitudes de Certificación */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-semibold">Solicitudes de Certificación Laboral</h2>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push('/administracion/solicitudes/certificacion-laboral')}
-                    >
-                      Ver todas las solicitudes
-                    </Button>
-                  </div>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead>Colaborador</TableHead>
-                        <TableHead>Cédula</TableHead>
-                        <TableHead>Dirigido a</TableHead>
-                        <TableHead>Ciudad</TableHead>
-                        <TableHead>Estado</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {solicitudes.map((solicitud) => (
-                        <TableRow key={solicitud.id}>
-                          <TableCell>{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</TableCell>
-                          <TableCell>{solicitud.usuario_nomina?.colaborador}</TableCell>
-                          <TableCell>{solicitud.usuario_nomina?.cedula}</TableCell>
-                          <TableCell>{solicitud.dirigido_a}</TableCell>
-                          <TableCell>{solicitud.ciudad}</TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={solicitud.estado === 'aprobado' ? 'secondary' :
-                                      solicitud.estado === 'rechazado' ? 'destructive' :
-                                      'default'}
-                            >
-                              {solicitud.estado.charAt(0).toUpperCase() + solicitud.estado.slice(1)}
-                            </Badge>
-                          </TableCell>
-
-                        </TableRow>
-                      ))}
-                      {solicitudes.length === 0 && (
+                {/* Grid de Solicitudes */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Tabla de Solicitudes de Certificación */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <h2 className="text-xl font-semibold">Solicitudes de Certificación Laboral</h2>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push('/administracion/solicitudes/certificacion-laboral')}
+                      >
+                        Ver todas las solicitudes
+                      </Button>
+                    </div>
+                    <Table>
+                      <TableHeader>
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-4">
-                            No hay solicitudes registradas
-                          </TableCell>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Colaborador</TableHead>
+                          <TableHead>Cédula</TableHead>
+                          <TableHead>Estado</TableHead>
                         </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {solicitudesCertificacion.map((solicitud) => (
+                          <TableRow key={solicitud.id}>
+                            <TableCell>{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</TableCell>
+                            <TableCell>{solicitud.usuario_nomina?.colaborador}</TableCell>
+                            <TableCell>{solicitud.usuario_nomina?.cedula}</TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={solicitud.estado === 'aprobado' ? 'secondary' :
+                                        solicitud.estado === 'rechazado' ? 'destructive' :
+                                        'default'}
+                              >
+                                {solicitud.estado.charAt(0).toUpperCase() + solicitud.estado.slice(1)}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {solicitudesCertificacion.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center py-4">
+                              No hay solicitudes registradas
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Tabla de Solicitudes de Vacaciones */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <h2 className="text-xl font-semibold">Solicitudes de Vacaciones</h2>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push('/administracion/solicitudes/vacaciones')}
+                      >
+                        Ver todas las solicitudes
+                      </Button>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Colaborador</TableHead>
+                          <TableHead>Días</TableHead>
+                          <TableHead>Estado</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {solicitudesVacaciones.map((solicitud) => (
+                          <TableRow key={solicitud.id}>
+                            <TableCell>{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</TableCell>
+                            <TableCell>{solicitud.usuario?.colaborador}</TableCell>
+                            <TableCell>
+                              {Math.ceil(
+                                (new Date(solicitud.fecha_fin).getTime() - 
+                                new Date(solicitud.fecha_inicio).getTime()) / 
+                                (1000 * 3600 * 24)
+                              ) + 1}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={solicitud.estado === 'aprobado' ? 'secondary' :
+                                        solicitud.estado === 'rechazado' ? 'destructive' :
+                                        'default'}
+                              >
+                                {solicitud.estado.charAt(0).toUpperCase() + solicitud.estado.slice(1)}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {solicitudesVacaciones.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center py-4">
+                              No hay solicitudes registradas
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               </div>
             </div>

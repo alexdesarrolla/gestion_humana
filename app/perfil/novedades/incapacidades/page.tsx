@@ -103,28 +103,34 @@ export default function IncapacidadesUsuario() {
   }
 
   const enviarIncapacidad = async () => {
-    // Validar campos requeridos
-    if (!formData.fechaInicio || !formData.fechaFin || !formData.documento) {
-      setError("Por favor complete todos los campos requeridos y adjunte un documento PDF.")
-      return
-    }
-
-    // Validar que la fecha de fin sea posterior o igual a la fecha de inicio
-    const fechaInicio = new Date(formData.fechaInicio)
-    const fechaFin = new Date(formData.fechaFin)
-    
-    if (fechaFin < fechaInicio) {
-      setError("La fecha de fin debe ser posterior o igual a la fecha de inicio.")
-      return
-    }
-
-    // Validar que el archivo sea un PDF
-    if (formData.documento && formData.documento.type !== 'application/pdf') {
-      setError("El documento debe ser un archivo PDF.")
-      return
-    }
-
     try {
+      // Validar campos requeridos
+      if (!formData.fechaInicio || !formData.fechaFin || !formData.documento) {
+        setError("Por favor complete todos los campos requeridos y adjunte un documento PDF.")
+        return
+      }
+
+      // Validar que la fecha de fin sea posterior o igual a la fecha de inicio
+      const fechaInicio = new Date(formData.fechaInicio)
+      const fechaFin = new Date(formData.fechaFin)
+      
+      if (fechaFin < fechaInicio) {
+        setError("La fecha de fin debe ser posterior o igual a la fecha de inicio.")
+        return
+      }
+
+      // Validar que el archivo sea un PDF
+      if (formData.documento && formData.documento.type !== 'application/pdf') {
+        setError("El documento debe ser un archivo PDF.")
+        return
+      }
+
+      // Validar el tamaño del archivo
+      if (formData.documento && formData.documento.size > 5 * 1024 * 1024) {
+        setError("El archivo es demasiado grande. El tamaño máximo permitido es 5MB.")
+        return
+      }
+
       setLoading(true)
       setError("")
       
@@ -137,18 +143,28 @@ export default function IncapacidadesUsuario() {
       }
 
       // Subir el documento a Supabase Storage
-      const fileName = `incapacidades/${session.user.id}_${Date.now()}.pdf`
+      const fileHash = `${session.user.id}_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`
+      const fileName = `${fileHash}.pdf`
       
       const { data: uploadData, error: uploadError } = await supabase
         .storage
         .from('incapacidades')
         .upload(fileName, formData.documento, {
           cacheControl: '3600',
-          upsert: false
+          upsert: false,
+          contentType: 'application/pdf'
         })
 
       if (uploadError) {
-        throw new Error(`Error al subir el documento: ${uploadError.message}`)
+        console.error('Error de carga:', uploadError)
+        if (uploadError.message.includes('duplicate')) {
+          setError('Ya existe un documento con el mismo nombre. Por favor, intente nuevamente.')
+        } else if (uploadError.message.includes('permission')) {
+          setError('No tiene permisos para subir documentos. Por favor contacte al administrador.')
+        } else {
+          setError(`Error al subir el documento: ${uploadError.message}`)
+        }
+        return
       }
 
       // Obtener la URL pública del documento

@@ -40,12 +40,83 @@ export default function AdminSolicitudesVacaciones() {
   // Referencia para el timeout de búsqueda
   const searchTimeout = useRef<NodeJS.Timeout | null>(null)
 
-  // Obtener todas las solicitudes
+  // Suscribirse a cambios en tiempo real
   useEffect(() => {
+    const supabase = createSupabaseClient()
+    
+    // Suscribirse a cambios en la tabla de vacaciones
+    const channel = supabase
+      .channel('admin_vacaciones_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'solicitudes_vacaciones'
+        },
+        async (payload) => {
+          if (payload.eventType === 'INSERT') {
+            // Para inserciones, obtener la solicitud completa con datos del usuario
+            const { data, error } = await supabase
+              .from('solicitudes_vacaciones')
+              .select(`
+                *,
+                usuario:usuario_id(colaborador, cedula, cargo, fecha_ingreso, empresa_id, empresas(nombre, razon_social, nit)),
+                admin:admin_id(colaborador)
+              `)
+              .eq('id', payload.new.id)
+              .single()
+
+            if (error) {
+              console.error("Error al obtener nueva solicitud:", error)
+              return
+            }
+
+            setSolicitudes(prev => [data, ...prev])
+          } else if (payload.eventType === 'UPDATE') {
+            // Para actualizaciones, obtener la solicitud actualizada
+            const { data, error } = await supabase
+              .from('solicitudes_vacaciones')
+              .select(`
+                *,
+                usuario:usuario_id(colaborador, cedula, cargo, fecha_ingreso, empresa_id, empresas(nombre, razon_social, nit)),
+                admin:admin_id(colaborador)
+              `)
+              .eq('id', payload.new.id)
+              .single()
+
+            if (error) {
+              console.error("Error al obtener solicitud actualizada:", error)
+              return
+            }
+
+            setSolicitudes(prev =>
+              prev.map(sol => sol.id === payload.new.id ? data : sol)
+            )
+          } else if (payload.eventType === 'DELETE') {
+            setSolicitudes(prev =>
+              prev.filter(sol => sol.id !== payload.old.id)
+            )
+          }
+
+          // Aplicar filtros después de cualquier cambio
+          setTimeout(() => {
+            applyFilters(searchTerm, selectedEstado, selectedEmpresa, sortConfig)
+          }, 0)
+
+          // Actualizar lista de empresas
+          const uniqueEmpresas = Array.from(
+            new Set(data?.map((solicitud) => solicitud.usuario?.empresas?.nombre).filter(Boolean))
+          )
+          setEmpresas(uniqueEmpresas)
+        }
+      )
+      .subscribe()
+
+    // Cargar datos iniciales
     const fetchSolicitudes = async () => {
       setLoading(true)
       try {
-        const supabase = createSupabaseClient()
         const { data, error } = await supabase
           .from('solicitudes_vacaciones')
           .select(`
@@ -75,6 +146,10 @@ export default function AdminSolicitudesVacaciones() {
     }
 
     fetchSolicitudes()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
 
   const formatDate = (date: Date) => {

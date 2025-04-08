@@ -75,6 +75,20 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
         },
       ],
     },
+    { 
+      name: "Novedades", 
+      icon: FileText, 
+      current: false,
+      subItems: [
+        { 
+          name: "Incapacidades", 
+          href: "/administracion/novedades/incapacidades", 
+          icon: FaFileAlt, 
+          current: currentPath === "/administracion/novedades/incapacidades" 
+        },
+        // Aquí se pueden agregar más submenús de novedades en el futuro
+      ],
+    },
     { name: "Mis datos", href: "/administracion/perfil", icon: Info, current: currentPath === "/administracion/perfil" },
   ]
   

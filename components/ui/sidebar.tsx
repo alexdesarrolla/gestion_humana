@@ -185,6 +185,20 @@ export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
         // Add more sub-items here if needed
       ],
     },
+    {
+      name: "Novedades",
+      icon: FileText,
+      current: false,
+      subItems: [
+        { 
+          name: "Incapacidades", 
+          href: "/perfil/novedades/incapacidades", 
+          icon: FaFileAlt, 
+          current: currentPath === "/perfil/novedades/incapacidades" 
+        },
+        // Aquí se pueden agregar más submenús de novedades en el futuro
+      ],
+    },
     // Aquí se pueden agregar más secciones en el futuro
   ]
   

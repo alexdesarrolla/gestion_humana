@@ -29,6 +29,43 @@ export default function IncapacidadesUsuario() {
   const [success, setSuccess] = useState("")
   const [fileError, setFileError] = useState("")
 
+  // Suscribirse a cambios en tiempo real
+  useEffect(() => {
+    const supabase = createSupabaseClient()
+    
+    // Suscribirse a cambios en la tabla de incapacidades
+    const channel = supabase
+      .channel('user_incapacidades_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'incapacidades',
+          filter: `usuario_id=eq.${userData?.auth_user_id}`
+        },
+        (payload) => {
+          // Actualizar la lista de incapacidades cuando haya cambios
+          if (payload.eventType === 'INSERT') {
+            setIncapacidades(prev => [payload.new, ...prev])
+          } else if (payload.eventType === 'UPDATE') {
+            setIncapacidades(prev =>
+              prev.map(inc => inc.id === payload.new.id ? payload.new : inc)
+            )
+          } else if (payload.eventType === 'DELETE') {
+            setIncapacidades(prev =>
+              prev.filter(inc => inc.id !== payload.old.id)
+            )
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [userData])
+
   // Verificar autenticación y obtener datos del usuario
   useEffect(() => {
     const checkAuth = async () => {

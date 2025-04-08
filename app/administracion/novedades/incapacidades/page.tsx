@@ -36,6 +36,69 @@ export default function AdminNovedadesIncapacidades() {
   // Referencia para el timeout de búsqueda
   const searchTimeout = useRef<NodeJS.Timeout | null>(null)
 
+  // Suscribirse a cambios en tiempo real
+  useEffect(() => {
+    const supabase = createSupabaseClient()
+    
+    // Suscribirse a cambios en la tabla de incapacidades
+    const channel = supabase
+      .channel('admin_incapacidades_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'incapacidades'
+        },
+        async (payload) => {
+          // Obtener los datos actualizados incluyendo la información del usuario
+          const { data: incapacidadData } = await supabase
+            .from('incapacidades')
+            .select(`
+              id, fecha_inicio, fecha_fin, fecha_subida, 
+              documento_url, usuario_id
+            `)
+            .eq('id', payload.new?.id || payload.old?.id)
+            .single()
+
+          if (incapacidadData) {
+            // Obtener datos del usuario
+            const { data: usuarioData } = await supabase
+              .from('usuario_nomina')
+              .select(`
+                auth_user_id, colaborador, cedula, cargo, fecha_ingreso, empresa_id,
+                empresas:empresa_id(nombre, razon_social, nit)
+              `)
+              .eq('auth_user_id', incapacidadData.usuario_id)
+              .single()
+
+            const incapacidadCompleta = {
+              ...incapacidadData,
+              usuario: usuarioData || null
+            }
+
+            // Actualizar la lista según el tipo de evento
+            if (payload.eventType === 'INSERT') {
+              setIncapacidades(prev => [incapacidadCompleta, ...prev])
+            } else if (payload.eventType === 'UPDATE') {
+              setIncapacidades(prev =>
+                prev.map(inc => inc.id === incapacidadCompleta.id ? incapacidadCompleta : inc)
+              )
+            } else if (payload.eventType === 'DELETE') {
+              setIncapacidades(prev =>
+                prev.filter(inc => inc.id !== payload.old.id)
+              )
+            }
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
+
   // Obtener todas las incapacidades
   useEffect(() => {
     const fetchIncapacidades = async () => {

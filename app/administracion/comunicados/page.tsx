@@ -12,6 +12,25 @@ import { Badge } from "@/components/ui/badge"
 import { Search, Plus, Edit, Trash2, Eye, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
+async function handleDeleteComunicado(comunicadoId) {
+  if (confirm('¿Está seguro de eliminar este comunicado?')) {
+    const supabase = createSupabaseClient();
+    const { error } = await supabase
+      .from('comunicados')
+      .delete()
+      .eq('id', comunicadoId);
+
+    if (error) {
+      console.error('Error al eliminar comunicado:', error);
+      setError('Error al eliminar el comunicado. Por favor, intente nuevamente.');
+    } else {
+      setComunicados(prev => prev.filter(c => c.id !== comunicadoId));
+      setFilteredComunicados(prev => prev.filter(c => c.id !== comunicadoId));
+      setSuccess('Comunicado eliminado correctamente.');
+    }
+  }
+}
+
 export default function Comunicados() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -25,7 +44,8 @@ export default function Comunicados() {
     key: string
     direction: "asc" | "desc"
   } | null>(null)
-  
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   // Referencia para el timeout de búsqueda
   const searchTimeout = useRef<NodeJS.Timeout | null>(null)
 
@@ -372,12 +392,7 @@ export default function Comunicados() {
                               variant="ghost"
                               size="icon"
                               className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => {
-                                // Implementar lógica para eliminar
-                                if (confirm('¿Está seguro de eliminar este comunicado?')) {
-                                  // Lógica de eliminación
-                                }
-                              }}
+                              onClick={() => handleDeleteComunicado(comunicado.id)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -393,5 +408,5 @@ export default function Comunicados() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

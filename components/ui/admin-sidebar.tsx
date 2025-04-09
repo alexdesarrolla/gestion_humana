@@ -2,7 +2,7 @@ import * as React from "react"
 import { useState, useEffect } from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { type VariantProps, cva } from "class-variance-authority"
-import { PanelLeft, Menu, X, LogOut, User, Home, Info, FileText, Newspaper, Calendar, ChevronDown } from "lucide-react"
+import { PanelLeft, Menu, X, LogOut, User, Home, Info, FileText, Newspaper, Calendar, ChevronDown, Plus } from "lucide-react"
 import { FaUser, FaBuilding, FaFileAlt, FaCalendarAlt, FaIdCard } from 'react-icons/fa'
 import { useRouter } from "next/navigation"
 
@@ -72,6 +72,31 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
           href: "/administracion/solicitudes/permisos", 
           icon: FileText, 
           current: currentPath === "/administracion/solicitudes/permisos" 
+        },
+      ],
+    },
+    { 
+      name: "Comunicados", 
+      icon: Newspaper, 
+      current: currentPath.includes("/administracion/comunicados"),
+      subItems: [
+        { 
+          name: "Todos", 
+          href: "/administracion/comunicados", 
+          icon: FileText, 
+          current: currentPath === "/administracion/comunicados" 
+        },
+        { 
+          name: "Añadir nuevo", 
+          href: "/administracion/comunicados/nuevo", 
+          icon: Plus, 
+          current: currentPath === "/administracion/comunicados/nuevo" 
+        },
+        { 
+          name: "Categorías", 
+          href: "/administracion/comunicados/categorias", 
+          icon: FaFileAlt, 
+          current: currentPath === "/administracion/comunicados/categorias" 
         },
       ],
     },

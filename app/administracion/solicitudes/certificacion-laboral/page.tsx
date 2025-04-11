@@ -40,6 +40,56 @@ export default function AdminCertificacionLaboral() {
   })
   const [usuarioEncontrado, setUsuarioEncontrado] = useState<any>(null)
 
+  // Suscribirse a cambios en tiempo real
+  useEffect(() => {
+    const supabase = createSupabaseClient()
+    
+    // Suscribirse a cambios en la tabla de certificaciones
+    const channel = supabase
+      .channel('admin_certificaciones_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'solicitudes_certificacion'
+        },
+        async (payload) => {
+          // Para inserciones y actualizaciones, obtener los datos completos incluyendo la información del usuario
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const { data } = await supabase
+              .from('solicitudes_certificacion')
+              .select(`
+                *,
+                usuario:usuario_id(colaborador, cedula, cargo, fecha_ingreso, empresa_id, empresas(nombre, razon_social, nit))
+              `)
+              .eq('id', payload.new.id)
+              .single()
+
+            if (data) {
+              if (payload.eventType === 'INSERT' && data.estado === 'pendiente') {
+                setSolicitudes(prev => [data, ...prev])
+              } else if (payload.eventType === 'UPDATE') {
+                setSolicitudes(prev =>
+                  prev.map(sol => sol.id === data.id ? data : sol)
+                  .filter(sol => sol.estado === 'pendiente')
+                )
+              }
+            }
+          } else if (payload.eventType === 'DELETE') {
+            setSolicitudes(prev =>
+              prev.filter(sol => sol.id !== payload.old.id)
+            )
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
+
   // Obtener solicitudes pendientes
   useEffect(() => {
     const fetchSolicitudes = async () => {
@@ -402,7 +452,7 @@ export default function AdminCertificacionLaboral() {
       <div className="md:pl-64 flex flex-col flex-1">
         <main className="flex-1">
           <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+            <div className="max-w-[90%] mx-auto px-4 sm:px-6 md:px-8">
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <div>

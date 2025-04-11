@@ -5,6 +5,7 @@ import { useState } from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { type VariantProps, cva } from "class-variance-authority"
 import { PanelLeft, Menu, X, LogOut, Newspaper, Info, FileText, Calendar } from "lucide-react"
+import { FaUser, FaFileAlt, FaCalendarAlt, FaSignOutAlt, FaIdCard } from 'react-icons/fa'
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -175,7 +176,27 @@ export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
           icon: Calendar, 
           current: currentPath === "/perfil/solicitudes/vacaciones" 
         },
+        { 
+          name: "Permisos", 
+          href: "/perfil/solicitudes/permisos", 
+          icon: FaIdCard, 
+          current: currentPath === "/perfil/solicitudes/permisos" 
+        },
         // Add more sub-items here if needed
+      ],
+    },
+    {
+      name: "Novedades",
+      icon: FileText,
+      current: false,
+      subItems: [
+        { 
+          name: "Incapacidades", 
+          href: "/perfil/novedades/incapacidades", 
+          icon: FaFileAlt, 
+          current: currentPath === "/perfil/novedades/incapacidades" 
+        },
+        // Aquí se pueden agregar más submenús de novedades en el futuro
       ],
     },
     // Aquí se pueden agregar más secciones en el futuro

@@ -3,22 +3,27 @@
 import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
-import { useRouter, useParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
 import { AdminSidebar } from "@/components/ui/admin-sidebar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, ArrowLeft, Upload, X, ImageIcon, Loader2 } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { AlertCircle, ArrowLeft, Upload, X, ImageIcon, Loader2, FileIcon, FileText } from "lucide-react"
+// Importar el nuevo editor simple
+import NotionLikeEditor from "../../nuevo/NotionLikeEditor"
 
-export default function EditarComunicadoClient() {
+interface EditarComunicadoClientProps {
+  id: string
+}
+
+export default function EditarComunicadoClient({ id }: EditarComunicadoClientProps) {
   const router = useRouter()
-  const params = useParams()
-  const comunicadoId = params.id as string
+  const comunicadoId = id
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -28,7 +33,7 @@ export default function EditarComunicadoClient() {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [uploadingFiles, setUploadingFiles] = useState(false)
-  const [adjuntos, setAdjuntos] = useState<{ name: string; url: string; size: number }[]>([])
+  const [adjuntos, setAdjuntos] = useState<{ name: string; url: string; size: number; type?: string }[]>([])
 
   // Referencias para los inputs de archivos
   const imageInputRef = useRef<HTMLInputElement>(null)
@@ -252,10 +257,6 @@ export default function EditarComunicadoClient() {
       // Obtener URL pública
       const { data: urlData } = supabase.storage.from("comunicados").getPublicUrl(filePath)
 
-      if (!urlData || !urlData.publicUrl) {
-        throw new Error("Error al obtener la URL pública de la imagen")
-      }
-
       // Actualizar estado del formulario con la URL de la imagen
       setFormData((prev) => ({ ...prev, imagen_url: urlData.publicUrl }))
     } catch (error: any) {
@@ -293,6 +294,9 @@ export default function EditarComunicadoClient() {
         const fileName = `adjunto_${timestamp}_${randomString}_${file.name}`
         const filePath = `comunicados/adjuntos/${fileName}`
 
+        // Determinar el tipo de archivo para mostrar el icono correcto
+        const fileType = file.type.split("/")[0] || "document"
+
         // Subir archivo
         const { error: uploadError, data } = await supabase.storage.from("comunicados").upload(filePath, file, {
           cacheControl: "3600",
@@ -312,6 +316,7 @@ export default function EditarComunicadoClient() {
           name: file.name,
           url: urlData.publicUrl,
           size: file.size,
+          type: fileType,
         })
       }
 
@@ -340,6 +345,18 @@ export default function EditarComunicadoClient() {
     if (bytes < 1024) return bytes + " bytes"
     else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB"
     else return (bytes / 1048576).toFixed(1) + " MB"
+  }
+
+  // Obtener el icono adecuado según el tipo de archivo
+  const getFileIcon = (fileType?: string) => {
+    switch (fileType) {
+      case "image":
+        return <ImageIcon className="h-5 w-5 text-blue-500" />
+      case "application":
+        return <FileText className="h-5 w-5 text-orange-500" />
+      default:
+        return <FileIcon className="h-5 w-5 text-gray-500" />
+    }
   }
 
   // Actualizar comunicado
@@ -403,7 +420,7 @@ export default function EditarComunicadoClient() {
     <div className="flex min-h-screen bg-gray-100">
       <AdminSidebar />
       <div className="max-w-[90%] mx-auto flex-1 p-8 md:pl-64">
-        <Card className="shadow-md">
+        <Card className="shadow-md max-w-4xl mx-auto">
           <CardHeader className="bg-primary/5 pb-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <CardTitle className="text-2xl font-bold">Editar Comunicado</CardTitle>
@@ -458,202 +475,215 @@ export default function EditarComunicadoClient() {
                   </div>
                 </div>
 
-                {/* Imagen principal */}
-                <div className="space-y-2 mb-6">
-                  <Label htmlFor="imagen">Imagen principal (Relación 4:3)</Label>
-                  <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50 hover:bg-gray-100 transition-colors">
-                    {imagePreview ? (
-                      <div className="relative w-full max-w-md">
-                        <img
-                          src={imagePreview || "/placeholder.svg"}
-                          alt="Vista previa"
-                          className="rounded-lg w-full h-auto object-cover aspect-[4/3] shadow-md"
-                        />
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-2 right-2 rounded-full h-8 w-8"
-                          onClick={() => {
-                            setImagePreview(null)
-                            setFormData((prev) => ({ ...prev, imagen_url: "" }))
-                            if (imageInputRef.current) {
-                              imageInputRef.current.value = ""
-                            }
-                          }}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center gap-4">
-                        <div className="p-4 bg-primary/10 rounded-full">
-                          <ImageIcon className="h-8 w-8 text-primary" />
-                        </div>
-                        <div className="text-center">
-                          <p className="text-sm font-medium mb-1">Arrastra y suelta o haz clic para subir</p>
-                          <p className="text-xs text-gray-500">JPG, PNG o WEBP (máx. 5MB)</p>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => imageInputRef.current?.click()}
-                          disabled={uploadingImage}
-                          className="mt-2"
-                        >
-                          {uploadingImage ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Subiendo...
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="h-4 w-4 mr-2" />
-                              Seleccionar imagen
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    )}
-                    <input
-                      ref={imageInputRef}
-                      type="file"
-                      id="imagen"
-                      accept="image/jpeg,image/png,image/webp"
-                      className="hidden"
-                      onChange={handleImageUpload}
-                      disabled={uploadingImage}
-                    />
-                  </div>
-                </div>
+                <Tabs defaultValue="contenido" className="w-full">
+                  <TabsList className="grid grid-cols-3 mb-6">
+                    <TabsTrigger value="contenido">Contenido</TabsTrigger>
+                    <TabsTrigger value="multimedia">Multimedia</TabsTrigger>
+                    <TabsTrigger value="configuracion">Configuración</TabsTrigger>
+                  </TabsList>
 
-                {/* Título */}
-                <div className="space-y-2 mb-6">
-                  <Label htmlFor="titulo">Título del Comunicado</Label>
-                  <Input
-                    id="titulo"
-                    name="titulo"
-                    value={formData.titulo}
-                    onChange={handleChange}
-                    placeholder="Ingrese el título del comunicado"
-                    required
-                  />
-                </div>
-
-                {/* Categoría */}
-                <div className="space-y-2 mb-6">
-                  <Label htmlFor="categoria">Categoría</Label>
-                  <Select
-                    value={formData.categoria_id}
-                    onValueChange={(value) => handleSelectChange("categoria_id", value)}
-                  >
-                    <SelectTrigger id="categoria">
-                      <SelectValue placeholder="Seleccione una categoría" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categorias.map((categoria) => (
-                        <SelectItem key={categoria.id} value={categoria.id}>
-                          {categoria.nombre}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Área responsable */}
-                <div className="space-y-2 mb-6">
-                  <Label htmlFor="area">Área responsable</Label>
-                  <Select
-                    value={formData.area_responsable}
-                    onValueChange={(value) => handleSelectChange("area_responsable", value)}
-                  >
-                    <SelectTrigger id="area">
-                      <SelectValue placeholder="Seleccione un área" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Recursos Humanos">Recursos Humanos</SelectItem>
-                      <SelectItem value="Dirección General">Dirección General</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Contenido */}
-                <div className="space-y-2 mb-6">
-                  <Label htmlFor="contenido">Contenido</Label>
-                  <Textarea
-                    id="contenido"
-                    name="contenido"
-                    value={formData.contenido}
-                    onChange={handleChange}
-                    placeholder="Ingrese el contenido del comunicado"
-                    className="min-h-[200px]"
-                    required
-                  />
-                </div>
-
-                {/* Archivos adjuntos */}
-                <div className="space-y-2 mb-6">
-                  <Label htmlFor="adjuntos">Archivos adjuntos (opcional)</Label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50">
-                    <div className="flex flex-col items-center justify-center gap-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploadingFiles}
-                        className="w-full md:w-auto"
-                      >
-                        {uploadingFiles ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Subiendo archivos...
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="h-4 w-4 mr-2" />
-                            Seleccionar archivos
-                          </>
-                        )}
-                      </Button>
-                      <p className="text-xs text-gray-500">Máximo 10MB por archivo</p>
+                  <TabsContent value="contenido" className="space-y-6">
+                    {/* Título */}
+                    <div className="space-y-2">
+                      <Label htmlFor="titulo">Título del Comunicado</Label>
+                      <Input
+                        id="titulo"
+                        name="titulo"
+                        value={formData.titulo}
+                        onChange={handleChange}
+                        placeholder="Ingrese el título del comunicado"
+                        required
+                      />
                     </div>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      id="adjuntos"
-                      multiple
-                      className="hidden"
-                      onChange={handleFileUpload}
-                      disabled={uploadingFiles}
-                    />
 
-                    {/* Lista de archivos adjuntos */}
-                    {adjuntos.length > 0 && (
-                      <div className="mt-4 border rounded-lg divide-y">
-                        {adjuntos.map((file, index) => (
-                          <div key={index} className="flex items-center justify-between p-3">
-                            <div className="flex-1 truncate">
-                              <p className="font-medium truncate">{file.name}</p>
-                              <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
-                            </div>
+                    {/* Contenido */}
+                    <div className="space-y-2">
+                      <Label htmlFor="contenido">Contenido</Label>
+                      <NotionLikeEditor
+                        value={formData.contenido}
+                        onChange={(value) => setFormData((prev) => ({ ...prev, contenido: value }))}
+                      />
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="multimedia" className="space-y-6">
+                    {/* Imagen principal */}
+                    <div className="space-y-2">
+                      <Label htmlFor="imagen">Imagen principal (Relación 4:3)</Label>
+                      <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50 hover:bg-gray-100 transition-colors">
+                        {imagePreview ? (
+                          <div className="relative w-full max-w-md">
+                            <img
+                              src={imagePreview || "/placeholder.svg"}
+                              alt="Vista previa"
+                              className="rounded-lg w-full h-auto object-cover aspect-[4/3] shadow-md"
+                            />
                             <Button
                               type="button"
-                              variant="ghost"
+                              variant="destructive"
                               size="icon"
-                              onClick={() => handleRemoveFile(index)}
-                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              className="absolute top-2 right-2 rounded-full h-8 w-8"
+                              onClick={() => {
+                                setImagePreview(null)
+                                setFormData((prev) => ({ ...prev, imagen_url: "" }))
+                                if (imageInputRef.current) {
+                                  imageInputRef.current.value = ""
+                                }
+                              }}
                             >
                               <X className="h-4 w-4" />
                             </Button>
                           </div>
-                        ))}
+                        ) : (
+                          <div className="flex flex-col items-center justify-center gap-4">
+                            <div className="p-4 bg-primary/10 rounded-full">
+                              <ImageIcon className="h-8 w-8 text-primary" />
+                            </div>
+                            <div className="text-center">
+                              <p className="text-sm font-medium mb-1">Arrastra y suelta o haz clic para subir</p>
+                              <p className="text-xs text-gray-500">JPG, PNG o WEBP (máx. 5MB)</p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => imageInputRef.current?.click()}
+                              disabled={uploadingImage}
+                              className="mt-2"
+                            >
+                              {uploadingImage ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Subiendo...
+                                </>
+                              ) : (
+                                <>
+                                  <Upload className="h-4 w-4 mr-2" />
+                                  Seleccionar imagen
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        )}
+                        <input
+                          ref={imageInputRef}
+                          type="file"
+                          id="imagen"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          onChange={handleImageUpload}
+                          disabled={uploadingImage}
+                        />
                       </div>
-                    )}
-                  </div>
-                </div>
+                    </div>
+
+                    {/* Archivos adjuntos */}
+                    <div className="space-y-2">
+                      <Label htmlFor="adjuntos">Archivos adjuntos (opcional)</Label>
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50">
+                        <div className="flex flex-col items-center justify-center gap-4">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploadingFiles}
+                            className="w-full md:w-auto"
+                          >
+                            {uploadingFiles ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Subiendo archivos...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="h-4 w-4 mr-2" />
+                                Seleccionar archivos
+                              </>
+                            )}
+                          </Button>
+                          <p className="text-xs text-gray-500">Máximo 10MB por archivo</p>
+                        </div>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          id="adjuntos"
+                          multiple
+                          className="hidden"
+                          onChange={handleFileUpload}
+                          disabled={uploadingFiles}
+                        />
+
+                        {/* Lista de archivos adjuntos */}
+                        {adjuntos.length > 0 && (
+                          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {adjuntos.map((file, index) => (
+                              <div
+                                key={index}
+                                className="flex items-center gap-3 p-3 bg-white rounded-lg border shadow-sm"
+                              >
+                                <div className="flex-shrink-0">{getFileIcon(file.type)}</div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium truncate text-sm">{file.name}</p>
+                                  <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleRemoveFile(index)}
+                                  className="flex-shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="configuracion" className="space-y-6">
+                    {/* Categoría */}
+                    <div className="space-y-2">
+                      <Label htmlFor="categoria">Categoría</Label>
+                      <Select
+                        value={formData.categoria_id}
+                        onValueChange={(value) => handleSelectChange("categoria_id", value)}
+                      >
+                        <SelectTrigger id="categoria">
+                          <SelectValue placeholder="Seleccione una categoría" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categorias.map((categoria) => (
+                            <SelectItem key={categoria.id} value={categoria.id}>
+                              {categoria.nombre}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Área responsable */}
+                    <div className="space-y-2">
+                      <Label htmlFor="area">Área responsable</Label>
+                      <Select
+                        value={formData.area_responsable}
+                        onValueChange={(value) => handleSelectChange("area_responsable", value)}
+                      >
+                        <SelectTrigger id="area">
+                          <SelectValue placeholder="Seleccione un área" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Recursos Humanos">Recursos Humanos</SelectItem>
+                          <SelectItem value="Dirección General">Dirección General</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </TabsContent>
+                </Tabs>
 
                 {/* Botones de acción */}
-                <div className="flex flex-col sm:flex-row gap-3 pt-6 justify-end">
+                <div className="flex flex-col sm:flex-row gap-3 pt-6 justify-end border-t mt-6">
                   <Button type="submit" variant="outline" disabled={saving}>
                     Guardar cambios
                   </Button>

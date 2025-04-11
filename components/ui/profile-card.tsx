@@ -117,11 +117,7 @@ export function ProfileCard({ userData }: ProfileCardProps) {
         upsert: false,
       })
 
-      if (uploadError) {
-        console.error("Error al subir avatar:", uploadError)
-        setUploadError("Error al subir el avatar. Intente nuevamente.")
-        return
-      }
+      if (uploadError) throw uploadError
 
       // Actualizar la tabla usuario_nomina con la nueva ruta del avatar
       const { error: updateError } = await supabase

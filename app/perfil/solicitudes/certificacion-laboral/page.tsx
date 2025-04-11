@@ -41,43 +41,6 @@ export default function CertificacionLaboral() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
 
-  // Suscribirse a cambios en tiempo real
-  useEffect(() => {
-    const supabase = createSupabaseClient()
-    
-    // Suscribirse a cambios en la tabla de certificaciones
-    const channel = supabase
-      .channel('certificaciones_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'solicitudes_certificacion',
-          filter: `usuario_id=eq.${userData?.auth_user_id}`
-        },
-        (payload) => {
-          // Actualizar la lista de solicitudes según el tipo de cambio
-          if (payload.eventType === 'INSERT') {
-            setSolicitudes(prev => [payload.new, ...prev])
-          } else if (payload.eventType === 'UPDATE') {
-            setSolicitudes(prev =>
-              prev.map(sol => sol.id === payload.new.id ? payload.new : sol)
-            )
-          } else if (payload.eventType === 'DELETE') {
-            setSolicitudes(prev =>
-              prev.filter(sol => sol.id !== payload.old.id)
-            )
-          }
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [userData])
-
   // Verificar autenticación y obtener datos del usuario
   useEffect(() => {
     const checkAuth = async () => {
@@ -234,7 +197,7 @@ export default function CertificacionLaboral() {
       <div className="md:pl-64 flex flex-col flex-1">
         <main className="flex-1">
           <div className="py-6">
-            <div className="max-w-[90%] mx-auto px-4 sm:px-6 md:px-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <div>

@@ -24,6 +24,7 @@ export default function NuevoComunicado() {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [uploadingFiles, setUploadingFiles] = useState(false)
   const [adjuntos, setAdjuntos] = useState<{name: string, url: string, size: number}[]>([])
+  const [empresas, setEmpresas] = useState<any[]>([])
   
   // Referencias para los inputs de archivos
   const imageInputRef = useRef<HTMLInputElement>(null)
@@ -36,7 +37,8 @@ export default function NuevoComunicado() {
     categoria_id: "",
     area_responsable: "Recursos Humanos",
     imagen_url: "",
-    estado: "borrador"
+    estado: "borrador",
+    empresa_ids: [] // IDs de empresas seleccionadas
   })
 
   useEffect(() => {
@@ -76,6 +78,17 @@ export default function NuevoComunicado() {
         setError("Error al cargar las categorías. Por favor, intente nuevamente.")
       } else {
         setCategorias(categoriasData || [])
+      }
+
+      // Cargar empresas
+      const { data: empresasData, error: empresasError } = await supabase
+        .from("empresas")
+        .select("id, nombre")
+        .order("nombre", { ascending: true })
+      if (empresasError) {
+        setError("Error al cargar las empresas. Por favor, intente nuevamente.")
+      } else {
+        setEmpresas(empresasData || [])
       }
 
       setLoading(false)
@@ -327,7 +340,8 @@ export default function NuevoComunicado() {
         ...formData,
         estado: publicar ? "publicado" : "borrador",
         autor_id: session.user.id,
-        archivos_adjuntos: adjuntos.length > 0 ? JSON.stringify(adjuntos) : null
+        archivos_adjuntos: adjuntos.length > 0 ? JSON.stringify(adjuntos) : null,
+        empresa_ids: formData.empresa_ids && formData.empresa_ids.length > 0 ? JSON.stringify(formData.empresa_ids) : null
       }
       
       // Insertar en la base de datos
@@ -550,6 +564,46 @@ export default function NuevoComunicado() {
                         <SelectItem value="Dirección General">Dirección General</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                  {/* Empresas (Selección múltiple) */}
+                  <div className="space-y-2">
+                    <Label htmlFor="empresas">Empresas</Label>
+                    <div className="max-h-[200px] w-full overflow-y-auto max-h-60 border rounded bg-white shadow-sm p-2">
+                      {empresas.length > 0 ? (
+                        <>
+                          <Input
+                            type="text"
+                            placeholder="Buscar empresa..."
+                            className="mb-2"
+                            onChange={e => {
+                              // Opcional: implementar búsqueda local si se desea
+                            }}
+                          />
+                          <div>
+                            {empresas.map((empresa) => (
+                              <label key={empresa.id} className="flex items-center gap-2 py-1 cursor-pointer select-none">
+                                <input
+                                  type="checkbox"
+                                  checked={formData.empresa_ids.includes(empresa.id)}
+                                  onChange={e => {
+                                    const checked = e.target.checked;
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      empresa_ids: checked
+                                        ? [...prev.empresa_ids, empresa.id]
+                                        : prev.empresa_ids.filter((id: string) => id !== empresa.id)
+                                    }));
+                                  }}
+                                />
+                                <span className="truncate" title={empresa.nombre}>{empresa.nombre}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-gray-500 text-sm">No hay empresas disponibles</span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Archivos adjuntos */}

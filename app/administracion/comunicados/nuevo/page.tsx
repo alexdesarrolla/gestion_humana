@@ -1,35 +1,64 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
-import { createSupabaseClient } from "@/lib/supabase"
-import { AdminSidebar } from "@/components/ui/admin-sidebar"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, ArrowLeft, Upload, X, Image, Loader2 } from "lucide-react"
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { createSupabaseClient } from "@/lib/supabase";
+import { AdminSidebar } from "@/components/ui/admin-sidebar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertCircle,
+  ArrowLeft,
+  Upload,
+  X,
+  Image,
+  Loader2,
+} from "lucide-react";
 
 export default function NuevoComunicado() {
-  const router = useRouter()
-  const [loading, setLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
-  const [categorias, setCategorias] = useState<any[]>([])
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
-  const [uploadingImage, setUploadingImage] = useState(false)
-  const [uploadingFiles, setUploadingFiles] = useState(false)
-  const [adjuntos, setAdjuntos] = useState<{name: string, url: string, size: number}[]>([])
-  const [empresas, setEmpresas] = useState<any[]>([])
-  
-  // Referencias para los inputs de archivos
-  const imageInputRef = useRef<HTMLInputElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  
+  const router = useRouter();
+
+  // Estados generales
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // Catálogos
+  const [categorias, setCategorias] = useState<any[]>([]);
+  const [empresas, setEmpresas] = useState<any[]>([]);
+
+  // Usuarios según empresas seleccionadas
+  const [usuarios, setUsuarios] = useState<any[]>([]);
+  const [loadingUsuarios, setLoadingUsuarios] = useState(false);
+
+  // Búsquedas locales
+  const [empresaSearch, setEmpresaSearch] = useState("");
+  const [usuarioSearch, setUsuarioSearch] = useState("");
+
+  // Imagen principal
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Archivos adjuntos
+  const [adjuntos, setAdjuntos] = useState<{ name: string; url: string; size: number }[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+
+  // Refs para inputs ocultos
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Estado del formulario
   const [formData, setFormData] = useState({
     titulo: "",
@@ -38,336 +67,293 @@ export default function NuevoComunicado() {
     area_responsable: "Recursos Humanos",
     imagen_url: "",
     estado: "borrador",
-    empresa_ids: [] // IDs de empresas seleccionadas
-  })
+    empresa_ids: [] as number[],
+    usuario_ids: [] as number[],
+  });
 
+  // Carga inicial: autenticación + catálogos
   useEffect(() => {
-    const checkAuth = async () => {
-      setLoading(true)
-      const supabase = createSupabaseClient()
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession()
+    const checkAuthAndLoad = async () => {
+      setLoading(true);
+      const supabase = createSupabaseClient();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-      if (error || !session) {
-        router.push("/login")
-        return
+      if (sessionError || !session) {
+        router.push("/login");
+        return;
       }
 
-      // Verificar si el usuario es administrador
-      const { data: userData, error: userError } = await supabase
+      const { data: userData, error: roleError } = await supabase
         .from("usuario_nomina")
         .select("rol")
         .eq("auth_user_id", session.user.id)
-        .single()
+        .single();
 
-      if (userError || userData?.rol !== "administrador") {
-        router.push("/perfil")
-        return
+      if (roleError || userData?.rol !== "administrador") {
+        router.push("/perfil");
+        return;
       }
 
       // Cargar categorías
-      const { data: categoriasData, error: categoriasError } = await supabase
+      const { data: catData, error: catError } = await supabase
         .from("categorias_comunicados")
         .select("*")
-        .order("nombre", { ascending: true })
-
-      if (categoriasError) {
-        console.error("Error al cargar categorías:", categoriasError)
-        setError("Error al cargar las categorías. Por favor, intente nuevamente.")
-      } else {
-        setCategorias(categoriasData || [])
-      }
+        .order("nombre", { ascending: true });
+      if (catError) setError("Error al cargar categorías.");
+      else setCategorias(catData || []);
 
       // Cargar empresas
-      const { data: empresasData, error: empresasError } = await supabase
+      const { data: empData, error: empError } = await supabase
         .from("empresas")
         .select("id, nombre")
-        .order("nombre", { ascending: true })
-      if (empresasError) {
-        setError("Error al cargar las empresas. Por favor, intente nuevamente.")
-      } else {
-        setEmpresas(empresasData || [])
-      }
+        .order("nombre", { ascending: true });
+      if (empError) setError("Error al cargar empresas.");
+      else setEmpresas(empData || []);
 
-      setLoading(false)
+      setLoading(false);
+    };
+    checkAuthAndLoad();
+  }, [router]);
+
+  // Recargar usuarios cuando cambian empresas seleccionadas
+  useEffect(() => {
+    if (formData.empresa_ids.length === 0) {
+      setUsuarios([]);
+      setFormData(prev => ({ ...prev, usuario_ids: [] }));
+      setUsuarioSearch("");
+      return;
     }
+    const fetchUsuarios = async () => {
+      setLoadingUsuarios(true);
+      setError(null);
+      const supabase = createSupabaseClient();
+      const { data: usuData, error: usuError } = await supabase
+        .from("usuario_nomina")
+        .select("id, colaborador")
+        .in("empresa_id", formData.empresa_ids)
+        .order("colaborador", { ascending: true });
 
-    checkAuth()
-  }, [])
+      if (usuError) {
+        setError("Error al cargar usuarios.");
+        setUsuarios([]);
+      } else {
+        setUsuarios(usuData || []);
+        // Limpiar ids de usuarios que ya no están en la lista
+        setFormData(prev => ({
+          ...prev,
+          usuario_ids: prev.usuario_ids.filter(uid =>
+            (usuData || []).some(u => u.id === uid)
+          ),
+        }));
+      }
+      setLoadingUsuarios(false);
+    };
+    fetchUsuarios();
+  }, [formData.empresa_ids]);
 
-  // Manejar cambios en el formulario
+  // Filtrado en tiempo real
+  const filteredEmpresas = empresas.filter(e =>
+    e.nombre.toLowerCase().includes(empresaSearch.trim().toLowerCase())
+  );
+  const filteredUsuarios = usuarios.filter(u =>
+    u.colaborador.toLowerCase().includes(usuarioSearch.trim().toLowerCase())
+  );
+
+  // Determinar si todos los usuarios filtrados están seleccionados
+  const allUsersSelected =
+    filteredUsuarios.length > 0 &&
+    filteredUsuarios.every(u => formData.usuario_ids.includes(u.id));
+
+  // Handlers genéricos
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
-  // Manejar cambios en selects
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }))
-  }
-
-  // Manejar subida de imagen principal
+  // Subida y procesamiento de imagen principal
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    // Validar tipo de archivo
-    const fileExt = file.name.split(".").pop()?.toLowerCase()
-    const allowedExts = ["jpg", "jpeg", "png", "webp"]
-
-    if (!allowedExts.includes(fileExt || "")) {
-      setError("Tipo de archivo no permitido. Use JPG, PNG o WEBP.")
-      return
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (!["jpg", "jpeg", "png", "webp"].includes(ext || "")) {
+      setError("Tipo de archivo no permitido.");
+      return;
     }
-
-    // Validar tamaño (máximo 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      setError("El archivo es demasiado grande. Máximo 5MB.")
-      return
+      setError("Máximo 5 MB.");
+      return;
     }
-
     try {
-      setUploadingImage(true)
-      setError(null)
+      setUploadingImage(true);
+      setError(null);
 
-      // Mostrar vista previa
-      const previewUrl = URL.createObjectURL(file)
-      setImagePreview(previewUrl)
+      // Preview
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreview(previewUrl);
 
-      // Crear un canvas para redimensionar la imagen manteniendo relación de aspecto 4:3
-      const img = document.createElement('img')
-      img.src = previewUrl
-      await new Promise((resolve) => { img.onload = resolve })
-      
-      const canvas = document.createElement('canvas')
-      const ctx = canvas.getContext('2d')
-      
-      // Establecer dimensiones con relación 4:3
-      const targetWidth = 800
-      const targetHeight = 600 // 4:3 ratio
-      
-      // Calcular dimensiones para recortar manteniendo relación 4:3
-      let sourceX = 0
-      let sourceY = 0
-      let sourceWidth = img.width
-      let sourceHeight = img.height
-      
-      const imgRatio = img.width / img.height
-      const targetRatio = targetWidth / targetHeight
-      
-      if (imgRatio > targetRatio) {
-        // Imagen más ancha que 4:3, recortar los lados
-        sourceWidth = img.height * targetRatio
-        sourceX = (img.width - sourceWidth) / 2
+      // Redimensionar a 4:3
+      const img = document.createElement("img");
+      img.src = previewUrl;
+      await new Promise<void>(res => (img.onload = () => res()));
+
+      const targetW = 800, targetH = 600;
+      const imgRatio = img.width / img.height;
+      const tgtRatio = targetW / targetH;
+      let sx = 0, sy = 0, sw = img.width, sh = img.height;
+      if (imgRatio > tgtRatio) {
+        sw = img.height * tgtRatio;
+        sx = (img.width - sw) / 2;
       } else {
-        // Imagen más alta que 4:3, recortar arriba y abajo
-        sourceHeight = img.width / targetRatio
-        sourceY = (img.height - sourceHeight) / 2
+        sh = img.width / tgtRatio;
+        sy = (img.height - sh) / 2;
       }
-      
-      canvas.width = targetWidth
-      canvas.height = targetHeight
-      
+
+      const canvas = document.createElement("canvas");
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext("2d");
       if (ctx) {
-        ctx.imageSmoothingQuality = 'high'
-        ctx.drawImage(
-          img, 
-          sourceX, sourceY, sourceWidth, sourceHeight,
-          0, 0, targetWidth, targetHeight
-        )
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
       }
-      
-      // Convertir a webp con 85% de calidad
-      const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob((blob) => resolve(blob), 'image/webp', 0.85)
-      })
-      
-      if (!blob) throw new Error('Error al convertir la imagen')
-      
-      // Generar nombre único para el archivo
-      const timestamp = Date.now()
-      const randomString = Math.random().toString(36).substring(2, 8)
-      const fileName = `comunicado_${timestamp}_${randomString}.webp`
-      const filePath = `comunicados/${fileName}`
 
-      // Convertir el blob a File para subirlo
-      const webpFile = new File([blob], fileName, { type: 'image/webp' })
-      
-      // Subir el archivo procesado a Supabase Storage
-      const supabase = createSupabaseClient()
-      const { error: uploadError, data } = await supabase.storage
+      // Convertir a WebP
+      const blob: Blob | null = await new Promise(res =>
+        canvas.toBlob(b => res(b), "image/webp", 0.85)
+      );
+      if (!blob) throw new Error("Conversión fallida");
+
+      const fileName = `comunicado_${Date.now()}_${Math.random().toString(36).slice(2,8)}.webp`;
+      const filePath = `comunicados/${fileName}`;
+      const webpFile = new File([blob], fileName, { type: "image/webp" });
+
+      const supabase = createSupabaseClient();
+      const { error: uploadErr } = await supabase.storage
         .from("comunicados")
-        .upload(filePath, webpFile, {
-          cacheControl: "3600",
-          upsert: false,
-        })
+        .upload(filePath, webpFile, { cacheControl: "3600", upsert: false });
+      if (uploadErr) throw uploadErr;
 
-      if (uploadError) throw uploadError
-
-      // Obtener URL pública
       const { data: urlData } = supabase.storage
         .from("comunicados")
-        .getPublicUrl(filePath)
+        .getPublicUrl(filePath);
 
-      // Actualizar estado del formulario con la URL de la imagen
-      setFormData(prev => ({ ...prev, imagen_url: urlData.publicUrl }))
-      
-    } catch (error: any) {
-      console.error("Error al subir imagen:", error)
-      setError("Error al subir la imagen: " + (error.message || "Intente nuevamente"))
+      setFormData(prev => ({ ...prev, imagen_url: urlData.publicUrl }));
+    } catch (err: any) {
+      setError("Error al subir imagen: " + (err.message || ""));
     } finally {
-      setUploadingImage(false)
+      setUploadingImage(false);
     }
-  }
+  };
 
-  // Manejar subida de archivos adjuntos
+  // Subida de archivos adjuntos
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files || files.length === 0) return
-
+    const files = e.target.files;
+    if (!files?.length) return;
     try {
-      setUploadingFiles(true)
-      setError(null)
+      setUploadingFiles(true);
+      setError(null);
+      const supabase = createSupabaseClient();
+      const nuevos = [...adjuntos];
 
-      const supabase = createSupabaseClient()
-      const newAdjuntos = [...adjuntos]
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i]
-        
-        // Validar tamaño (máximo 10MB)
-        if (file.size > 10 * 1024 * 1024) {
-          setError(`El archivo ${file.name} es demasiado grande. Máximo 10MB.`)
-          continue
+      for (const f of Array.from(files)) {
+        if (f.size > 10 * 1024 * 1024) {
+          setError(`"${f.name}" excede 10 MB.`);
+          continue;
         }
-
-        // Generar nombre único para el archivo
-        const timestamp = Date.now()
-        const randomString = Math.random().toString(36).substring(2, 8)
-        const fileName = `adjunto_${timestamp}_${randomString}_${file.name}`
-        const filePath = `comunicados/adjuntos/${fileName}`
-
-        // Subir archivo
-        const { error: uploadError, data } = await supabase.storage
+        const name = `adjunto_${Date.now()}_${Math.random().toString(36).slice(2,8)}_${f.name}`;
+        const path = `comunicados/adjuntos/${name}`;
+        const { error: upErr } = await supabase.storage
           .from("comunicados")
-          .upload(filePath, file, {
-            cacheControl: "3600",
-            upsert: false,
-          })
+          .upload(path, f, { cacheControl: "3600", upsert: false });
+        if (upErr) continue;
 
-        if (uploadError) {
-          console.error(`Error al subir ${file.name}:`, uploadError)
-          continue
-        }
-
-        // Obtener URL pública
         const { data: urlData } = supabase.storage
           .from("comunicados")
-          .getPublicUrl(filePath)
+          .getPublicUrl(path);
 
-        // Añadir a la lista de adjuntos
-        newAdjuntos.push({
-          name: file.name,
-          url: urlData.publicUrl,
-          size: file.size
-        })
+        nuevos.push({ name: f.name, url: urlData.publicUrl, size: f.size });
       }
-
-      setAdjuntos(newAdjuntos)
-    } catch (error: any) {
-      console.error("Error al subir archivos:", error)
-      setError("Error al subir archivos: " + (error.message || "Intente nuevamente"))
+      setAdjuntos(nuevos);
+    } catch (err: any) {
+      setError("Error al subir archivos: " + (err.message || ""));
     } finally {
-      setUploadingFiles(false)
-      // Limpiar input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ""
-      }
+      setUploadingFiles(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
-  }
+  };
 
-  // Eliminar archivo adjunto
-  const handleRemoveFile = (index: number) => {
-    const newAdjuntos = [...adjuntos]
-    newAdjuntos.splice(index, 1)
-    setAdjuntos(newAdjuntos)
-  }
+  // Eliminar adjunto
+  const handleRemoveFile = (idx: number) => {
+    setAdjuntos(prev => prev.filter((_, i) => i !== idx));
+  };
 
-  // Formatear tamaño de archivo
+  // Formatear tamaño
   const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return bytes + " bytes"
-    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB"
-    else return (bytes / 1048576).toFixed(1) + " MB"
-  }
+    if (bytes < 1024) return bytes + " bytes";
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / 1048576).toFixed(1) + " MB";
+  };
 
-  // Guardar comunicado
-  const handleSubmit = async (e: React.FormEvent, publicar: boolean = false) => {
-    e.preventDefault()
-    
-    // Validaciones
-    if (!formData.titulo.trim()) {
-      setError("El título es obligatorio")
-      return
-    }
-    
-    if (!formData.contenido.trim()) {
-      setError("El contenido es obligatorio")
-      return
-    }
-    
-    if (!formData.categoria_id) {
-      setError("Debe seleccionar una categoría")
-      return
-    }
+  // Guardar o publicar comunicado + tablas puente
+  const handleSubmit = async (e: React.FormEvent, publicar = false) => {
+    e.preventDefault();
+    if (!formData.titulo.trim()) return setError("El título es obligatorio");
+    if (!formData.contenido.trim()) return setError("El contenido es obligatorio");
+    if (!formData.categoria_id) return setError("Debe seleccionar una categoría");
 
     try {
-      setSaving(true)
-      setError(null)
-      
-      const supabase = createSupabaseClient()
-      
-      // Obtener ID del usuario actual
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        throw new Error("No se pudo obtener la sesión del usuario")
-      }
-      
-      // Preparar datos para guardar
-      const comunicadoData = {
-        ...formData,
-        estado: publicar ? "publicado" : "borrador",
-        autor_id: session.user.id,
-        archivos_adjuntos: adjuntos.length > 0 ? JSON.stringify(adjuntos) : null,
-        empresa_ids: formData.empresa_ids && formData.empresa_ids.length > 0 ? JSON.stringify(formData.empresa_ids) : null
-      }
-      
-      // Insertar en la base de datos
-      const { data, error: insertError } = await supabase
+      setSaving(true);
+      setError(null);
+
+      const supabase = createSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Sesión no encontrada");
+
+      // 1) Insertar comunicado
+      const { data: insertData, error: insertError } = await supabase
         .from("comunicados")
-        .insert(comunicadoData)
-        .select()
-      
-      if (insertError) throw insertError
-      
-      setSuccess(publicar ? 
-        "¡Comunicado publicado exitosamente!" : 
-        "Comunicado guardado como borrador")
-      
-      // Redireccionar después de 2 segundos
-      setTimeout(() => {
-        router.push("/administracion/comunicados")
-      }, 2000)
-      
-    } catch (error: any) {
-      console.error("Error al guardar comunicado:", error)
-      setError("Error al guardar: " + (error.message || "Intente nuevamente"))
+        .insert({
+          titulo: formData.titulo,
+          contenido: formData.contenido,
+          imagen_url: formData.imagen_url,
+          categoria_id: formData.categoria_id,
+          autor_id: session.user.id,
+          area_responsable: formData.area_responsable,
+          estado: publicar ? "publicado" : "borrador",
+        })
+        .select("id");
+      if (insertError || !insertData?.length) throw insertError;
+      const comunicadoId = insertData[0].id;
+
+      // 2) Insertar relaciones con empresas
+      if (formData.empresa_ids.length) {
+        const rows = formData.empresa_ids.map(eid => ({
+          comunicado_id: comunicadoId,
+          empresa_id: eid,
+        }));
+        await supabase.from("comunicados_empresas").insert(rows);
+      }
+
+      // 3) Insertar relaciones con usuarios
+      if (formData.usuario_ids.length) {
+        const rows = formData.usuario_ids.map(uid => ({
+          comunicado_id: comunicadoId,
+          usuario_id: uid,
+        }));
+        await supabase.from("comunicados_usuarios").insert(rows);
+      }
+
+      setSuccess(publicar
+        ? "¡Comunicado publicado exitosamente!"
+        : "Comunicado guardado como borrador"
+      );
+      setTimeout(() => router.push("/administracion/comunicados"), 2000);
+    } catch (err: any) {
+      setError("Error al guardar: " + (err.message || ""));
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -377,9 +363,9 @@ export default function NuevoComunicado() {
           <CardHeader className="bg-primary/5 pb-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <CardTitle className="text-2xl font-bold">Nuevo Comunicado</CardTitle>
-              <Button 
-                variant="outline" 
-                onClick={() => router.push('/administracion/comunicados')}
+              <Button
+                variant="outline"
+                onClick={() => router.push("/administracion/comunicados")}
                 className="flex items-center gap-2"
               >
                 <ArrowLeft className="h-4 w-4" /> Volver
@@ -393,19 +379,16 @@ export default function NuevoComunicado() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            
             {success && (
               <Alert className="mb-6 bg-green-50 text-green-800 border-green-200">
                 <AlertDescription>{success}</AlertDescription>
               </Alert>
             )}
-            
-            <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6 md:pt-8">
-              {/* Grid Layout */}
+
+            <form onSubmit={e => handleSubmit(e, false)} className="space-y-6 md:pt-8">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Left Column (Title & Content) */}
+                {/* Izquierda: Título y Contenido */}
                 <div className="md:col-span-2 flex flex-col space-y-6">
-                  {/* Título */}
                   <div className="space-y-2">
                     <Label htmlFor="titulo">Título del Comunicado</Label>
                     <Input
@@ -413,12 +396,10 @@ export default function NuevoComunicado() {
                       name="titulo"
                       value={formData.titulo}
                       onChange={handleChange}
-                      placeholder="Ingrese el título del comunicado"
+                      placeholder="Ingrese el título"
                       required
                     />
                   </div>
-
-                  {/* Contenido - Make it grow */}
                   <div className="space-y-2 flex flex-col flex-grow">
                     <Label htmlFor="contenido">Contenido</Label>
                     <Textarea
@@ -426,101 +407,85 @@ export default function NuevoComunicado() {
                       name="contenido"
                       value={formData.contenido}
                       onChange={handleChange}
-                      placeholder="Ingrese el contenido del comunicado"
-                      className="min-h-[200px] flex-grow" // Added flex-grow
+                      placeholder="Ingrese el contenido"
+                      className="min-h-[200px] flex-grow"
                       required
                     />
                   </div>
                 </div>
 
-                {/* Right Column (Image, Category, Area, Attachments) */}
+                {/* Derecha */}
                 <div className="md:col-span-1 space-y-6">
-                  {/* Botones de acción */}
+                  {/* Botones */}
                   <div className="flex flex-col sm:flex-row gap-4 pt-6 md:pt-8">
                     <Button
-                      type="submit" // Handles draft save via form onSubmit -> handleSubmit(e, false)
+                      type="submit"
                       disabled={saving || uploadingImage || uploadingFiles}
                       className="flex-1"
                     >
-                      {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                      {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                       Guardar Borrador
                     </Button>
                     <Button
                       type="button"
-                      disabled={saving || uploadingImage || uploadingFiles || !formData.imagen_url}
-                      onClick={(e) => handleSubmit(e, true)} // Handles publish -> handleSubmit(e, true)
                       variant="default"
+                      onClick={e => handleSubmit(e, true)}
+                      disabled={saving || uploadingImage || uploadingFiles}
                       className="flex-1"
                     >
-                      {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                      {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                       Publicar Comunicado
                     </Button>
                   </div>
 
-                  {/* Estado (Mostrar solo si se está editando, aquí es nuevo, así que no se muestra) */}
-                  {/* No mostrar estado en la página de nuevo comunicado */}
-
                   {/* Imagen principal */}
                   <div className="space-y-2">
-                    <Label htmlFor="imagen">Imagen principal (Relación 4:3)</Label>
+                    <Label htmlFor="imagen">Imagen principal (4:3)</Label>
                     <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50 hover:bg-gray-100 transition-colors">
                       {imagePreview ? (
                         <div className="relative w-full max-w-md">
-                          <img 
-                            src={imagePreview} 
-                            alt="Vista previa" 
-                            className="rounded-lg w-full h-auto object-cover aspect-[4/3] shadow-md" 
+                          <img
+                            src={imagePreview}
+                            alt="Vista previa"
+                            className="rounded-lg w-full h-auto object-cover aspect-[4/3] shadow-md"
                           />
                           <Button
                             type="button"
                             variant="destructive"
                             size="icon"
-                            className="absolute top-2 right-2 rounded-full h-8 w-8"
+                            className="absolute top-2 right-2"
                             onClick={() => {
-                              setImagePreview(null)
-                              setFormData(prev => ({ ...prev, imagen_url: "" }))
-                              if (imageInputRef.current) {
-                                imageInputRef.current.value = ""
-                              }
+                              setImagePreview(null);
+                              setFormData(prev => ({ ...prev, imagen_url: "" }));
+                              if (imageInputRef.current) imageInputRef.current.value = "";
                             }}
                           >
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
                       ) : (
-                        <div className="flex flex-col items-center justify-center gap-4">
-                          <div className="p-4 bg-primary/10 rounded-full">
-                            <Image className="h-8 w-8 text-primary" />
-                          </div>
-                          <div className="text-center">
-                            <p className="text-sm font-medium mb-1">Arrastra y suelta o haz clic para subir</p>
-                            <p className="text-xs text-gray-500">JPG, PNG o WEBP (máx. 5MB)</p>
-                          </div>
-                          <Button 
-                            type="button" 
-                            variant="outline" 
+                        <div className="flex flex-col items-center gap-4">
+                          <Image className="h-8 w-8 text-primary" />
+                          <p className="text-sm font-medium">Arrastra o haz clic para subir</p>
+                          <p className="text-xs text-gray-500">JPG, PNG o WEBP (máx. 5MB)</p>
+                          <Button
+                            type="button"
+                            variant="outline"
                             onClick={() => imageInputRef.current?.click()}
                             disabled={uploadingImage}
-                            className="mt-2"
                           >
                             {uploadingImage ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Subiendo...
-                              </>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                             ) : (
-                              <>
-                                <Upload className="h-4 w-4 mr-2" />
-                                Seleccionar imagen
-                              </>
+                              <Upload className="h-4 w-4 mr-2" />
                             )}
+                            Seleccionar imagen
                           </Button>
                         </div>
                       )}
                       <input
                         ref={imageInputRef}
                         type="file"
-                        id="imagen"
                         accept="image/jpeg,image/png,image/webp"
                         className="hidden"
                         onChange={handleImageUpload}
@@ -534,15 +499,15 @@ export default function NuevoComunicado() {
                     <Label htmlFor="categoria">Categoría</Label>
                     <Select
                       value={formData.categoria_id}
-                      onValueChange={(value) => handleSelectChange("categoria_id", value)}
+                      onValueChange={v => setFormData(prev => ({ ...prev, categoria_id: v }))}
                     >
                       <SelectTrigger id="categoria">
                         <SelectValue placeholder="Seleccione una categoría" />
                       </SelectTrigger>
                       <SelectContent>
-                        {categorias.map((categoria) => (
-                          <SelectItem key={categoria.id} value={categoria.id}>
-                            {categoria.nombre}
+                        {categorias.map(c => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.nombre}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -554,7 +519,7 @@ export default function NuevoComunicado() {
                     <Label htmlFor="area">Área responsable</Label>
                     <Select
                       value={formData.area_responsable}
-                      onValueChange={(value) => handleSelectChange("area_responsable", value)}
+                      onValueChange={v => setFormData(prev => ({ ...prev, area_responsable: v }))}
                     >
                       <SelectTrigger id="area">
                         <SelectValue placeholder="Seleccione un área" />
@@ -565,43 +530,113 @@ export default function NuevoComunicado() {
                       </SelectContent>
                     </Select>
                   </div>
-                  {/* Empresas (Selección múltiple) */}
+
+                  {/* Empresas */}
                   <div className="space-y-2">
                     <Label htmlFor="empresas">Empresas</Label>
-                    <div className="max-h-[200px] w-full overflow-y-auto max-h-60 border rounded bg-white shadow-sm p-2">
-                      {empresas.length > 0 ? (
-                        <>
-                          <Input
-                            type="text"
-                            placeholder="Buscar empresa..."
-                            className="mb-2"
-                            onChange={e => {
-                              // Opcional: implementar búsqueda local si se desea
-                            }}
-                          />
-                          <div>
-                            {empresas.map((empresa) => (
-                              <label key={empresa.id} className="flex items-center gap-2 py-1 cursor-pointer select-none">
-                                <input
-                                  type="checkbox"
-                                  checked={formData.empresa_ids.includes(empresa.id)}
-                                  onChange={e => {
-                                    const checked = e.target.checked;
-                                    setFormData(prev => ({
-                                      ...prev,
-                                      empresa_ids: checked
-                                        ? [...prev.empresa_ids, empresa.id]
-                                        : prev.empresa_ids.filter((id: string) => id !== empresa.id)
-                                    }));
-                                  }}
-                                />
-                                <span className="truncate" title={empresa.nombre}>{empresa.nombre}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </>
+                    <div className="max-h-[250px] overflow-y-auto border rounded p-2 bg-white shadow-sm">
+                      <Input
+                        type="text"
+                        placeholder="Buscar empresa..."
+                        value={empresaSearch}
+                        onChange={e => setEmpresaSearch(e.target.value)}
+                        className="mb-2 w-full"
+                      />
+                      {filteredEmpresas.length ? (
+                        filteredEmpresas.map(emp => (
+                          <label
+                            key={emp.id}
+                            className="flex items-center gap-2 py-1 cursor-pointer select-none"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={formData.empresa_ids.includes(emp.id)}
+                              onChange={e => {
+                                const checked = e.target.checked;
+                                setFormData(prev => ({
+                                  ...prev,
+                                  empresa_ids: checked
+                                    ? [...prev.empresa_ids, emp.id]
+                                    : prev.empresa_ids.filter(id => id !== emp.id),
+                                }));
+                              }}
+                            />
+                            <span className="truncate" title={emp.nombre}>
+                              {emp.nombre}
+                            </span>
+                          </label>
+                        ))
                       ) : (
-                        <span className="text-gray-500 text-sm">No hay empresas disponibles</span>
+                        <p className="text-sm text-gray-500">No se encontraron empresas</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Usuarios */}
+                  <div className="space-y-2">
+                    <Label htmlFor="usuarios">Usuarios</Label>
+                    <div className="max-h-[250px] overflow-y-auto border rounded p-2 bg-white shadow-sm">
+                      <Input
+                        type="text"
+                        placeholder="Buscar usuario..."
+                        value={usuarioSearch}
+                        onChange={e => setUsuarioSearch(e.target.value)}
+                        className="mb-2 w-full"
+                        disabled={loadingUsuarios || usuarios.length === 0}
+                      />
+
+                      {/* Seleccionar todos */}
+                      <label className="flex items-center gap-2 mb-2">
+                        <input
+                          type="checkbox"
+                          checked={allUsersSelected}
+                          onChange={e => {
+                            const checked = e.target.checked;
+                            setFormData(prev => ({
+                              ...prev,
+                              usuario_ids: checked
+                                ? Array.from(new Set([
+                                    ...prev.usuario_ids,
+                                    ...filteredUsuarios.map(u => u.id),
+                                  ]))
+                                : prev.usuario_ids.filter(id =>
+                                    !filteredUsuarios.map(u => u.id).includes(id)
+                                  ),
+                            }));
+                          }}
+                          disabled={loadingUsuarios}
+                        />
+                        <span>Seleccionar todos</span>
+                      </label>
+
+                      {filteredUsuarios.length ? (
+                        filteredUsuarios.map(u => (
+                          <label
+                            key={u.id}
+                            className="flex items-center gap-2 py-1 cursor-pointer select-none"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={formData.usuario_ids.includes(u.id)}
+                              onChange={e => {
+                                const checked = e.target.checked;
+                                setFormData(prev => ({
+                                  ...prev,
+                                  usuario_ids: checked
+                                    ? [...prev.usuario_ids, u.id]
+                                    : prev.usuario_ids.filter(id => id !== u.id),
+                                }));
+                              }}
+                            />
+                            <span className="truncate" title={u.colaborador}>
+                              {u.colaborador}
+                            </span>
+                          </label>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-500">
+                          {loadingUsuarios ? "Cargando usuarios..." : "No se encontraron usuarios"}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -610,43 +645,35 @@ export default function NuevoComunicado() {
                   <div className="space-y-2">
                     <Label htmlFor="adjuntos">Archivos adjuntos (opcional)</Label>
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50">
-                      <div className="flex flex-col items-center justify-center gap-4">
-                        <Button 
-                          type="button" 
-                          variant="outline" 
+                      <div className="flex flex-col items-center gap-4">
+                        <Button
+                          type="button"
+                          variant="outline"
                           onClick={() => fileInputRef.current?.click()}
                           disabled={uploadingFiles}
                           className="w-full md:w-auto"
                         >
                           {uploadingFiles ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Subiendo archivos...
-                            </>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                           ) : (
-                            <>
-                              <Upload className="h-4 w-4 mr-2" />
-                              Seleccionar archivos
-                            </>
+                            <Upload className="h-4 w-4 mr-2" />
                           )}
+                          {uploadingFiles ? "Subiendo archivos..." : "Seleccionar archivos"}
                         </Button>
-                        <p className="text-xs text-gray-500">Máximo 10MB por archivo</p>
+                        <p className="text-xs text-gray-500">Máx. 10MB por archivo</p>
                       </div>
                       <input
                         ref={fileInputRef}
                         type="file"
-                        id="adjuntos"
                         multiple
                         className="hidden"
                         onChange={handleFileUpload}
                         disabled={uploadingFiles}
                       />
-                      
-                      {/* Lista de archivos adjuntos */}
                       {adjuntos.length > 0 && (
                         <div className="mt-4 border rounded-lg divide-y">
-                          {adjuntos.map((file, index) => (
-                            <div key={index} className="flex items-center justify-between p-3">
+                          {adjuntos.map((file, idx) => (
+                            <div key={idx} className="flex items-center justify-between p-3">
                               <div className="flex-1 truncate">
                                 <p className="font-medium truncate">{file.name}</p>
                                 <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
@@ -656,7 +683,7 @@ export default function NuevoComunicado() {
                                 variant="ghost"
                                 size="icon"
                                 className="text-red-500 hover:text-red-700"
-                                onClick={() => handleRemoveFile(index)}
+                                onClick={() => handleRemoveFile(idx)}
                               >
                                 <X className="h-4 w-4" />
                               </Button>
@@ -666,6 +693,7 @@ export default function NuevoComunicado() {
                       )}
                     </div>
                   </div>
+
                 </div>
               </div>
             </form>
@@ -673,5 +701,5 @@ export default function NuevoComunicado() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

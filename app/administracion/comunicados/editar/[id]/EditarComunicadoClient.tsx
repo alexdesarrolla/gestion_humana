@@ -3,27 +3,22 @@
 import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
 import { AdminSidebar } from "@/components/ui/admin-sidebar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { AlertCircle, ArrowLeft, Upload, X, ImageIcon, Loader2, FileIcon, FileText } from "lucide-react"
-// Importar el nuevo editor simple
-import NotionLikeEditor from "../../nuevo/NotionLikeEditor"
+import { AlertCircle, ArrowLeft, Upload, X, ImageIcon, Loader2 } from "lucide-react"
 
-interface EditarComunicadoClientProps {
-  id: string
-}
-
-export default function EditarComunicadoClient({ id }: EditarComunicadoClientProps) {
+export default function EditarComunicadoClient() {
   const router = useRouter()
-  const comunicadoId = id
+  const params = useParams()
+  const comunicadoId = params.id as string
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -33,7 +28,7 @@ export default function EditarComunicadoClient({ id }: EditarComunicadoClientPro
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [uploadingFiles, setUploadingFiles] = useState(false)
-  const [adjuntos, setAdjuntos] = useState<{ name: string; url: string; size: number; type?: string }[]>([])
+  const [adjuntos, setAdjuntos] = useState<{ name: string; url: string; size: number }[]>([])
 
   // Referencias para los inputs de archivos
   const imageInputRef = useRef<HTMLInputElement>(null)
@@ -257,6 +252,10 @@ export default function EditarComunicadoClient({ id }: EditarComunicadoClientPro
       // Obtener URL pública
       const { data: urlData } = supabase.storage.from("comunicados").getPublicUrl(filePath)
 
+      if (!urlData || !urlData.publicUrl) {
+        throw new Error("Error al obtener la URL pública de la imagen")
+      }
+
       // Actualizar estado del formulario con la URL de la imagen
       setFormData((prev) => ({ ...prev, imagen_url: urlData.publicUrl }))
     } catch (error: any) {
@@ -294,9 +293,6 @@ export default function EditarComunicadoClient({ id }: EditarComunicadoClientPro
         const fileName = `adjunto_${timestamp}_${randomString}_${file.name}`
         const filePath = `comunicados/adjuntos/${fileName}`
 
-        // Determinar el tipo de archivo para mostrar el icono correcto
-        const fileType = file.type.split("/")[0] || "document"
-
         // Subir archivo
         const { error: uploadError, data } = await supabase.storage.from("comunicados").upload(filePath, file, {
           cacheControl: "3600",
@@ -316,7 +312,6 @@ export default function EditarComunicadoClient({ id }: EditarComunicadoClientPro
           name: file.name,
           url: urlData.publicUrl,
           size: file.size,
-          type: fileType,
         })
       }
 
@@ -345,18 +340,6 @@ export default function EditarComunicadoClient({ id }: EditarComunicadoClientPro
     if (bytes < 1024) return bytes + " bytes"
     else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB"
     else return (bytes / 1048576).toFixed(1) + " MB"
-  }
-
-  // Obtener el icono adecuado según el tipo de archivo
-  const getFileIcon = (fileType?: string) => {
-    switch (fileType) {
-      case "image":
-        return <ImageIcon className="h-5 w-5 text-blue-500" />
-      case "application":
-        return <FileText className="h-5 w-5 text-orange-500" />
-      default:
-        return <FileIcon className="h-5 w-5 text-gray-500" />
-    }
   }
 
   // Actualizar comunicado
@@ -420,7 +403,7 @@ export default function EditarComunicadoClient({ id }: EditarComunicadoClientPro
     <div className="flex min-h-screen bg-gray-100">
       <AdminSidebar />
       <div className="max-w-[90%] mx-auto flex-1 p-8 md:pl-64">
-        <Card className="shadow-md max-w-4xl mx-auto">
+        <Card className="shadow-md">
           <CardHeader className="bg-primary/5 pb-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <CardTitle className="text-2xl font-bold">Editar Comunicado</CardTitle>
@@ -452,37 +435,11 @@ export default function EditarComunicadoClient({ id }: EditarComunicadoClientPro
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
             ) : (
-              <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
-                {/* Estado actual */}
-                <div className="mb-6">
-                  <div
-                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium 
-                    bg-opacity-10 border
-                    ${
-                      formData.estado === "publicado"
-                        ? "bg-green-100 text-green-800 border-green-200"
-                        : formData.estado === "borrador"
-                          ? "bg-yellow-100 text-yellow-800 border-yellow-200"
-                          : "bg-gray-100 text-gray-800 border-gray-200"
-                    }`}
-                  >
-                    Estado actual:{" "}
-                    {formData.estado === "publicado"
-                      ? "Publicado"
-                      : formData.estado === "borrador"
-                        ? "Borrador"
-                        : "Archivado"}
-                  </div>
-                </div>
-
-                <Tabs defaultValue="contenido" className="w-full">
-                  <TabsList className="grid grid-cols-3 mb-6">
-                    <TabsTrigger value="contenido">Contenido</TabsTrigger>
-                    <TabsTrigger value="multimedia">Multimedia</TabsTrigger>
-                    <TabsTrigger value="configuracion">Configuración</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="contenido" className="space-y-6">
+              <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6 md:pt-8">
+                {/* Grid Layout */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Left Column (Title & Content) */}
+                  <div className="md:col-span-2 flex flex-col space-y-6">
                     {/* Título */}
                     <div className="space-y-2">
                       <Label htmlFor="titulo">Título del Comunicado</Label>
@@ -496,17 +453,68 @@ export default function EditarComunicadoClient({ id }: EditarComunicadoClientPro
                       />
                     </div>
 
-                    {/* Contenido */}
-                    <div className="space-y-2">
+                    {/* Contenido - Make it grow */}
+                    <div className="space-y-2 flex flex-col flex-grow">
                       <Label htmlFor="contenido">Contenido</Label>
-                      <NotionLikeEditor
+                      <Textarea
+                        id="contenido"
+                        name="contenido"
                         value={formData.contenido}
-                        onChange={(value) => setFormData((prev) => ({ ...prev, contenido: value }))}
+                        onChange={handleChange}
+                        placeholder="Ingrese el contenido del comunicado"
+                        className="min-h-[200px] flex-grow" // Added flex-grow
+                        required
                       />
                     </div>
-                  </TabsContent>
+                  </div>
 
-                  <TabsContent value="multimedia" className="space-y-6">
+                  {/* Right Column (Actions, Status, Image, Category, Area, Attachments) */}
+                  <div className="md:col-span-1 space-y-6">
+                    {/* Botones de acción */}
+                    <div className="flex flex-col sm:flex-row gap-4 pt-6 md:pt-8">
+                      <Button
+                        type="submit" // Handles draft/update save via form onSubmit -> handleSubmit(e, false)
+                        disabled={saving || uploadingImage || uploadingFiles}
+                        className="flex-1"
+                      >
+                        {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                        {formData.estado === "borrador" ? "Guardar Borrador" : "Actualizar"}
+                      </Button>
+                      {formData.estado !== "publicado" && (
+                        <Button
+                          type="button"
+                          disabled={saving || uploadingImage || uploadingFiles || !formData.imagen_url}
+                          onClick={(e) => handleSubmit(e, true)} // Handles publish -> handleSubmit(e, true)
+                          variant="default"
+                          className="flex-1"
+                        >
+                          {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                          Publicar Comunicado
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Estado actual */}
+                    <div className="space-y-2">
+                      <Label>Estado actual</Label>
+                      <div
+                        className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold border
+                        ${
+                          formData.estado === "publicado"
+                            ? "bg-green-100 text-green-900 border-green-300"
+                            : formData.estado === "borrador"
+                              ? "bg-yellow-100 text-yellow-900 border-yellow-300"
+                              : "bg-gray-100 text-gray-700 border-gray-300"
+                        }`}
+                      >
+                        {formData.estado === "publicado"
+                          ? "Publicado"
+                          : formData.estado === "borrador"
+                            ? "Borrador"
+                            : "Archivado"}
+                      </div>
+                    </div>
+
                     {/* Imagen principal */}
                     <div className="space-y-2">
                       <Label htmlFor="imagen">Imagen principal (Relación 4:3)</Label>
@@ -576,73 +584,6 @@ export default function EditarComunicadoClient({ id }: EditarComunicadoClientPro
                       </div>
                     </div>
 
-                    {/* Archivos adjuntos */}
-                    <div className="space-y-2">
-                      <Label htmlFor="adjuntos">Archivos adjuntos (opcional)</Label>
-                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50">
-                        <div className="flex flex-col items-center justify-center gap-4">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={uploadingFiles}
-                            className="w-full md:w-auto"
-                          >
-                            {uploadingFiles ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Subiendo archivos...
-                              </>
-                            ) : (
-                              <>
-                                <Upload className="h-4 w-4 mr-2" />
-                                Seleccionar archivos
-                              </>
-                            )}
-                          </Button>
-                          <p className="text-xs text-gray-500">Máximo 10MB por archivo</p>
-                        </div>
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          id="adjuntos"
-                          multiple
-                          className="hidden"
-                          onChange={handleFileUpload}
-                          disabled={uploadingFiles}
-                        />
-
-                        {/* Lista de archivos adjuntos */}
-                        {adjuntos.length > 0 && (
-                          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {adjuntos.map((file, index) => (
-                              <div
-                                key={index}
-                                className="flex items-center gap-3 p-3 bg-white rounded-lg border shadow-sm"
-                              >
-                                <div className="flex-shrink-0">{getFileIcon(file.type)}</div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium truncate text-sm">{file.name}</p>
-                                  <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
-                                </div>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleRemoveFile(index)}
-                                  className="flex-shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="configuracion" className="space-y-6">
                     {/* Categoría */}
                     <div className="space-y-2">
                       <Label htmlFor="categoria">Categoría</Label>
@@ -676,29 +617,87 @@ export default function EditarComunicadoClient({ id }: EditarComunicadoClientPro
                         <SelectContent>
                           <SelectItem value="Recursos Humanos">Recursos Humanos</SelectItem>
                           <SelectItem value="Dirección General">Dirección General</SelectItem>
+                          <SelectItem value="Sistemas">Sistemas</SelectItem>
+                          <SelectItem value="Comunicaciones">Comunicaciones</SelectItem>
+                          <SelectItem value="SST">SST</SelectItem>
+                          <SelectItem value="Contabilidad">Contabilidad</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                  </TabsContent>
-                </Tabs>
 
-                {/* Botones de acción */}
-                <div className="flex flex-col sm:flex-row gap-3 pt-6 justify-end border-t mt-6">
-                  <Button type="submit" variant="outline" disabled={saving}>
-                    Guardar cambios
-                  </Button>
-                  {formData.estado !== "publicado" && (
-                    <Button type="button" onClick={(e) => handleSubmit(e, true)} disabled={saving}>
-                      {saving ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Publicando...
-                        </>
-                      ) : (
-                        "Publicar comunicado"
+                    {/* Archivos adjuntos */}
+                    <div className="space-y-2">
+                      <Label htmlFor="adjuntos">Archivos adjuntos (Opcional)</Label>
+                      <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50 hover:bg-gray-100 transition-colors">
+                        <div className="flex flex-col items-center justify-center gap-4">
+                          <div className="p-4 bg-primary/10 rounded-full">
+                            <Upload className="h-8 w-8 text-primary" />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm font-medium mb-1">Arrastra y suelta o haz clic para subir</p>
+                            <p className="text-xs text-gray-500">Cualquier tipo de archivo (máx. 10MB)</p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploadingFiles}
+                            className="mt-2"
+                          >
+                            {uploadingFiles ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Subiendo...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="h-4 w-4 mr-2" />
+                                Seleccionar archivos
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          id="adjuntos"
+                          multiple
+                          className="hidden"
+                          onChange={handleFileUpload}
+                          disabled={uploadingFiles}
+                        />
+                      </div>
+                      {adjuntos.length > 0 && (
+                        <div className="mt-4 space-y-2">
+                          <p className="text-sm font-medium">Archivos subidos:</p>
+                          <ul className="list-disc list-inside space-y-1">
+                            {adjuntos.map((file, index) => (
+                              <li key={index} className="flex items-center justify-between text-sm">
+                                <a
+                                  href={file.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:underline truncate mr-2"
+                                >
+                                  {file.name}
+                                </a>
+                                <span className="text-gray-500 text-xs mr-2">({formatFileSize(file.size)})</span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-red-500 hover:bg-red-100"
+                                  onClick={() => handleRemoveFile(index)}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
                       )}
-                    </Button>
-                  )}
+                    </div>
+                  </div>
                 </div>
               </form>
             )}

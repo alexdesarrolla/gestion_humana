@@ -11,25 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Search, Plus, Edit, Trash2, Eye, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-
-async function handleDeleteComunicado(comunicadoId) {
-  if (confirm('¿Está seguro de eliminar este comunicado?')) {
-    const supabase = createSupabaseClient();
-    const { error } = await supabase
-      .from('comunicados')
-      .delete()
-      .eq('id', comunicadoId);
-
-    if (error) {
-      console.error('Error al eliminar comunicado:', error);
-      setError('Error al eliminar el comunicado. Por favor, intente nuevamente.');
-    } else {
-      setComunicados(prev => prev.filter(c => c.id !== comunicadoId));
-      setFilteredComunicados(prev => prev.filter(c => c.id !== comunicadoId));
-      setSuccess('Comunicado eliminado correctamente.');
-    }
-  }
-}
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 
 export default function Comunicados() {
   const router = useRouter()
@@ -46,8 +28,49 @@ export default function Comunicados() {
   } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  // Referencia para el timeout de búsqueda
   const searchTimeout = useRef<NodeJS.Timeout | null>(null)
+
+  // Estado para el modal de eliminación
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteComunicadoId, setDeleteComunicadoId] = useState<string | null>(null)
+  const [deleteInput, setDeleteInput] = useState("")
+  const [deleteLoading, setDeleteLoading] = useState(false)
+
+  // Función para abrir el modal de confirmación
+  const openDeleteDialog = (comunicadoId: string) => {
+    setDeleteComunicadoId(comunicadoId)
+    setDeleteInput("")
+    setDeleteDialogOpen(true)
+  }
+
+  // Función para eliminar comunicado con confirmación
+  const confirmDeleteComunicado = async () => {
+    if (deleteInput.trim().toLowerCase() !== "eliminar") {
+      setError("Debe escribir 'eliminar' para confirmar.")
+      return
+    }
+    setDeleteLoading(true)
+    setError(null)
+    try {
+      const supabase = createSupabaseClient()
+      const { error } = await supabase
+        .from('comunicados')
+        .delete()
+        .eq('id', deleteComunicadoId)
+      if (error) {
+        setError('Error al eliminar el comunicado. Por favor, intente nuevamente.')
+      } else {
+        setComunicados(prev => prev.filter(c => c.id !== deleteComunicadoId))
+        setFilteredComunicados(prev => prev.filter(c => c.id !== deleteComunicadoId))
+        setSuccess('Comunicado eliminado correctamente.')
+        setDeleteDialogOpen(false)
+      }
+    } catch (e: any) {
+      setError('Error al eliminar el comunicado. Por favor, intente nuevamente.')
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -392,7 +415,7 @@ export default function Comunicados() {
                               variant="ghost"
                               size="icon"
                               className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => handleDeleteComunicado(comunicado.id)}
+                              onClick={() => openDeleteDialog(comunicado.id)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -404,6 +427,33 @@ export default function Comunicados() {
                 </Table>
               </div>
             )}
+            {/* Modal de confirmación de eliminación */}
+            <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Confirmar eliminación</DialogTitle>
+                  <DialogDescription>
+                    ¿Está seguro de que desea eliminar este comunicado? Esta acción no se puede deshacer.<br />
+                    Para confirmar, escriba <span className="font-bold">eliminar</span> en el campo de abajo.
+                  </DialogDescription>
+                </DialogHeader>
+                <input
+                  type="text"
+                  className="w-full border rounded px-3 py-2 mt-4"
+                  placeholder="Escriba 'eliminar' para confirmar"
+                  value={deleteInput}
+                  onChange={e => setDeleteInput(e.target.value)}
+                  disabled={deleteLoading}
+                />
+                {error && <div className="text-red-600 text-sm mt-2">{error}</div>}
+                <DialogFooter className="mt-4 flex gap-2">
+                  <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleteLoading}>Cancelar</Button>
+                  <Button variant="destructive" onClick={confirmDeleteComunicado} disabled={deleteInput.trim().toLowerCase() !== "eliminar" || deleteLoading}>
+                    {deleteLoading ? "Eliminando..." : "Eliminar"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </CardContent>
         </Card>
       </div>

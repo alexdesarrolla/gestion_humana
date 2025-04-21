@@ -498,7 +498,7 @@ export default function EditarComunicadoClient() {
                     <div className="space-y-2">
                       <Label>Estado actual</Label>
                       <div
-                        className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold border
+                        className={`inline-flex items-center mx-3 px-3 py-1.5 rounded-full text-sm font-semibold border
                         ${
                           formData.estado === "publicado"
                             ? "bg-green-100 text-green-900 border-green-300"

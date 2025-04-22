@@ -183,7 +183,7 @@ export default function AdminCertificacionLaboral() {
       let certificadoHTML = `
         <div style="${containerStyle}">
           <div style="padding-top: 180px; padding-left: 100px; padding-right: 100px;">
-            <h1 style="font-size: 16px; font-weight: bold; text-transform: uppercase; text-align: center;">LA DIRECTORA DE TALENTO HUMANO DE ${usuarioData.empresas?.razon_social || 'BEST DATA MARKETING S.A.S'}</h1>
+            <h1 style="font-size: 16px; font-weight: bold; text-transform: uppercase; text-align: center;">LA DIRECTORA DE TALENTO HUMANO DE ${usuarioData.empresas?.razon_social}</h1>
           </div>
         
         <div style="text-align: center; margin: 50px 0; padding-left: 100px; padding-right: 100px;">
@@ -643,12 +643,8 @@ export default function AdminCertificacionLaboral() {
                                 <SelectValue placeholder="Seleccione el tipo de contrato" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="Contrato a Término Fijo">Contrato a Término Fijo</SelectItem>
                                 <SelectItem value="Contrato a término indefinido">Contrato a término indefinido</SelectItem>
-                                <SelectItem value="Contrato de Obra o labor">Contrato de Obra o labor</SelectItem>
-                                <SelectItem value="Contrato civil por prestación de servicios">Contrato civil por prestación de servicios</SelectItem>
                                 <SelectItem value="Contrato de aprendizaje">Contrato de aprendizaje</SelectItem>
-                                <SelectItem value="Contrato ocasional de trabajo">Contrato ocasional de trabajo</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -742,12 +738,8 @@ export default function AdminCertificacionLaboral() {
                             <SelectValue placeholder="Seleccione el tipo de contrato" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Contrato a Término Fijo">Contrato a Término Fijo</SelectItem>
                             <SelectItem value="Contrato a término indefinido">Contrato a término indefinido</SelectItem>
-                            <SelectItem value="Contrato de Obra o labor">Contrato de Obra o labor</SelectItem>
-                            <SelectItem value="Contrato civil por prestación de servicios">Contrato civil por prestación de servicios</SelectItem>
                             <SelectItem value="Contrato de aprendizaje">Contrato de aprendizaje</SelectItem>
-                            <SelectItem value="Contrato ocasional de trabajo">Contrato ocasional de trabajo</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

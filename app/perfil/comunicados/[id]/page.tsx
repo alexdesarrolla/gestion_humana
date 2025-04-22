@@ -25,6 +25,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
+import { ComentariosComunicados } from "@/components/comunicado/comentarios";
+
 interface ComunicadoDetalle {
   id: string;
   titulo: string;
@@ -53,17 +55,29 @@ export default function DetalleComunicadoPage() {
       const supabase = createSupabaseClient();
       const { data, error } = await supabase
         .from("comunicados")
-        .select(`
-          id,
-          titulo,
-          contenido,
-          imagen_url,
-          fecha_publicacion,
-          area_responsable,
-          categoria_id,
-          comunicados_empresas(empresa_id, empresas:empresa_id(nombre)),
-          comunicados_usuarios(usuario_id, usuario_nomina:usuario_id(colaborador))
-        `)
+        .select(
+          `
+            id,
+            titulo,
+            contenido,
+            imagen_url,
+            fecha_publicacion,
+            area_responsable,
+            categoria_id,
+            comunicados_empresas (
+              empresa_id,
+              empresas:empresa_id (
+                nombre
+              )
+            ),
+            comunicados_usuarios (
+              usuario_id,
+              usuario_nomina:usuario_id (
+                colaborador
+              )
+            )
+          `
+        )
         .eq("id", comunicadoId)
         .single();
 
@@ -337,6 +351,11 @@ export default function DetalleComunicadoPage() {
                   </CardContent>
                 </Card>
               </div>
+            </div>
+
+            {/* Sección de Comentarios */}
+            <div className="mt-10 mb-10">
+              <ComentariosComunicados comunicadoId={comunicado.id} />
             </div>
           </div>
         </main>

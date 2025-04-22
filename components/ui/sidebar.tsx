@@ -199,6 +199,12 @@ export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
         // Aquí se pueden agregar más submenús de novedades en el futuro
       ],
     },
+    {
+      name: "Comunicados",
+      href: "/perfil/comunicados",
+      icon: Newspaper,
+      current: currentPath === "/perfil/comunicados"
+    },
     // Aquí se pueden agregar más secciones en el futuro
   ]
   

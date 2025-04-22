@@ -359,7 +359,7 @@ export default function SolicitudPermisos() {
                         />
                       </div>
 
-                      {formData.tipoPermiso === "no_remunerado" && (
+                      {formData.tipoPermiso === "remunerado" && (
                         <div className="grid grid-cols-4 items-center gap-4">
                           <Label htmlFor="compensacion" className="text-right">
                             Compensación

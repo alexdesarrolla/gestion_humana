@@ -396,12 +396,8 @@ export default function AdminSolicitudesPermisos() {
               </div>
               
               <div style="margin-bottom: 20px;">
-                <p style="font-weight: bold;">Describe como lo compensa: </p>
-                <p style="border-bottom: 1px solid #000; padding-bottom: 5px;">${solicitudData.compensacion || ''}</p>
-              </div>
-              
-              <div style="margin-bottom: 20px;">
-                <p>Este permiso/actividad interna será tomado a partir del día ${diaInicio} mes ${mesInicio} del año 20${anioInicio.toString().substr(2)} hasta el día ${diaFin} mes ${mesFin} del año 20${anioFin.toString().substr(2)}</p>
+                             
+              <div style="margin-bottom: 20px;">             <p>Este permiso/actividad interna será tomado a partir del día ${d$iaInicio} mes ${mesInicio} del año 20uía ${diaFin} mes ${mesFin} del año 20${anioFin.toString().substr(2)}</p>
                 <p style="font-weight: bold;">Motivo del Permiso/Actividad Interna: </p>
                 <p style="border-bottom: 1px solid #000; padding-bottom: 5px;">${solicitudData.motivo || ''}</p>
               </div>

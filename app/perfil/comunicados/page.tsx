@@ -224,7 +224,7 @@ export default function ComunicadosPage() {
                               ? new Date(c.fecha_publicacion).toLocaleDateString()
                               : "-"}
                           </p>
-                          <Button variant="outline">Ver comunicado</Button>
+                          <Button variant="outline" onClick={() => window.location.href = `/perfil/comunicados/${c.id}`}>Ver comunicado</Button>
                         </div>
                       </div>
                     ))

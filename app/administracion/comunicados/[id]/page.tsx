@@ -9,6 +9,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { CalendarIcon, Building2Icon, Users2Icon, ArrowLeftIcon, FileTextIcon } from "lucide-react"
+import { ComentariosComunicados } from "@/components/comunicado/comentarios"
 
 interface ComunicadoDetalle {
     id: string
@@ -216,6 +217,12 @@ export default function DetalleComunicadoPage() {
                                         )}
                                     </CardContent>
                                 </Card>
+                            </div>
+                        </div>
+                        {/* Sección de Comentarios */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                            <div className="mt-4 mb-10 lg:col-span-7">
+                                <ComentariosComunicados comunicadoId={comunicado.id} />
                             </div>
                         </div>
                     </div>

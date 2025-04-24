@@ -4,17 +4,16 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
 import { AdminSidebar } from "@/components/ui/admin-sidebar"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent} from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { AlertCircle, CheckCircle2, Calendar, Search, X, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react"
+import { AlertCircle, CheckCircle2, Search, X, ChevronDown, ChevronUp } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
+import { FileDown } from "lucide-react";
 import { jsPDF } from "jspdf"
 import html2canvas from "html2canvas"
 
@@ -565,6 +564,7 @@ export default function AdminSolicitudesPermisos() {
                 <h1 className="text-2xl font-bold tracking-tight">Solicitudes de Permisos</h1>
                 <p className="text-muted-foreground">Gestiona las solicitudes de permisos laborales.</p>
               </div>
+              <Button onClick={() => router.push('/administracion/solicitudes/permisos/historico')}>Ver histórico</Button>
             </div>
 
             {/* Alertas */}
@@ -760,7 +760,7 @@ export default function AdminSolicitudesPermisos() {
                                 size="sm"
                                 onClick={() => window.open(solicitud.pdf_url, '_blank')}
                               >
-                                Ver PDF
+                                <FileDown className="h-4 w-4 mr-1" />Ver PDF
                               </Button>
                             ) : (
                               <Button

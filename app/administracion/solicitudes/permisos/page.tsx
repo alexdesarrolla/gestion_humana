@@ -397,7 +397,7 @@ export default function AdminSolicitudesPermisos() {
               
               <div style="margin-bottom: 20px;">
                              
-              <div style="margin-bottom: 20px;">             <p>Este permiso/actividad interna será tomado a partir del día ${d$iaInicio} mes ${mesInicio} del año 20uía ${diaFin} mes ${mesFin} del año 20${anioFin.toString().substr(2)}</p>
+              <div style="margin-bottom: 20px;">             <p>Este permiso/actividad interna será tomado a partir del día ${diaInicio} mes ${mesInicio} del año ${anioInicio} hasta el día ${diaFin} mes ${mesFin} del año ${anioFin}</p>
                 <p style="font-weight: bold;">Motivo del Permiso/Actividad Interna: </p>
                 <p style="border-bottom: 1px solid #000; padding-bottom: 5px;">${solicitudData.motivo || ''}</p>
               </div>
@@ -556,257 +556,228 @@ export default function AdminSolicitudesPermisos() {
   return (
     <div className="min-h-screen bg-slate-50">
       <AdminSidebar userName="Administrador" />
-
       <div className="md:pl-64 flex flex-col flex-1">
-        <main className="flex-1">
-          <div className="py-6">
-            <div className="max-w-[90%] mx-auto px-4 sm:px-6 md:px-8">
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Solicitudes de Permisos</h1>
-                    <p className="text-muted-foreground">
-                      Gestiona las solicitudes de permisos laborales.
-                    </p>
-                  </div>
-                </div>
-
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-
-                {success && (
-                  <Alert className="bg-green-50 text-green-800 border-green-200">
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    <AlertDescription>{success}</AlertDescription>
-                  </Alert>
-                )}
-
-                {/* Filtros */}
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex flex-col md:flex-row gap-4 items-end">
-                      <div className="w-full md:w-1/3">
-                        <Label htmlFor="search" className="mb-2 block">Buscar</Label>
-                        <div className="relative">
-                          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                          <Input
-                            id="search"
-                            placeholder="Buscar por nombre, cédula, cargo..."
-                            className="pl-8"
-                            value={searchTerm}
-                            onChange={handleSearchChange}
-                          />
-                          {searchTerm && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSearchTerm("");
-                                applyFilters("", selectedEstado, selectedEmpresa, selectedTipoPermiso, sortConfig);
-                              }}
-                              className="absolute right-2.5 top-2.5"
-                            >
-                              <X className="h-4 w-4 text-gray-500" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="w-full md:w-1/5">
-                        <Label htmlFor="estado" className="mb-2 block">Estado</Label>
-                        <Select
-                          value={selectedEstado}
-                          onValueChange={(value) => setSelectedEstado(value)}
-                        >
-                          <SelectTrigger id="estado">
-                            <SelectValue placeholder="Todos los estados" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">Todos los estados</SelectItem>
-                            <SelectItem value="pendiente">Pendiente</SelectItem>
-                            <SelectItem value="aprobado">Aprobado</SelectItem>
-                            <SelectItem value="rechazado">Rechazado</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="w-full md:w-1/5">
-                        <Label htmlFor="empresa" className="mb-2 block">Empresa</Label>
-                        <Select
-                          value={selectedEmpresa}
-                          onValueChange={(value) => setSelectedEmpresa(value)}
-                        >
-                          <SelectTrigger id="empresa">
-                            <SelectValue placeholder="Todas las empresas" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">Todas las empresas</SelectItem>
-                            {empresas.map((empresa) => (
-                              <SelectItem key={empresa} value={empresa}>
-                                {empresa}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="w-full md:w-1/5">
-                        <Label htmlFor="tipoPermiso" className="mb-2 block">Tipo de Permiso</Label>
-                        <Select
-                          value={selectedTipoPermiso}
-                          onValueChange={(value) => setSelectedTipoPermiso(value)}
-                        >
-                          <SelectTrigger id="tipoPermiso">
-                            <SelectValue placeholder="Todos los tipos" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">Todos los tipos</SelectItem>
-                            <SelectItem value="no_remunerado">No remunerado</SelectItem>
-                            <SelectItem value="remunerado">Remunerado</SelectItem>
-                            <SelectItem value="actividad_interna">Actividad interna</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <Button
-                        variant="outline"
-                        onClick={clearFilters}
-                        className="h-10"
-                      >
-                        Limpiar filtros
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-0">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="cursor-pointer" onClick={() => requestSort("fecha_solicitud")}>
-                            <div className="flex items-center">
-                              Fecha Solicitud
-                              {sortConfig?.key === "fecha_solicitud" && (
-                                sortConfig.direction === "asc" ? 
-                                <ChevronUp className="ml-1 h-4 w-4" /> : 
-                                <ChevronDown className="ml-1 h-4 w-4" />
-                              )}
-                            </div>
-                          </TableHead>
-                          <TableHead className="cursor-pointer" onClick={() => requestSort("colaborador")}>
-                            <div className="flex items-center">
-                              Colaborador
-                              {sortConfig?.key === "colaborador" && (
-                                sortConfig.direction === "asc" ? 
-                                <ChevronUp className="ml-1 h-4 w-4" /> : 
-                                <ChevronDown className="ml-1 h-4 w-4" />
-                              )}
-                            </div>
-                          </TableHead>
-                          <TableHead>Cédula</TableHead>
-                          <TableHead>Tipo</TableHead>
-                          <TableHead className="cursor-pointer" onClick={() => requestSort("fecha_inicio")}>
-                            <div className="flex items-center">
-                              Fecha Inicio
-                              {sortConfig?.key === "fecha_inicio" && (
-                                sortConfig.direction === "asc" ? 
-                                <ChevronUp className="ml-1 h-4 w-4" /> : 
-                                <ChevronDown className="ml-1 h-4 w-4" />
-                              )}
-                            </div>
-                          </TableHead>
-                          <TableHead className="cursor-pointer" onClick={() => requestSort("fecha_fin")}>
-                            <div className="flex items-center">
-                              Fecha Fin
-                              {sortConfig?.key === "fecha_fin" && (
-                                sortConfig.direction === "asc" ? 
-                                <ChevronUp className="ml-1 h-4 w-4" /> : 
-                                <ChevronDown className="ml-1 h-4 w-4" />
-                              )}
-                            </div>
-                          </TableHead>
-                          <TableHead>Estado</TableHead>
-                          <TableHead>Acciones</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {searchLoading ? (
-                          <TableRow>
-                            <TableCell colSpan={8} className="text-center py-4">
-                              <div className="flex justify-center items-center">
-                                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-800"></div>
-                                <span className="ml-2">Buscando...</span>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ) : filteredSolicitudes.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={8} className="text-center py-4">
-                              No hay solicitudes que coincidan con los filtros.
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          filteredSolicitudes.map((solicitud) => (
-                            <TableRow key={solicitud.id}>
-                              <TableCell>{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</TableCell>
-                              <TableCell>{solicitud.usuario?.colaborador}</TableCell>
-                              <TableCell>{solicitud.usuario?.cedula}</TableCell>
-                              <TableCell>
-                                {solicitud.tipo_permiso === 'no_remunerado' ? 'No remunerado' :
-                                 solicitud.tipo_permiso === 'remunerado' ? 'Remunerado' :
-                                 'Actividad interna'}
-                              </TableCell>
-                              <TableCell>{new Date(solicitud.fecha_inicio).toLocaleDateString()}</TableCell>
-                              <TableCell>{new Date(solicitud.fecha_fin).toLocaleDateString()}</TableCell>
-                              <TableCell>
-                                <Badge
-                                  variant={solicitud.estado === 'aprobado' ? 'secondary' :
-                                          solicitud.estado === 'rechazado' ? 'destructive' :
-                                          'default'}
-                                >
-                                  {solicitud.estado.charAt(0).toUpperCase() + solicitud.estado.slice(1)}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                {solicitud.estado === 'pendiente' && (
-                                  <div className="flex space-x-2">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        const motivo = prompt("Ingrese el motivo del rechazo:")
-                                        if (motivo) rechazarSolicitud(solicitud.id, motivo)
-                                      }}
-                                    >
-                                      Rechazar
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      onClick={() => aprobarSolicitud(solicitud.id, solicitud.usuario)}
-                                    >
-                                      Aprobar
-                                    </Button>
-                                  </div>
-                                )}
-                                {solicitud.estado === "aprobado" ? (
-                                  <Button onClick={() => window.open(solicitud.pdf_url, '_blank')}>Ver PDF</Button>
-                                ) : (
-                                  <Button onClick={() => aprobarSolicitud(solicitud.id, solicitud.usuario)}>Aprobar</Button>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
+        <main className="flex-1 py-6">
+          <div className="max-w-[90%] mx-auto space-y-6">
+            {/* Título y Descripción */}
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">Solicitudes de Permisos</h1>
+                <p className="text-muted-foreground">Gestiona las solicitudes de permisos laborales.</p>
               </div>
             </div>
+
+            {/* Alertas */}
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            {success && (
+              <Alert className="bg-green-50 text-green-800 border-green-200">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <AlertDescription>{success}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* Filtros */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex flex-col md:flex-row gap-4 items-end">
+                  {/* Buscar */}
+                  <div className="w-full md:w-1/3">
+                    <Label htmlFor="search" className="mb-2 block">Buscar</Label>
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                      <Input
+                        id="search"
+                        placeholder="Buscar por nombre, cédula, cargo..."
+                        className="pl-8"
+                        value={searchTerm}
+                        onChange={handleSearchChange}
+                      />
+                      {searchTerm && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSearchTerm("")
+                            applyFilters("", selectedEstado, selectedEmpresa, selectedTipoPermiso, sortConfig)
+                          }}
+                          className="absolute right-2.5 top-2.5"
+                        >
+                          <X className="h-4 w-4 text-gray-500" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {/* Estado */}
+                  <div className="w-full md:w-1/5">
+                    <Label htmlFor="estado" className="mb-2 block">Estado</Label>
+                    <Select value={selectedEstado} onValueChange={setSelectedEstado}>
+                      <SelectTrigger id="estado"><SelectValue placeholder="Todos los estados" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos los estados</SelectItem>
+                        <SelectItem value="pendiente">Pendiente</SelectItem>
+                        <SelectItem value="aprobado">Aprobado</SelectItem>
+                        <SelectItem value="rechazado">Rechazado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {/* Empresa */}
+                  <div className="w-full md:w-1/5">
+                    <Label htmlFor="empresa" className="mb-2 block">Empresa</Label>
+                    <Select value={selectedEmpresa} onValueChange={setSelectedEmpresa}>
+                      <SelectTrigger id="empresa"><SelectValue placeholder="Todas las empresas" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas las empresas</SelectItem>
+                        {empresas.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {/* Tipo Permiso */}
+                  <div className="w-full md:w-1/5">
+                    <Label htmlFor="tipoPermiso" className="mb-2 block">Tipo de Permiso</Label>
+                    <Select value={selectedTipoPermiso} onValueChange={setSelectedTipoPermiso}>
+                      <SelectTrigger id="tipoPermiso"><SelectValue placeholder="Todos los tipos" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos los tipos</SelectItem>
+                        <SelectItem value="no_remunerado">No remunerado</SelectItem>
+                        <SelectItem value="remunerado">Remunerado</SelectItem>
+                        <SelectItem value="actividad_interna">Actividad interna</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button variant="outline" onClick={clearFilters} className="h-10">
+                    Limpiar filtros
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tabla de Solicitudes */}
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="cursor-pointer" onClick={() => requestSort("fecha_solicitud")}>
+                        <div className="flex items-center">
+                          Fecha Solicitud
+                          {sortConfig?.key === "fecha_solicitud" && (sortConfig.direction === "asc" ? <ChevronUp className="ml-1 h-4 w-4" /> : <ChevronDown className="ml-1 h-4 w-4" />)}
+                        </div>
+                      </TableHead>
+                      <TableHead className="cursor-pointer" onClick={() => requestSort("colaborador")}>
+                        <div className="flex items-center">
+                          Colaborador
+                          {sortConfig?.key === "colaborador" && (sortConfig.direction === "asc" ? <ChevronUp className="ml-1 h-4 w-4" /> : <ChevronDown className="ml-1 h-4 w-4" />)}
+                        </div>
+                      </TableHead>
+                      <TableHead>Cédula</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead className="cursor-pointer" onClick={() => requestSort("fecha_inicio")}>
+                        <div className="flex items-center">
+                          Fecha Inicio
+                          {sortConfig?.key === "fecha_inicio" && (sortConfig.direction === "asc" ? <ChevronUp className="ml-1 h-4 w-4" /> : <ChevronDown className="ml-1 h-4 w-4" />)}
+                        </div>
+                      </TableHead>
+                      <TableHead className="cursor-pointer" onClick={() => requestSort("fecha_fin")}>
+                        <div className="flex items-center">
+                          Fecha Fin
+                          {sortConfig?.key === "fecha_fin" && (sortConfig.direction === "asc" ? <ChevronUp className="ml-1 h-4 w-4" /> : <ChevronDown className="ml-1 h-4 w-4" />)}
+                        </div>
+                      </TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead>Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {searchLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-4">
+                          <div className="flex justify-center items-center">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-800"></div>
+                            <span className="ml-2">Buscando...</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredSolicitudes.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-4">
+                          No hay solicitudes que coincidan con los filtros.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredSolicitudes.map((solicitud) => (
+                        <TableRow key={solicitud.id}>
+                          <TableCell>{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</TableCell>
+                          <TableCell>{solicitud.usuario?.colaborador}</TableCell>
+                          <TableCell>{solicitud.usuario?.cedula}</TableCell>
+                          <TableCell>
+                            {solicitud.tipo_permiso === 'no_remunerado'
+                              ? 'No remunerado'
+                              : solicitud.tipo_permiso === 'remunerado'
+                              ? 'Remunerado'
+                              : 'Actividad interna'}
+                          </TableCell>
+                          <TableCell>{new Date(solicitud.fecha_inicio).toLocaleDateString()}</TableCell>
+                          <TableCell>{new Date(solicitud.fecha_fin).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                solicitud.estado === 'aprobado'
+                                  ? 'secondary'
+                                  : solicitud.estado === 'rechazado'
+                                  ? 'destructive'
+                                  : 'default'
+                              }
+                            >
+                              {solicitud.estado.charAt(0).toUpperCase() + solicitud.estado.slice(1)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {solicitud.estado === 'pendiente' ? (
+                              <div className="flex space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    const motivo = prompt("Ingrese el motivo del rechazo:")
+                                    if (motivo) rechazarSolicitud(solicitud.id, motivo)
+                                  }}
+                                >
+                                  Rechazar
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => aprobarSolicitud(solicitud.id, solicitud.usuario)}
+                                >
+                                  Aprobar
+                                </Button>
+                              </div>
+                            ) : solicitud.estado === 'aprobado' ? (
+                              <Button
+                                size="sm"
+                                onClick={() => window.open(solicitud.pdf_url, '_blank')}
+                              >
+                                Ver PDF
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                onClick={() => aprobarSolicitud(solicitud.id, solicitud.usuario)}
+                              >
+                                Aprobar
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </div>
         </main>
       </div>

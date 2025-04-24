@@ -431,17 +431,6 @@ export default function Comunicados() {
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() =>
-                                router.push(
-                                  `/administracion/comunicados/editar/${c.id}`
-                                )
-                              }
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
                             {/* Estadísticas */}
                             <Button
                               variant="ghost"

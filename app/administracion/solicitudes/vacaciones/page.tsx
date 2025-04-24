@@ -466,6 +466,7 @@ export default function AdminSolicitudesVacaciones() {
                       Gestiona todas las solicitudes de vacaciones y su historial.
                     </p>
                   </div>
+                  <Button onClick={() => router.push('/administracion/solicitudes/vacaciones/historico')}>Ver histórico</Button>
                 </div>
 
                 {error && (

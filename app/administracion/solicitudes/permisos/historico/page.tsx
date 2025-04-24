@@ -142,7 +142,7 @@ export default function AdminPermisosHistorico() {
             {/* Título */}
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="text-2xl font-bold">Histórico de Solicitudes de Permisos</h1>
+                <h1 className="text-2xl font-bold">Histórico - Solicitudes de Permisos</h1>
                 <p className="text-muted-foreground">
                   Consulta y filtra el historial de permisos laborales.
                 </p>

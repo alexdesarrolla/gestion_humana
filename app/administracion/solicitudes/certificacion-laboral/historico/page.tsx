@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
 import { AdminSidebar } from "@/components/ui/admin-sidebar"
@@ -26,68 +26,68 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Search, X } from "lucide-react"
 
-export default function AdminSolicitudesVacaciones() {
+export default function AdminSolicitudesCertificacion() {
   const router = useRouter()
   const [solicitudes, setSolicitudes] = useState<any[]>([])
   const [filteredSolicitudes, setFilteredSolicitudes] = useState<any[]>([])
-  const [empresas, setEmpresas] = useState<string[]>([])
+  const [cargos, setCargos] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   // filtros
   const [searchTerm, setSearchTerm] = useState<string>("")
   const [selectedEstado, setSelectedEstado] = useState<string>("all")
-  const [selectedEmpresa, setSelectedEmpresa] = useState<string>("all")
+  const [selectedCargo, setSelectedCargo] = useState<string>("all")
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null)
 
+  // carga inicial
   useEffect(() => {
     const fetchSolicitudes = async () => {
       setLoading(true)
       try {
         const supabase = createSupabaseClient()
 
-        // 1. Obtener solicitudes de vacaciones
-        const { data, error: fetchError } = await supabase
-          .from("solicitudes_vacaciones")
-          .select(
-            `
-              id,
-              usuario_id,
-              admin_id,
-              estado,
-              fecha_inicio,
-              fecha_fin,
-              fecha_solicitud,
-              fecha_resolucion,
-              motivo_rechazo
-            `
-          )
+        // 1. Obtener solicitudes de certificación
+        const { data: certs, error: certError } = await supabase
+          .from("solicitudes_certificacion")
+          .select(`
+            id,
+            usuario_id,
+            admin_id,
+            estado,
+            dirigido_a,
+            ciudad,
+            fecha_solicitud,
+            fecha_resolucion,
+            motivo_rechazo,
+            pdf_url,
+            salario_contrato
+          `)
           .order("fecha_solicitud", { ascending: false })
 
-        if (fetchError) throw fetchError
-        if (!data) {
+        if (certError) throw certError
+        if (!certs) {
           setSolicitudes([])
           setFilteredSolicitudes([])
           return
         }
 
-        // 2. Obtener datos de usuarios y admins
-        const userIds = Array.from(new Set(data.map((s) => s.usuario_id)))
+        // 2. Obtener datos de usuario y admin
+        const userIds = Array.from(new Set(certs.map((s) => s.usuario_id)))
         const adminIds = Array.from(
-          new Set(data.filter((s) => s.admin_id).map((s) => s.admin_id!))
+          new Set(certs.filter((s) => s.admin_id).map((s) => s.admin_id!))
         )
 
         const { data: usuariosData, error: usuariosError } = await supabase
           .from("usuario_nomina")
-          .select(
-            `
-              auth_user_id,
-              colaborador,
-              cedula,
-              cargo,
-              empresa_id,
-              empresas:empresa_id(nombre)
-            `
-          )
+          .select(`
+            auth_user_id,
+            colaborador,
+            cedula,
+            cargo,
+            empresa_id,
+            empresas:empresa_id(nombre)
+          `)
           .in("auth_user_id", userIds)
 
         if (usuariosError) throw usuariosError
@@ -99,8 +99,8 @@ export default function AdminSolicitudesVacaciones() {
 
         if (adminsError) throw adminsError
 
-        // 3. Combinar y extraer empresas
-        const completas = data.map((s) => {
+        // 3. Combinar y extraer cargos únicos
+        const completas = certs.map((s) => {
           const usuario = usuariosData?.find((u) => u.auth_user_id === s.usuario_id) || null
           const admin = adminsData?.find((a) => a.auth_user_id === s.admin_id) || null
           return { ...s, usuario, admin }
@@ -109,14 +109,14 @@ export default function AdminSolicitudesVacaciones() {
         setSolicitudes(completas)
         setFilteredSolicitudes(completas)
 
-        const uniqueEmpresas = Array.from(
+        const uniqueCargos = Array.from(
           new Set(
             usuariosData
-              .map((u) => u.empresas?.nombre)
-              .filter((n): n is string => Boolean(n))
+              .map((u) => u.cargo)
+              .filter((c): c is string => Boolean(c))
           )
         )
-        setEmpresas(uniqueEmpresas)
+        setCargos(uniqueCargos)
       } catch (err: any) {
         console.error(err)
         setError(err.message || "Error al cargar las solicitudes")
@@ -128,59 +128,102 @@ export default function AdminSolicitudesVacaciones() {
     fetchSolicitudes()
   }, [])
 
-  // efecto para aplicar filtros
+  // aplicar filtros con debounce
   useEffect(() => {
-    let result = [...solicitudes]
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    searchTimeout.current = setTimeout(() => {
+      let result = [...solicitudes]
 
-    // búsqueda
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase()
-      result = result.filter((s) => {
-        const u = s.usuario
-        return (
-          u?.colaborador.toLowerCase().includes(term) ||
-          u?.cedula.toLowerCase().includes(term) ||
-          u?.cargo.toLowerCase().includes(term) ||
-          u?.empresas?.nombre.toLowerCase().includes(term)
-        )
-      })
+      // búsqueda
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase()
+        result = result.filter((s) => {
+          const u = s.usuario
+          return (
+            u?.colaborador.toLowerCase().includes(term) ||
+            u?.cedula.toLowerCase().includes(term) ||
+            u?.cargo.toLowerCase().includes(term) ||
+            u?.empresas?.nombre.toLowerCase().includes(term)
+          )
+        })
+      }
+
+      // estado
+      if (selectedEstado !== "all") {
+        result = result.filter((s) => s.estado === selectedEstado)
+      }
+
+      // cargo
+      if (selectedCargo !== "all") {
+        result = result.filter((s) => s.usuario?.cargo === selectedCargo)
+      }
+
+      setFilteredSolicitudes(result)
+    }, 300)
+
+    return () => {
+      if (searchTimeout.current) clearTimeout(searchTimeout.current)
     }
-
-    // estado
-    if (selectedEstado !== "all") {
-      result = result.filter((s) => s.estado === selectedEstado)
-    }
-
-    // empresa
-    if (selectedEmpresa !== "all") {
-      result = result.filter(
-        (s) => s.usuario?.empresas?.nombre === selectedEmpresa
-      )
-    }
-
-    setFilteredSolicitudes(result)
-  }, [searchTerm, selectedEstado, selectedEmpresa, solicitudes])
+  }, [searchTerm, selectedEstado, selectedCargo, solicitudes])
 
   const clearFilters = () => {
     setSearchTerm("")
     setSelectedEstado("all")
-    setSelectedEmpresa("all")
+    setSelectedCargo("all")
   }
 
-  const formatDate = (fecha?: string | null) => {
-    if (!fecha) return ""
-    return new Date(fecha).toLocaleDateString("es-CO", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
+  const formatDate = (f?: string | null) =>
+    f
+      ? new Date(f).toLocaleDateString("es-CO", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+      : ""
+
+  const rechazarSolicitud = async (id: string, motivo: string) => {
+    try {
+      setLoading(true)
+      const supabase = createSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return router.push("/login")
+
+      const { error } = await supabase
+        .from("solicitudes_certificacion")
+        .update({
+          estado: "rechazado",
+          motivo_rechazo: motivo,
+          admin_id: session.user.id,
+          fecha_resolucion: new Date(),
+        })
+        .eq("id", id)
+
+      if (error) throw error
+
+      setSolicitudes((prev) =>
+        prev.map((s) =>
+          s.id === id
+            ? { ...s, estado: "rechazado", motivo_rechazo: motivo }
+            : s
+        )
+      )
+      setFilteredSolicitudes((prev) =>
+        prev.map((s) =>
+          s.id === id
+            ? { ...s, estado: "rechazado", motivo_rechazo: motivo }
+            : s
+        )
+      )
+    } catch (err: any) {
+      console.error(err)
+      setError(err.message || "No se pudo rechazar la solicitud")
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const calcularDiasVacaciones = (inicio: string, fin: string) => {
-    const start = new Date(inicio)
-    const end = new Date(fin)
-    const diffMs = end.getTime() - start.getTime()
-    return Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1
+  const aprobarSolicitud = async (id: string, usuario: any) => {
+    // Lógica de aprobación / generación de PDF...
   }
 
   return (
@@ -188,15 +231,12 @@ export default function AdminSolicitudesVacaciones() {
       <AdminSidebar userName="Administrador" />
       <div className="md:pl-64 flex flex-col flex-1">
         <main className="flex-1 py-6">
-          <div className="max-w-[90%] mx-auto space-y-6">
-            {/* Título */}
-            <div className="flex justify-between items-center">
-              <div>
-                <h1 className="text-2xl font-bold">Histórico - Solicitudes de Vacaciones</h1>
-            <p className="text-muted-foreground">Gestiona las solicitudes de vacaciones.</p>
-            </div>
-            <Button onClick={() => router.push('/administracion/solicitudes/vacaciones')}>Ir a vacaciones Pendientes</Button>
-            </div>
+          <div className="max-w-[90%] mx-auto space-y-4">
+            <h1 className="text-2xl font-bold">Solicitudes de Certificación</h1>
+            {error && (
+              <div className="text-red-600 bg-red-100 p-2 rounded">{error}</div>
+            )}
+
             {/* filtros */}
             <Card>
               <CardContent className="p-4">
@@ -216,7 +256,6 @@ export default function AdminSolicitudesVacaciones() {
                       />
                       {searchTerm && (
                         <button
-                          type="button"
                           onClick={() => setSearchTerm("")}
                           className="absolute right-2.5 top-2.5"
                         >
@@ -237,7 +276,7 @@ export default function AdminSolicitudesVacaciones() {
                         <SelectValue placeholder="Todos los estados" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Todos los estados</SelectItem>
+                        <SelectItem value="all">Todos</SelectItem>
                         <SelectItem value="pendiente">Pendiente</SelectItem>
                         <SelectItem value="aprobado">Aprobado</SelectItem>
                         <SelectItem value="rechazado">Rechazado</SelectItem>
@@ -245,21 +284,21 @@ export default function AdminSolicitudesVacaciones() {
                     </Select>
                   </div>
                   <div className="w-full md:w-1/5">
-                    <Label htmlFor="empresa" className="mb-2 block">
-                      Empresa
+                    <Label htmlFor="cargo" className="mb-2 block">
+                      Cargo
                     </Label>
                     <Select
-                      value={selectedEmpresa}
-                      onValueChange={setSelectedEmpresa}
+                      value={selectedCargo}
+                      onValueChange={setSelectedCargo}
                     >
-                      <SelectTrigger id="empresa">
-                        <SelectValue placeholder="Todas las empresas" />
+                      <SelectTrigger id="cargo">
+                        <SelectValue placeholder="Todos los cargos" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Todas las empresas</SelectItem>
-                        {empresas.map((e) => (
-                          <SelectItem key={e} value={e}>
-                            {e}
+                        <SelectItem value="all">Todos</SelectItem>
+                        {cargos.map((c) => (
+                          <SelectItem key={c} value={c}>
+                            {c}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -281,24 +320,22 @@ export default function AdminSolicitudesVacaciones() {
                       <TableHead>Colaborador</TableHead>
                       <TableHead>Cédula</TableHead>
                       <TableHead>Cargo</TableHead>
-                      <TableHead>Inicio</TableHead>
-                      <TableHead>Fin</TableHead>
-                      <TableHead>Días</TableHead>
-                      <TableHead>Solicitud</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead>Empresa</TableHead>
+                      <TableHead>Dirigido a</TableHead>
+                      <TableHead>Ciudad</TableHead>
+                      <TableHead>SyT</TableHead>
+                      <TableHead>Fecha solicitud</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {loading ? (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-4">
+                        <TableCell colSpan={7} className="text-center py-4">
                           Cargando...
                         </TableCell>
                       </TableRow>
                     ) : filteredSolicitudes.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-4">
+                        <TableCell colSpan={7} className="text-center py-4">
                           No hay solicitudes.
                         </TableCell>
                       </TableRow>
@@ -308,56 +345,21 @@ export default function AdminSolicitudesVacaciones() {
                           <TableCell>{sol.usuario?.colaborador}</TableCell>
                           <TableCell>{sol.usuario?.cedula}</TableCell>
                           <TableCell>{sol.usuario?.cargo}</TableCell>
-                          <TableCell>{formatDate(sol.fecha_inicio)}</TableCell>
-                          <TableCell>{formatDate(sol.fecha_fin)}</TableCell>
-                          <TableCell>
-                            {sol.fecha_inicio && sol.fecha_fin
-                              ? `${calcularDiasVacaciones(
-                                  sol.fecha_inicio,
-                                  sol.fecha_fin
-                                )} días`
-                              : ""}
-                          </TableCell>
-                          <TableCell>
-                            {formatDate(sol.fecha_solicitud)}
-                          </TableCell>
+                          <TableCell>{sol.dirigido_a}</TableCell>
+                          <TableCell>{sol.ciudad}</TableCell>
                           <TableCell>
                             <Badge
                               variant={
-                                sol.estado === "aprobado"
+                                sol.salario_contrato === "Si"
                                   ? "secondary"
-                                  : sol.estado === "rechazado"
-                                  ? "destructive"
-                                  : "default"
-                              }
-                              className={ // Add the className prop
-                                sol.estado === "aprobado"
-                                  ? "bg-green-100 text-green-800 hover:bg-green-200"
-                                  : sol.estado === "rechazado"
-                                 ? "bg-red-100 text-red-800 hover:bg-red-200"
-                                  : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
-                                  
+                                  : "destructive"
                               }
                             >
-                              {sol.estado.charAt(0).toUpperCase() +
-                                sol.estado.slice(1)}
+                              {sol.salario_contrato || "No"}
                             </Badge>
-                            {sol.estado === "rechazado" &&
-                              sol.motivo_rechazo && (
-                                <div className="text-xs text-gray-500 mt-1">
-                                  Motivo: {sol.motivo_rechazo}
-                                </div>
-                              )}
-                            {sol.admin && (
-                              <div className="text-xs text-gray-500 mt-1">
-                                Por: {sol.admin.colaborador}
-                              </div>
-                            )}
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline">
-                              {sol.usuario?.empresas?.nombre}
-                            </Badge>
+                            {formatDate(sol.fecha_solicitud)}
                           </TableCell>
                         </TableRow>
                       ))

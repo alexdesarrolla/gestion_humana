@@ -4,12 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
 import { AdminSidebar } from "@/components/ui/admin-sidebar"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
@@ -35,7 +30,7 @@ export default function AdminCertificacionLaboral() {
   const router = useRouter()
   const supabase = createSupabaseClient()
 
-  // 🆔 ID del admin actual
+  // — ID del admin actual
   const [adminId, setAdminId] = useState<string | null>(null)
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -43,20 +38,24 @@ export default function AdminCertificacionLaboral() {
     })
   }, [])
 
-  // Estados principales
+  // — estados principales
   const [loading, setLoading] = useState(false)
   const [solicitudes, setSolicitudes] = useState<any[]>([])
   const [unseenCounts, setUnseenCounts] = useState<Record<string, number>>({})
   const [error, setError] = useState("")
-  const [success, setSuccess] = useState("")
 
-  // Diálogo de comentarios
+  // — para el modal de comentarios
   const [showComments, setShowComments] = useState(false)
-  const [currentSolicitud, setCurrentSolicitud] = useState<{ id: string; usuario: any } | null>(null)
+  const [currentSolicitud, setCurrentSolicitud] = useState<{
+    id: string
+    usuario: any
+  } | null>(null)
 
-  // 1️⃣ Cargar solicitudes pendientes
+  //
+  // 1️⃣ Carga inicial de solicitudes pendientes
+  //
   useEffect(() => {
-    const fetch = async () => {
+    const fetchSolicitudes = async () => {
       setLoading(true)
       try {
         const { data, error } = await supabase
@@ -66,14 +65,12 @@ export default function AdminCertificacionLaboral() {
             usuario:usuario_id(
               colaborador,
               cedula,
-              cargo,
-              fecha_ingreso,
-              empresa_id,
-              empresas(nombre, razon_social, nit)
+              cargo
             )
           `)
           .eq("estado", "pendiente")
-          .order("fecha_solicitud", { ascending: true })
+          .order("fecha_solicitud", { ascending: false })
+
         if (error) throw error
         setSolicitudes(data || [])
       } catch (e: any) {
@@ -83,36 +80,48 @@ export default function AdminCertificacionLaboral() {
         setLoading(false)
       }
     }
-    fetch()
+    fetchSolicitudes()
   }, [])
 
-  // 2️⃣ Contar comentarios no vistos (solo de usuario, no del admin)
-  const fetchUnseen = async (solId: string) => {
+  //
+  // 2️⃣ Contar comentarios no vistos por solicitud
+  //
+  const fetchUnseen = async (solicitudId: string) => {
     if (!adminId) return
     const { count, error } = await supabase
       .from("comentarios_certificacion")
       .select("*", { head: true, count: "exact" })
-      .eq("solicitud_id", solId)
+      .eq("solicitud_id", solicitudId)
       .eq("visto_admin", false)
-      .neq("usuario_id", adminId)    // <-- filtrar propios
+      .neq("usuario_id", adminId)
+
     if (!error) {
-      setUnseenCounts((prev) => ({ ...prev, [solId]: count || 0 }))
+      setUnseenCounts((prev) => ({
+        ...prev,
+        [solicitudId]: count || 0,
+      }))
     }
   }
   useEffect(() => {
     solicitudes.forEach((s) => fetchUnseen(s.id))
   }, [solicitudes, adminId])
 
-  // 3️⃣ Realtime: solo sumar si viene de un usuario diferente
+  //
+  // 3️⃣ Realtime: si llega un INSERT desde otro usuario, incrementar badge
+  //
   useEffect(() => {
     if (!adminId) return
-    const ch = supabase
-      .channel("nuevos_comentarios_admin")
+    const channel = supabase
+      .channel("realtime_nuevos_comentarios")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "comentarios_certificacion" },
-        (p) => {
-          const n = p.new as any
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "comentarios_certificacion",
+        },
+        (payload) => {
+          const n = payload.new as any
           if (n.usuario_id !== adminId) {
             setUnseenCounts((prev) => ({
               ...prev,
@@ -122,33 +131,50 @@ export default function AdminCertificacionLaboral() {
         }
       )
       .subscribe()
-    return () => void supabase.removeChannel(ch)
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [adminId])
 
-  // 4️⃣ Marcar como leídos (visto_admin = true) y limpiar badge
-  const markRead = async (solId: string) => {
+  //
+  // 4️⃣ Marca como leídos (visto_admin = true) y limpia badge local
+  //
+  const markComentariosRead = async (solId: string) => {
     await supabase
       .from("comentarios_certificacion")
       .update({ visto_admin: true })
       .eq("solicitud_id", solId)
       .eq("visto_admin", false)
       .neq("usuario_id", adminId)
-    setUnseenCounts((prev) => ({ ...prev, [solId]: 0 }))
+
+    setUnseenCounts((prev) => ({
+      ...prev,
+      [solId]: 0,
+    }))
   }
 
-  // 5️⃣ Abrir diálogo
-  const openComments = (solId: string, usuario: any) => {
+  //
+  // 5️⃣ Abre el modal de comentarios: primero marca como leídos, luego abre
+  //
+  const openComments = async (solId: string, usuario: any) => {
+    await markComentariosRead(solId)
     setCurrentSolicitud({ id: solId, usuario })
     setShowComments(true)
   }
 
+  // — formatea fecha
   const formatDate = (d: Date) =>
-    d.toLocaleDateString("es-CO", { year: "numeric", month: "long", day: "numeric" })
+    d.toLocaleDateString("es-CO", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
 
   if (loading && solicitudes.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <span>Cargando…</span>
+        <span className="text-gray-700 text-xl">Cargando…</span>
       </div>
     )
   }
@@ -156,18 +182,31 @@ export default function AdminCertificacionLaboral() {
   return (
     <div className="min-h-screen bg-slate-50">
       <AdminSidebar userName="Administrador" />
-      <div className="md:pl-64 flex flex-col max-w-[90%] mx-auto py-6">
-        <main className="space-y-6">
+      <div className="md:pl-64 flex flex-1">
+        <main className="flex-1 py-6 max-w-[90%] mx-auto space-y-6">
+          {/* Header */}
           <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">Solicitudes pendientes</h1>
-              <p className="text-muted-foreground">
-                Gestiona todas las certificaciones laborales y su historial.
-              </p>
-            </div>
-            <Button onClick={() => router.push('/administracion/solicitudes/certificacion-laboral/historico')}>Ver histórico</Button>
+            <h1 className="text-2xl font-bold">Solicitudes pendientes</h1>
+            <Button
+              onClick={() =>
+                router.push(
+                  "/administracion/solicitudes/certificacion-laboral/historico"
+                )
+              }
+            >
+              Ver histórico
+            </Button>
           </div>
-          {error && <div className="text-red-600">{error}</div>}
+
+          {/* Error */}
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {/* Tabla */}
           <Card>
             <CardContent className="p-0">
               <Table>
@@ -176,38 +215,37 @@ export default function AdminCertificacionLaboral() {
                     <TableHead>Colaborador</TableHead>
                     <TableHead>Cédula</TableHead>
                     <TableHead>Cargo</TableHead>
-                    <TableHead>Dirigido</TableHead>
-                    <TableHead>Ciudad</TableHead>
-                    <TableHead>SyT</TableHead>
                     <TableHead>Fecha</TableHead>
                     <TableHead>Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {solicitudes.map((s) => (
-                    <TableRow key={s.id}>
-                      <TableCell>{s.usuario.colaborador}</TableCell>
-                      <TableCell>{s.usuario.cedula}</TableCell>
-                      <TableCell>{s.usuario.cargo}</TableCell>
-                      <TableCell>{s.dirigido_a}</TableCell>
-                      <TableCell>{s.ciudad}</TableCell>
-                      <TableCell>
-                        <Badge variant={s.salario_contrato === "Si" ? "secondary" : "destructive"}>
-                          {s.salario_contrato}
-                        </Badge>
+                  {solicitudes.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center">
+                        No hay solicitudes pendientes.
                       </TableCell>
-                      <TableCell>{formatDate(new Date(s.fecha_solicitud))}</TableCell>
+                    </TableRow>
+                  )}
+                  {solicitudes.map((sol) => (
+                    <TableRow key={sol.id}>
+                      <TableCell>{sol.usuario.colaborador}</TableCell>
+                      <TableCell>{sol.usuario.cedula}</TableCell>
+                      <TableCell>{sol.usuario.cargo}</TableCell>
+                      <TableCell>
+                        {formatDate(new Date(sol.fecha_solicitud))}
+                      </TableCell>
                       <TableCell>
                         <div className="relative inline-block">
-                          {unseenCounts[s.id] > 0 && (
+                          {unseenCounts[sol.id] > 0 && (
                             <span className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full text-xs w-5 h-5 flex items-center justify-center">
-                              {unseenCounts[s.id]}
+                              {unseenCounts[sol.id]}
                             </span>
                           )}
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => openComments(s.id, s.usuario)}
+                            onClick={() => openComments(sol.id, sol.usuario)}
                           >
                             <MessageSquare className="h-4 w-4" />
                           </Button>
@@ -220,21 +258,27 @@ export default function AdminCertificacionLaboral() {
             </CardContent>
           </Card>
 
+          {/* Modal de comentarios */}
           {currentSolicitud && (
             <Dialog
               open={showComments}
               onOpenChange={(open) => {
-                if (open) markRead(currentSolicitud.id)
-                else setCurrentSolicitud(null)
-                setShowComments(open)
+                if (!open) {
+                  setShowComments(false)
+                  setCurrentSolicitud(null)
+                }
               }}
             >
-              <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
+              <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
                 <DialogHeader>
                   <DialogTitle>Comentarios de {currentSolicitud.usuario.colaborador}</DialogTitle>
-                  <DialogDescription>Solicitud #{currentSolicitud.id}</DialogDescription>
+                  <DialogDescription>
+                    Solicitud de {currentSolicitud.usuario.colaborador}
+                  </DialogDescription>
                 </DialogHeader>
-                <ComentariosCertificacion solicitudId={currentSolicitud.id} />
+                <div className="mt-4">
+                  <ComentariosCertificacion solicitudId={currentSolicitud.id} />
+                </div>
               </DialogContent>
             </Dialog>
           )}

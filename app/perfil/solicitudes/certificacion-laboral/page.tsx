@@ -44,7 +44,7 @@ export default function CertificacionLaboral() {
   const router = useRouter()
   const supabase = createSupabaseClient()
 
-  // ID del usuario
+  // — ID del usuario actual
   const [userId, setUserId] = useState<string | null>(null)
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -52,20 +52,20 @@ export default function CertificacionLaboral() {
     })
   }, [])
 
-  // Estados de certificado
+  // — estados para solicitudes
   const [loading, setLoading] = useState(false)
   const [solicitudes, setSolicitudes] = useState<any[]>([])
-  const [showModal, setShowModal] = useState(false)
+  const [showNewModal, setShowNewModal] = useState(false)
   const [formData, setFormData] = useState({ dirigidoA: "", incluirSalario: false })
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
 
-  // Contador y modal comentarios
+  // — estados para comentarios
   const [unseenCounts, setUnseenCounts] = useState<Record<string, number>>({})
   const [showCommentsModal, setShowCommentsModal] = useState(false)
-  const [currentId, setCurrentId] = useState<string | null>(null)
+  const [currentSolicId, setCurrentSolicId] = useState<string | null>(null)
 
-  // 1️⃣ Cargar solicitudes propias
+  // 1️⃣ Carga inicial de tus solicitudes
   useEffect(() => {
     const load = async () => {
       setLoading(true)
@@ -82,7 +82,7 @@ export default function CertificacionLaboral() {
     load()
   }, [])
 
-  // 2️⃣ Contar nuevos comentarios de admin
+  // 2️⃣ Cuenta comentarios no vistos (solo de admin)
   const fetchUnseen = async (solId: string) => {
     if (!userId) return
     const { count, error } = await supabase
@@ -91,59 +91,63 @@ export default function CertificacionLaboral() {
       .eq("solicitud_id", solId)
       .eq("visto_usuario", false)
       .neq("usuario_id", userId)
-    if (!error) setUnseenCounts((p) => ({ ...p, [solId]: count || 0 }))
+    if (!error) {
+      setUnseenCounts(prev => ({ ...prev, [solId]: count || 0 }))
+    }
   }
   useEffect(() => {
-    solicitudes.forEach((s) => fetchUnseen(s.id))
+    solicitudes.forEach(s => fetchUnseen(s.id))
   }, [solicitudes, userId])
 
-  // 3️⃣ Realtime: sumar solo de admin
+  // 3️⃣ Realtime: sumar badge solo si lo envía el admin
   useEffect(() => {
     if (!userId) return
-    const ch = supabase
+    const channel = supabase
       .channel("user_comentarios_nuevos")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "comentarios_certificacion" },
-        (p) => {
-          const n = p.new as any
+        ({ new: n }: any) => {
           if (n.usuario_id !== userId) {
-            setUnseenCounts((p) => ({
-              ...p,
-              [n.solicitud_id]: (p[n.solicitud_id] || 0) + 1,
+            setUnseenCounts(prev => ({
+              ...prev,
+              [n.solicitud_id]: (prev[n.solicitud_id] || 0) + 1,
             }))
           }
         }
       )
       .subscribe()
-    return () => void supabase.removeChannel(ch)
+    return () => void supabase.removeChannel(channel)
   }, [userId])
 
-  // 4️⃣ Marcar como leídos
-  const markRead = async (solId: string) => {
+  // 4️⃣ Marca comentarios como leídos y limpia badge **antes** de abrir el modal
+  const markReadAndOpen = async (solId: string) => {
     if (!userId) return
+
+    // actualizar BD
     await supabase
       .from("comentarios_certificacion")
       .update({ visto_usuario: true })
       .eq("solicitud_id", solId)
       .eq("visto_usuario", false)
       .neq("usuario_id", userId)
-    setUnseenCounts((p) => ({ ...p, [solId]: 0 }))
-  }
 
-  // 5️⃣ Abrir modal comentarios
-  const openComments = (solId: string) => {
-    setCurrentId(solId)
+    // limpiar badge local
+    setUnseenCounts(prev => ({ ...prev, [solId]: 0 }))
+
+    // abrir modal
+    setCurrentSolicId(solId)
     setShowCommentsModal(true)
   }
 
+  // formatea fecha
   const formatDate = (d: Date) =>
     d.toLocaleDateString("es-CO", { year: "numeric", month: "long", day: "numeric" })
 
-  // 6️⃣ Enviar nueva solicitud
+  // enviar nueva solicitud
   const enviarSolicitud = async () => {
     if (!formData.dirigidoA) {
-      setError("Complete los campos requeridos")
+      setError("Por favor completa el campo ‘Dirigido a’")
       return
     }
     setLoading(true)
@@ -160,23 +164,25 @@ export default function CertificacionLaboral() {
           salario_contrato: formData.incluirSalario ? "Si" : "No",
         }])
       if (insErr) throw insErr
-      // recarga
+
+      // recarga lista
       const { data: solData } = await supabase
         .from("solicitudes_certificacion")
         .select("*")
         .eq("usuario_id", session.user.id)
         .order("fecha_solicitud", { ascending: false })
       setSolicitudes(solData || [])
-      setSuccess("Solicitud enviada. Espera aprobación.")
+      setSuccess("Solicitud enviada correctamente.")
+      setFormData({ dirigidoA: "", incluirSalario: false })
     } catch (e) {
       console.error(e)
-      setError("Error al enviar")
+      setError("Error al enviar solicitud.")
     } finally {
       setLoading(false)
     }
   }
 
-  // 7️⃣ Descargar certificado
+  // descargar PDF
   const descargar = async (url: string) => {
     try {
       const r = await fetch(url)
@@ -184,53 +190,74 @@ export default function CertificacionLaboral() {
       const u = URL.createObjectURL(b)
       const a = document.createElement("a")
       a.href = u
-      a.download = "certificado.pdf"
+      a.download = "certificado-laboral.pdf"
+      document.body.appendChild(a)
       a.click()
+      document.body.removeChild(a)
       URL.revokeObjectURL(u)
     } catch {
-      setError("Error al descargar")
+      setError("Error al descargar el certificado.")
     }
   }
 
   return (
     <>
-      <Dialog open={showCommentsModal} onOpenChange={(o) => {
-        if (o && currentId) markRead(currentId)
-        else setCurrentId(null)
-        setShowCommentsModal(o)
-      }}>
+      {/* --------------------------- */}
+      {/* Modal de comentarios */}
+      <Dialog
+        open={showCommentsModal}
+        onOpenChange={open => {
+          if (!open) setShowCommentsModal(false)
+        }}
+      >
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
           <DialogHeader>
-            <DialogTitle>Comentarios</DialogTitle>
-            <DialogDescription>Solicitud #{currentId}</DialogDescription>
+            <DialogTitle>Comentarios de solicitud #{currentSolicId}</DialogTitle>
+            <DialogDescription>
+              Aquí puedes leer y responder los comentarios del admin.
+            </DialogDescription>
           </DialogHeader>
-          {currentId && <ComentariosCertificacion solicitudId={currentId} />}
+          {currentSolicId && (
+            <ComentariosCertificacion solicitudId={currentSolicId} />
+          )}
         </DialogContent>
       </Dialog>
+
+      {/* --------------------------- */}
+      {/* Página principal */}
       <div className="min-h-screen bg-slate-50">
-      <Sidebar userName="Usuario" />
-      <div className="md:pl-64 flex flex-col flex-1">
-        <main className="flex-1">
-          <div className="py-6">
-            <div className="max-w-[90%] mx-auto px-4 sm:px-6 md:px-8">
-              <div className="flex justify-between items-center pb-8">
-                <h1 className="text-2xl font-bold tracking-tight">Solicitudes de Permisos</h1>
-                <Button onClick={() => setShowModal(true)} className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" /> Solicitar Permiso
+        <Sidebar userName="Usuario" />
+        <div className="md:pl-64 flex flex-col flex-1">
+          <main className="flex-1 py-6">
+            <div className="max-w-[90%] mx-auto space-y-6">
+              {/* Header */}
+              <div className="flex justify-between items-center">
+                <h1 className="text-2xl font-bold">
+                  Solicitudes de Certificación Laboral
+                </h1>
+                <Button
+                  onClick={() => setShowNewModal(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" /> Nueva solicitud
                 </Button>
               </div>
 
+              {/* Alerts */}
               {error && (
                 <Alert variant="destructive">
-                  <AlertCircle /> <AlertDescription>{error}</AlertDescription>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
               {success && (
                 <Alert className="bg-green-50 text-green-800 border-green-200">
-                  <CheckCircle2 /> <AlertDescription>{success}</AlertDescription>
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <AlertDescription>{success}</AlertDescription>
                 </Alert>
               )}
 
+              {/* Tabla de solicitudes */}
               <Card>
                 <CardContent className="p-0">
                   <Table>
@@ -239,41 +266,70 @@ export default function CertificacionLaboral() {
                         <TableHead>Fecha</TableHead>
                         <TableHead>Dirigido a</TableHead>
                         <TableHead>Ciudad</TableHead>
-                        <TableHead>Salario</TableHead>
+                        <TableHead>Incluye Salario</TableHead>
                         <TableHead>Estado</TableHead>
                         <TableHead>Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
+                      {solicitudes.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center">
+                            No hay solicitudes registradas.
+                          </TableCell>
+                        </TableRow>
+                      )}
                       {solicitudes.map((s) => (
                         <TableRow key={s.id}>
-                          <TableCell>{formatDate(new Date(s.fecha_solicitud))}</TableCell>
+                          <TableCell>
+                            {formatDate(new Date(s.fecha_solicitud))}
+                          </TableCell>
                           <TableCell>{s.dirigido_a}</TableCell>
                           <TableCell>{s.ciudad}</TableCell>
                           <TableCell>
-                            <Badge variant={s.salario_contrato === "Si" ? "secondary" : "destructive"}>
-                              {s.salario_contrato}
+                            <Badge
+                              variant={
+                                s.salario_contrato === "Si"
+                                  ? "secondary"
+                                  : "destructive"
+                              }
+                            >
+                              {s.salario_contrato || "No"}
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Badge variant={
-                              s.estado === "aprobado" ? "secondary" :
-                                s.estado === "rechazado" ? "destructive" :
-                                  "default"
-                            }>
-                              {s.estado}
+                            <Badge
+                              variant={
+                                s.estado === "aprobado"
+                                  ? "secondary"
+                                  : s.estado === "rechazado"
+                                  ? "destructive"
+                                  : "default"
+                              }
+                            >
+                              {s.estado.charAt(0).toUpperCase() +
+                                s.estado.slice(1)}
                             </Badge>
                           </TableCell>
-                          <TableCell className="flex gap-2 items-center">
+                          <TableCell className="flex items-center gap-2">
                             {s.estado === "aprobado" && s.pdf_url && (
-                              <Button size="sm" variant="outline" onClick={() => descargar(s.pdf_url)}>
-                                <Download /> Descargar
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => descargar(s.pdf_url)}
+                              >
+                                <Download className="h-4 w-4 mr-1" />
+                                Descargar
                               </Button>
                             )}
                             {s.estado === "rechazado" && s.motivo_rechazo && (
-                              <Button size="sm" variant="outline" onClick={() => {
-                                alert(`Motivo: ${s.motivo_rechazo}`)
-                              }}>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  alert(`Motivo: ${s.motivo_rechazo}`)
+                                }
+                              >
                                 Ver motivo
                               </Button>
                             )}
@@ -283,8 +339,12 @@ export default function CertificacionLaboral() {
                                   {unseenCounts[s.id]}
                                 </span>
                               )}
-                              <Button size="sm" variant="outline" onClick={() => openComments(s.id)}>
-                                <MessageSquare />
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => markReadAndOpen(s.id)}
+                              >
+                                <MessageSquare className="h-4 w-4" />
                               </Button>
                             </div>
                           </TableCell>
@@ -295,53 +355,79 @@ export default function CertificacionLaboral() {
                 </CardContent>
               </Card>
 
-              <Dialog open={showModal} onOpenChange={setShowModal}>
+              {/* Modal de nueva solicitud */}
+              <Dialog
+                open={showNewModal}
+                onOpenChange={(o) => {
+                  if (!o) setShowNewModal(false)
+                }}
+              >
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Nueva Solicitud</DialogTitle>
-                    <DialogDescription>Complete los datos</DialogDescription>
+                    <DialogDescription>
+                      Completa los datos para generar tu certificado.
+                    </DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4">
+                  <div className="space-y-4 mt-4">
                     <div>
                       <Label htmlFor="dirigidoA">Dirigido a</Label>
                       <Input
                         id="dirigidoA"
                         value={formData.dirigidoA}
-                        onChange={(e) => setFormData({ ...formData, dirigidoA: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            dirigidoA: e.target.value,
+                          })
+                        }
                       />
                     </div>
                     <div>
-                      <Label>Incluir salario y tipo de contrato?</Label>
-                      <div className="flex gap-4">
+                      <Label>Incluir salario y tipo de contrato</Label>
+                      <div className="flex gap-4 mt-1">
                         <label className="flex items-center gap-2">
                           <input
                             type="radio"
-                            checked={formData.incluirSalario}
-                            onChange={() => setFormData({ ...formData, incluirSalario: true })}
+                            checked={formData.incluirSalario === true}
+                            onChange={() =>
+                              setFormData({
+                                ...formData,
+                                incluirSalario: true,
+                              })
+                            }
                           />
                           Sí
                         </label>
                         <label className="flex items-center gap-2">
                           <input
                             type="radio"
-                            checked={!formData.incluirSalario}
-                            onChange={() => setFormData({ ...formData, incluirSalario: false })}
+                            checked={formData.incluirSalario === false}
+                            onChange={() =>
+                              setFormData({
+                                ...formData,
+                                incluirSalario: false,
+                              })
+                            }
                           />
                           No
                         </label>
                       </div>
                     </div>
-                    <Button onClick={enviarSolicitud} disabled={loading}>
-                      {loading ? "⏳ Generando..." : <><FileText /> Generar</>}
+                    <Button
+                      onClick={enviarSolicitud}
+                      disabled={loading}
+                      className="w-full"
+                    >
+                      {loading ? "⏳ Generando..." : <FileText className="mr-2" />}
+                      Generar certificado
                     </Button>
                   </div>
                 </DialogContent>
               </Dialog>
-
             </div>
-          </div>
-        </main>
-      </div>
+          </main>
+        </div>
       </div>
     </>
   )

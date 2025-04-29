@@ -86,6 +86,7 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
   // — función para traer comentarios y armar árbol
   const fetchComentarios = async () => {
     setLoading(true)
+    // 1) Traigo de Supabase ya ordenados DESC
     const { data, error } = await supabase
       .from("comentarios_certificacion")
       .select(`
@@ -98,55 +99,57 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
       `)
       .eq("solicitud_id", solicitudId)
       .order("fecha", { ascending: false })
-
+  
     if (error) {
       console.error(error)
       setErrorFetch(error.message)
       setComentarios([])
-    } else {
-      setErrorFetch(null)
-      const map: Record<number, Comentario> = {}
-      const roots: Comentario[] = []
-
-      data!.forEach((c: any) => {
-        const nombre = c.usuario_nomina?.colaborador ?? "Usuario"
-        const path = c.usuario_nomina?.avatar_path
-        const gender = c.usuario_nomina?.genero
-        let avatarUrl: string
-
-        if (path) {
-          avatarUrl = supabase.storage.from("avatar").getPublicUrl(path).data.publicUrl
-        } else if (gender === "F") {
-          avatarUrl = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-f.webp").data.publicUrl
-        } else {
-          avatarUrl = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-m.webp").data.publicUrl
-        }
-
-        map[c.id] = {
-          id: c.id,
-          usuario_id: c.usuario_id,
-          nombre_usuario: nombre,
-          avatarUrl,
-          comentario: c.comentario,
-          fecha: c.fecha,
-          respuesta_a: c.respuesta_a,
-          respuestas: [],
-        }
-      })
-
-      Object.values(map).forEach((c) => {
-        if (c.respuesta_a && map[c.respuesta_a]) {
-          map[c.respuesta_a].respuestas!.push(c)
-        } else {
-          roots.push(c)
-        }
-      })
-
-      setComentarios(roots)
+      setLoading(false)
+      return
     }
-
+  
+    // 2) Armo un map de nodos preservando EL ORDEN de data (que ya es del más nuevo al más viejo)
+    const nodoMap = new Map<number, Comentario>()
+    data.forEach((c: any) => {
+      const nombre = c.usuario_nomina?.colaborador ?? "Usuario"
+      const path = c.usuario_nomina?.avatar_path
+      const gender = c.usuario_nomina?.genero
+      let avatarUrl: string
+      if (path) {
+        avatarUrl = supabase.storage.from("avatar").getPublicUrl(path).data.publicUrl
+      } else if (gender === "F") {
+        avatarUrl = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-f.webp").data.publicUrl
+      } else {
+        avatarUrl = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-m.webp").data.publicUrl
+      }
+  
+      nodoMap.set(c.id, {
+        id: c.id,
+        usuario_id: c.usuario_id,
+        nombre_usuario: nombre,
+        avatarUrl,
+        comentario: c.comentario,
+        fecha: c.fecha,
+        respuesta_a: c.respuesta_a,
+        respuestas: [],
+      })
+    })
+  
+    // 3) Segundo pase: enlazo hijos con padres
+    const roots: Comentario[] = []
+    data.forEach((c: any) => {
+      const nodo = nodoMap.get(c.id)!
+      if (c.respuesta_a && nodoMap.has(c.respuesta_a)) {
+        nodoMap.get(c.respuesta_a)!.respuestas!.push(nodo)
+      } else {
+        roots.push(nodo)
+      }
+    })
+  
+    // Ahora `roots` conserva el orden DESC de la query original
+    setComentarios(roots)
     setLoading(false)
-  }
+  }  
 
   // — cargar al montar y en cambios de ID
   useEffect(() => {

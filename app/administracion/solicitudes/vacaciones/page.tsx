@@ -457,7 +457,7 @@ export default function AdminSolicitudesVacaciones() {
       <div className="md:pl-64 flex flex-col flex-1">
         <main className="flex-1">
           <div className="py-6">
-            <div className="max-w-[90%] mx-auto px-4 sm:px-6 md:px-8">
+            <div className="max-w-[90%] mx-auto">
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <div>

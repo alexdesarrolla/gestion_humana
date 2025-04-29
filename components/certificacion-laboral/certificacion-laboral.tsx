@@ -34,11 +34,9 @@ interface UserState {
   avatarUrl: string
 }
 
-// instanciamos Supabase una sola vez
 const supabase = createSupabaseClient()
 
 export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string }) {
-  // validamos que venga el ID
   if (!solicitudId) {
     return (
       <div className="p-6 text-center text-red-600">
@@ -57,7 +55,7 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [expandedComments, setExpandedComments] = useState<Record<number, boolean>>({})
 
-  // 1. cargo el user
+  // — cargar usuario actual
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user: authUser } }) => {
       if (!authUser) return
@@ -85,14 +83,9 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
     })
   }, [])
 
-  // 2. cargo comentarios cuando cambie solicitudId
-  useEffect(() => {
-    fetchComentarios()
-  }, [solicitudId])
-
-  async function fetchComentarios() {
+  // — función para traer comentarios y armar árbol
+  const fetchComentarios = async () => {
     setLoading(true)
-    console.log("🔍 fetchComentarios para solicitudId =", solicitudId)
     const { data, error } = await supabase
       .from("comentarios_certificacion")
       .select(`
@@ -107,12 +100,11 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
       .order("fecha", { ascending: false })
 
     if (error) {
-      console.error("❌ error fetch comentarios:", error)
+      console.error(error)
       setErrorFetch(error.message)
       setComentarios([])
     } else {
       setErrorFetch(null)
-      // armo el árbol de respuestas
       const map: Record<number, Comentario> = {}
       const roots: Comentario[] = []
 
@@ -156,7 +148,34 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
     setLoading(false)
   }
 
-  // 3. publicar comentario raíz
+  // — cargar al montar y en cambios de ID
+  useEffect(() => {
+    fetchComentarios()
+  }, [solicitudId])
+
+  // — realtime para refrescar al llegar uno nuevo
+  useEffect(() => {
+    const channel = supabase
+      .channel("realtime_comentarios_certificacion")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "comentarios_certificacion",
+          filter: `solicitud_id=eq.${solicitudId}`,
+        },
+        () => {
+          fetchComentarios()
+        }
+      )
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [solicitudId])
+
+  // — publicar comentario raíz
   const handleComentar = async () => {
     if (!user || !nuevoComentario.trim()) return
     setLoading(true)
@@ -168,11 +187,10 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
     })
     setNuevoComentario("")
     setShowConfirmModal(false)
-    await fetchComentarios()
     setLoading(false)
   }
 
-  // 4. publicar respuesta
+  // — publicar respuesta SOLO a root
   const handleResponder = async (parentId: number) => {
     if (!user || !respuestaTexto.trim()) return
     setLoading(true)
@@ -184,12 +202,10 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
     })
     setRespuestaTexto("")
     setRespondiendoA(null)
-    setExpandedComments((e) => ({ ...e, [parentId]: true }))
-    await fetchComentarios()
     setLoading(false)
   }
 
-  // helper para fechas “Hace x”
+  // — helper “Hace x”
   const formatDate = (iso: string) => {
     const then = new Date(iso)
     const now = new Date()
@@ -204,7 +220,7 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
     return then.toLocaleDateString("es-ES", { year: "numeric", month: "short", day: "numeric" })
   }
 
-  // renderizado recursivo de respuestas
+  // — render de respuestas **sin** botón “Responder”
   const renderRespuestas = (resps: Comentario[]) => (
     <div className="ml-4 pl-4 border-l-2 border-slate-200 space-y-3 mt-3">
       {resps.map((r) => (
@@ -218,45 +234,10 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
                   <span className="text-xs text-muted-foreground">{formatDate(r.fecha)}</span>
                 </div>
                 <p className="text-sm whitespace-pre-line break-words">{r.comentario}</p>
-                <div className="mt-2">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-                    onClick={() => {
-                      setRespondiendoA(r.id)
-                      setRespuestaTexto("")
-                    }}
-                  >
-                    <Reply className="h-3 w-3 mr-1" />
-                    Responder
-                  </Button>
-                </div>
-                {respondiendoA === r.id && (
-                  <div className="mt-3 bg-slate-50 p-3 rounded-md">
-                    <Badge variant="outline" className="text-xs mb-2">
-                      Respondiendo a {r.nombre_usuario}
-                    </Badge>
-                    <Textarea
-                      rows={2}
-                      className="resize-none text-sm"
-                      value={respuestaTexto}
-                      onChange={(e) => setRespuestaTexto(e.target.value)}
-                    />
-                    <div className="flex justify-end gap-2 mt-2">
-                      <Button size="sm" variant="outline" onClick={() => setRespondiendoA(null)}>
-                        Cancelar
-                      </Button>
-                      <Button size="sm" onClick={() => handleResponder(r.id)} disabled={loading}>
-                        <Send className="h-3.5 w-3.5 mr-1.5" />
-                        Enviar
-                      </Button>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </CardContent>
+          {/* render de las segundas respuestas, recursivo */}
           {r.respuestas && r.respuestas.length > 0 && renderRespuestas(r.respuestas)}
         </Card>
       ))}
@@ -274,6 +255,7 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
       <CardContent className="p-6">
         {user ? (
           <>
+            {/* área para crear nuevo comentario */}
             <div className="flex gap-3 mb-6">
               <img src={user.avatarUrl} alt={user.nombre} className="h-8 w-8 rounded-full object-cover mt-1" />
               <Textarea
@@ -309,7 +291,6 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-
             <Separator className="my-6" />
           </>
         ) : (
@@ -357,6 +338,7 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
                         </div>
                         <p className="text-sm whitespace-pre-line break-words">{c.comentario}</p>
                         <div className="mt-2 flex gap-2">
+                          {/* Solo en PRINCIPALES permitimos responder */}
                           <Button
                             size="sm"
                             variant="ghost"
@@ -381,14 +363,11 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
                               <MessageSquare className="h-3 w-3" />
                               {c.respuestas.length}{" "}
                               {c.respuestas.length === 1 ? "respuesta" : "respuestas"}
-                              {expandedComments[c.id] ? (
-                                <ChevronUp className="h-3 w-3" />
-                              ) : (
-                                <ChevronDown className="h-3 w-3" />
-                              )}
+                              {expandedComments[c.id] ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                             </Button>
                           )}
                         </div>
+                        {/* textarea de respuesta a un root */}
                         {respondiendoA === c.id && (
                           <div className="mt-3 bg-slate-50 p-3 rounded-md">
                             <Badge variant="outline" className="text-xs mb-2">
@@ -401,18 +380,10 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
                               onChange={(e) => setRespuestaTexto(e.target.value)}
                             />
                             <div className="flex justify-end gap-2 mt-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setRespondiendoA(null)}
-                              >
+                              <Button size="sm" variant="outline" onClick={() => setRespondiendoA(null)}>
                                 Cancelar
                               </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => handleResponder(c.id)}
-                                disabled={loading}
-                              >
+                              <Button size="sm" onClick={() => handleResponder(c.id)} disabled={loading}>
                                 <Send className="h-3.5 w-3.5 mr-1.5" />
                                 Enviar
                               </Button>
@@ -422,10 +393,8 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
                       </div>
                     </div>
                   </CardContent>
-                  {expandedComments[c.id] &&
-                    c.respuestas &&
-                    c.respuestas.length > 0 &&
-                    renderRespuestas(c.respuestas)}
+                  {/* respuestas anidadas, sin botón de reply */}
+                  {expandedComments[c.id] && c.respuestas && c.respuestas.length > 0 && renderRespuestas(c.respuestas)}
                 </Card>
               ))}
             </div>

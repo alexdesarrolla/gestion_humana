@@ -246,8 +246,8 @@ export default function SolicitudPermisos() {
           <main className="flex-1">
             <div className="py-6">
               <div className="max-w-[90%] mx-auto px-4 sm:px-6 md:px-8">
-                <div className="flex justify-between items-center">
-                  <h1 className="text-2xl font-semibold text-gray-900">Solicitudes de Permisos</h1>
+                <div className="flex justify-between items-center ">
+                  <h1 className="text-2xl font-bold tracking-tight">Solicitudes de Permisos</h1>
                   <Button onClick={() => setShowModal(true)} className="flex items-center gap-2">
                     <Plus className="h-4 w-4" /> Solicitar Permiso
                   </Button>

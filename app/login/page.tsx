@@ -128,7 +128,7 @@ export default function Login() {
           
         </div>
 
-        <Card className="border-none shadow-lg">
+        <Card className="border-none shadow-lg glassmorphism-card">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl text-center">Iniciar Sesión</CardTitle>
             <CardDescription className="text-center">Ingresa tu correo o cédula y contraseña para acceder al sistema</CardDescription>
@@ -143,7 +143,7 @@ export default function Login() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Cédula o Correo electrónico</Label>
-                <div className="relative">
+                <div className="relative bg-white">
                   <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                     <UserCircle2 className="h-5 w-5 text-slate-400" />
                   </div>
@@ -171,7 +171,7 @@ export default function Login() {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    className="pl-10 pr-10"
+                    className="pl-10 pr-10 bg-white"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     required

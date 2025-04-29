@@ -11,12 +11,13 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { AlertCircle, CheckCircle2, FileText, Plus } from "lucide-react"
+import { AlertCircle, CheckCircle2, FileText, Plus, MessageSquare } from "lucide-react"
 import { jsPDF } from "jspdf"
 import html2canvas from "html2canvas"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
+import { ComentariosCertificacion } from "@/components/certificacion-laboral/certificacion-laboral"
 
 export default function AdminCertificacionLaboral() {
   const router = useRouter()
@@ -479,6 +480,13 @@ export default function AdminCertificacionLaboral() {
 
                 <Card>
                   <CardContent className="p-0">
+                    <div className="flex justify-between items-center p-4">
+                      <h2 className="text-xl font-semibold">Solicitudes pendientes</h2>
+                      <Button onClick={() => setShowModal(true)} className="bg-green-600 hover:bg-green-700">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Nueva solicitud
+                      </Button>
+                    </div>
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -532,17 +540,22 @@ export default function AdminCertificacionLaboral() {
                                     size="sm"
                                     onClick={() => {
                                       setSolicitudSeleccionada({id: solicitud.id, usuario: solicitud.usuario})
-                                      // Verificar si el certificado requiere información salarial
                                       if (solicitud.salario_contrato === "Si") {
-                                        // Si requiere salario, mostrar el modal de salario
                                         setShowSalarioModal(true)
                                       } else {
-                                        // Si no requiere salario, generar directamente el PDF
                                         aprobarSolicitud(solicitud.id, solicitud.usuario)
                                       }
                                     }}
                                   >
                                     Aprobar
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-blue-600"
+                                    onClick={() => setSolicitudSeleccionada({id: solicitud.id, usuario: solicitud.usuario})}
+                                  >
+                                    <MessageSquare className="h-4 w-4" />
                                   </Button>
                                 </div>
                               </TableCell>
@@ -768,6 +781,22 @@ export default function AdminCertificacionLaboral() {
                     </div>
                   </DialogContent>
                 </Dialog>
+
+                {solicitudSeleccionada && (
+                  <Dialog open={!!solicitudSeleccionada} onOpenChange={() => setSolicitudSeleccionada(null)}>
+                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Comentarios de la solicitud</DialogTitle>
+                        <DialogDescription>
+                          Solicitud de {solicitudSeleccionada.usuario.colaborador}
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="mt-4">
+                        <ComentariosCertificacion solicitudId={solicitudSeleccionada.id} />
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                )}
               </div>
             </div>
           </div>

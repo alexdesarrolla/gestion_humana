@@ -48,7 +48,7 @@ export default function ResetPassword() {
           </div>
         </div>
 
-        <Card className="border-none shadow-lg">
+        <Card className="border-none shadow-lg glassmorphism-card">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl text-center">Restablecer Contraseña</CardTitle>
             <CardDescription className="text-center">
@@ -74,6 +74,7 @@ export default function ResetPassword() {
                 <Input
                   id="email"
                   type="email"
+                  className="bg-white"
                   placeholder="Ingresa tu correo electrónico"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}

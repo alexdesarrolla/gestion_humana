@@ -130,7 +130,7 @@ const [userData, setUserData] = useState<UserData | null>(null);
           </div>
         </div>
 
-        <Card className="border-none shadow-lg">
+        <Card className="border-none shadow-lg glassmorphism-card">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl text-center">
               {step === 1 ? 'Validar Cédula' : 'Crear Contraseña'}
@@ -157,6 +157,7 @@ const [userData, setUserData] = useState<UserData | null>(null);
                     id="cedula"
                     type="text"
                     placeholder="Ingresa tu número de cédula"
+                    className='bg-white'
                     value={cedula}
                     onChange={(e) => setCedula(e.target.value)}
                     required

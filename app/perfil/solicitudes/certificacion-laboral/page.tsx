@@ -210,13 +210,7 @@ export default function CertificacionLaboral() {
           if (!open) setShowCommentsModal(false)
         }}
       >
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
-          <DialogHeader>
-            <DialogTitle>Comentarios de solicitud #{currentSolicId}</DialogTitle>
-            <DialogDescription>
-              Aquí puedes leer y responder los comentarios del admin.
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
           {currentSolicId && (
             <ComentariosCertificacion solicitudId={currentSolicId} />
           )}
@@ -303,8 +297,8 @@ export default function CertificacionLaboral() {
                                 s.estado === "aprobado"
                                   ? "secondary"
                                   : s.estado === "rechazado"
-                                  ? "destructive"
-                                  : "default"
+                                    ? "destructive"
+                                    : "default"
                               }
                             >
                               {s.estado.charAt(0).toUpperCase() +

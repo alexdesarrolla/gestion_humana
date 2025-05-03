@@ -1,13 +1,11 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { createSupabaseClient } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { MessageSquare, Reply, Send, UserIcon, ChevronDown, ChevronUp } from "lucide-react"
+import { MessageSquare, Send, UserIcon, Smile, X } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -34,17 +32,37 @@ interface UserState {
   avatarUrl: string
 }
 
+// Emojis comunes para el selector
+const commonEmojis = [
+  "👍",
+  "👏",
+  "❤️",
+  "🎉",
+  "🙌",
+  "😊",
+  "👌",
+  "✅",
+  "✨",
+  "🔥",
+  "💯",
+  "⭐",
+  "🤔",
+  "😂",
+  "😍",
+  "👀",
+  "🙏",
+  "💪",
+  "👉",
+  "👈",
+  "🚀",
+  "💼",
+  "📝",
+  "📊",
+]
+
 const supabase = createSupabaseClient()
 
 export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string }) {
-  if (!solicitudId) {
-    return (
-      <div className="p-6 text-center text-red-600">
-        ⚠️ Error: no recibí el ID de la solicitud. Asegúrate de pasar <code>solicitudId</code>.
-      </div>
-    )
-  }
-
   const [comentarios, setComentarios] = useState<Comentario[]>([])
   const [nuevoComentario, setNuevoComentario] = useState("")
   const [respondiendoA, setRespondiendoA] = useState<number | null>(null)
@@ -54,6 +72,10 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
   const [user, setUser] = useState<UserState | null>(null)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [expandedComments, setExpandedComments] = useState<Record<number, boolean>>({})
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [showReplyEmojiPicker, setShowReplyEmojiPicker] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const replyTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   // — cargar usuario actual
   useEffect(() => {
@@ -84,7 +106,9 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
   }, [])
 
   // — función para traer comentarios y armar árbol
-  const fetchComentarios = async () => {
+  const fetchComentarios = useCallback(async () => {
+    if (!solicitudId) return
+
     setLoading(true)
     // 1) Traigo de Supabase ya ordenados DESC
     const { data, error } = await supabase
@@ -99,7 +123,7 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
       `)
       .eq("solicitud_id", solicitudId)
       .order("fecha", { ascending: false })
-  
+
     if (error) {
       console.error(error)
       setErrorFetch(error.message)
@@ -107,7 +131,7 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
       setLoading(false)
       return
     }
-  
+
     // 2) Armo un map de nodos preservando EL ORDEN de data (que ya es del más nuevo al más viejo)
     const nodoMap = new Map<number, Comentario>()
     data.forEach((c: any) => {
@@ -122,7 +146,7 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
       } else {
         avatarUrl = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-m.webp").data.publicUrl
       }
-  
+
       nodoMap.set(c.id, {
         id: c.id,
         usuario_id: c.usuario_id,
@@ -134,7 +158,7 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
         respuestas: [],
       })
     })
-  
+
     // 3) Segundo pase: enlazo hijos con padres
     const roots: Comentario[] = []
     data.forEach((c: any) => {
@@ -145,19 +169,21 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
         roots.push(nodo)
       }
     })
-  
+
     // Ahora `roots` conserva el orden DESC de la query original
     setComentarios(roots)
     setLoading(false)
-  }  
+  }, [solicitudId])
 
   // — cargar al montar y en cambios de ID
   useEffect(() => {
     fetchComentarios()
-  }, [solicitudId])
+  }, [fetchComentarios])
 
   // — realtime para refrescar al llegar uno nuevo
   useEffect(() => {
+    if (!solicitudId) return
+
     const channel = supabase
       .channel("realtime_comentarios_certificacion")
       .on(
@@ -170,17 +196,17 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
         },
         () => {
           fetchComentarios()
-        }
+        },
       )
       .subscribe()
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [solicitudId])
+  }, [solicitudId, fetchComentarios])
 
   // — publicar comentario raíz
   const handleComentar = async () => {
-    if (!user || !nuevoComentario.trim()) return
+    if (!user || !nuevoComentario.trim() || !solicitudId) return
     setLoading(true)
     await supabase.from("comentarios_certificacion").insert({
       solicitud_id: solicitudId,
@@ -195,7 +221,7 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
 
   // — publicar respuesta SOLO a root
   const handleResponder = async (parentId: number) => {
-    if (!user || !respuestaTexto.trim()) return
+    if (!user || !respuestaTexto.trim() || !solicitudId) return
     setLoading(true)
     await supabase.from("comentarios_certificacion").insert({
       solicitud_id: solicitudId,
@@ -208,7 +234,7 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
     setLoading(false)
   }
 
-  // — helper “Hace x”
+  // — helper "Hace x"
   const formatDate = (iso: string) => {
     const then = new Date(iso)
     const now = new Date()
@@ -223,60 +249,144 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
     return then.toLocaleDateString("es-ES", { year: "numeric", month: "short", day: "numeric" })
   }
 
-  // — render de respuestas **sin** botón “Responder”
+  const insertEmoji = (emoji: string) => {
+    const text = nuevoComentario
+    const newText = text + emoji
+    setNuevoComentario(newText)
+    setShowEmojiPicker(false)
+  }
+
+  const insertReplyEmoji = (emoji: string) => {
+    const text = respuestaTexto
+    const newText = text + emoji
+    setRespuestaTexto(newText)
+    setShowReplyEmojiPicker(false)
+  }
+
+  // — render de respuestas
   const renderRespuestas = (resps: Comentario[]) => (
-    <div className="ml-4 pl-4 border-l-2 border-slate-200 space-y-3 mt-3">
+    <div className="space-y-3 mt-2">
       {resps.map((r) => (
-        <Card key={r.id} className="shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex gap-3">
-              <img src={r.avatarUrl} alt={r.nombre_usuario} className="h-8 w-8 rounded-full object-cover mt-1" />
-              <div className="flex-1">
-                <div className="flex flex-wrap items-baseline gap-x-2 mb-1">
-                  <span className="font-medium text-sm">{r.nombre_usuario}</span>
-                  <span className="text-xs text-muted-foreground">{formatDate(r.fecha)}</span>
-                </div>
+        <div key={r.id} className="group">
+          <div className="flex gap-2">
+            <div className="flex-shrink-0">
+              <img
+                src={r.avatarUrl || "/placeholder.svg"}
+                alt={r.nombre_usuario}
+                className="h-8 w-8 rounded-full object-cover"
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="bg-gray-100 rounded-lg px-3 py-2">
+                <div className="font-medium text-sm text-[#441404]">{r.nombre_usuario}</div>
                 <p className="text-sm whitespace-pre-line break-words">{r.comentario}</p>
               </div>
+
+              <div className="flex items-center gap-2 mt-1 pl-2 text-xs">
+                <span className="text-gray-500">{formatDate(r.fecha)}</span>
+              </div>
+
+              {r.respuestas && r.respuestas.length > 0 && renderRespuestas(r.respuestas)}
             </div>
-          </CardContent>
-          {/* render de las segundas respuestas, recursivo */}
-          {r.respuestas && r.respuestas.length > 0 && renderRespuestas(r.respuestas)}
-        </Card>
+          </div>
+        </div>
       ))}
     </div>
   )
 
+  if (!solicitudId) {
+    return (
+      <div className="p-6 text-center text-red-600 bg-red-50 rounded-lg">
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mb-3">⚠️</div>
+        <p className="font-medium">Error: no recibí el ID de la solicitud.</p>
+        <p className="text-sm mt-1">
+          Asegúrate de pasar <code className="bg-red-100 px-1 py-0.5 rounded">solicitudId</code>.
+        </p>
+      </div>
+    )
+  }
+
   return (
-    <Card className="shadow-md border-none">
-      <CardHeader className="pb-3 bg-slate-50">
-        <CardTitle className="text-xl flex items-center gap-2">
-          <MessageSquare className="h-5 w-5 text-primary" />
-          Comentarios de certificación
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-6">
+    <div className="bg-white rounded-lg shadow">
+      <div className="border-b px-4 py-3">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <MessageSquare className="h-5 w-5 text-[#441404]" />
+          <span>Comentarios de certificación</span>
+        </h2>
+      </div>
+
+      <div className="bg-gray-100 p-4">
         {user ? (
           <>
             {/* área para crear nuevo comentario */}
-            <div className="flex gap-3 mb-6">
-              <img src={user.avatarUrl} alt={user.nombre} className="h-8 w-8 rounded-full object-cover mt-1" />
-              <Textarea
-                rows={3}
-                className="flex-1 resize-none"
-                placeholder="Escribe un comentario sobre esta solicitud..."
-                value={nuevoComentario}
-                onChange={(e) => setNuevoComentario(e.target.value)}
-              />
-            </div>
-            <div className="flex justify-end mb-6">
-              <Button onClick={() => setShowConfirmModal(true)} disabled={!nuevoComentario.trim()}>
-                <Send className="h-4 w-4 mr-1" />
-                Publicar comentario
-              </Button>
+            <div className="flex gap-3 mb-4 bg-white p-3 rounded-lg shadow-sm">
+              <div className="flex-shrink-0">
+                <img
+                  src={user.avatarUrl || "/placeholder.svg"}
+                  alt={user.nombre}
+                  className="h-10 w-10 rounded-full object-cover"
+                />
+              </div>
+              <div className="flex-1">
+                <div className="bg-gray-100 rounded-lg flex items-center px-4 py-2">
+                  <Textarea
+                    ref={textareaRef}
+                    rows={1}
+                    className="resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 p-0 placeholder:text-gray-500 text-sm"
+                    placeholder={`¿Qué estás pensando, ${user.nombre}?`}
+                    value={nuevoComentario}
+                    onChange={(e) => setNuevoComentario(e.target.value)}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between mt-3 px-1">
+                  <div className="flex gap-2 relative">
+                    <button
+                      className="p-2 rounded-full hover:bg-gray-100 text-gray-500 cursor-pointer"
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    >
+                      <Smile className="h-5 w-5" />
+                    </button>
+
+                    {showEmojiPicker && (
+                      <div className="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-lg border p-3 z-50 w-64">
+                        <div className="flex justify-between items-center mb-2 pb-2 border-b">
+                          <h3 className="text-sm font-medium">Emojis</h3>
+                          <button
+                            onClick={() => setShowEmojiPicker(false)}
+                            className="text-gray-500 hover:text-gray-700 cursor-pointer"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-6 gap-2">
+                          {commonEmojis.map((emoji) => (
+                            <button
+                              key={emoji}
+                              onClick={() => insertEmoji(emoji)}
+                              className="text-xl p-1 hover:bg-gray-100 rounded cursor-pointer"
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <Button
+                    onClick={() => setShowConfirmModal(true)}
+                    disabled={!nuevoComentario.trim()}
+                    size="sm"
+                    className="rounded-full bg-[#441404] hover:bg-[#5a1a05]"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
             <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
-              <DialogContent>
+              <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle>Confirmar publicación</DialogTitle>
                   <DialogDescription>
@@ -288,131 +398,213 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
                   <Button variant="outline" onClick={() => setShowConfirmModal(false)}>
                     Cancelar
                   </Button>
-                  <Button onClick={handleComentar} disabled={loading}>
+                  <Button onClick={handleComentar} disabled={loading} className="bg-[#441404] hover:bg-[#5a1a05]">
                     Confirmar
                   </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-            <Separator className="my-6" />
           </>
         ) : (
-          <div className="bg-slate-50 p-4 rounded-md text-center mb-6">
-            <UserIcon className="h-10 w-10 text-muted-foreground mx-auto mb-2 opacity-40" />
-            <p className="text-muted-foreground">Inicia sesión para comentar.</p>
+          <div className="bg-white p-4 rounded-lg text-center mb-4 shadow-sm">
+            <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+              <UserIcon className="h-8 w-8 text-gray-400" />
+            </div>
+            <p className="text-gray-700 font-medium">Inicia sesión para comentar</p>
+            <p className="text-gray-500 text-sm mt-1">Necesitas una cuenta para participar en la conversación</p>
           </div>
         )}
 
         {errorFetch && (
-          <div className="text-center text-red-600 mb-4">
-            ❌ Error al cargar comentarios: {errorFetch}
+          <div className="text-center text-red-600 mb-4 bg-red-50 p-4 rounded-lg">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <div className="h-5 w-5 rounded-full bg-red-100 flex items-center justify-center">❌</div>
+              <span className="font-medium">Error al cargar comentarios</span>
+            </div>
+            <p className="text-sm">{errorFetch}</p>
           </div>
         )}
 
         {loading && comentarios.length === 0 ? (
-          <div className="flex justify-center py-8">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <div className="flex flex-col items-center justify-center py-8 bg-white rounded-lg shadow-sm">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#441404] border-t-transparent mb-4" />
+            <p className="text-gray-500">Cargando comentarios...</p>
           </div>
         ) : comentarios.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <MessageSquare className="h-12 w-12 mx-auto opacity-20" />
-            <p>No hay comentarios aún.</p>
+          <div className="text-center py-8 bg-white rounded-lg shadow-sm">
+            <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+              <MessageSquare className="h-8 w-8 text-gray-300" />
+            </div>
+            <p className="text-gray-700 font-medium">No hay comentarios aún</p>
+            <p className="text-gray-500 text-sm mt-1">Sé el primero en comentar sobre esta certificación</p>
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-medium text-sm">
+            <div className="flex items-center justify-between mb-4 px-1">
+              <h3 className="font-medium text-sm text-gray-700">
                 {comentarios.length} {comentarios.length === 1 ? "comentario" : "comentarios"}
               </h3>
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="outline" className="bg-white text-xs">
                 Más recientes primero
               </Badge>
             </div>
             <div className="space-y-4">
               {comentarios.map((c) => (
-                <Card key={c.id} className="shadow-sm">
-                  <CardContent className="p-4">
-                    <div className="flex gap-3">
-                      <img src={c.avatarUrl} alt={c.nombre_usuario} className="h-8 w-8 rounded-full object-cover mt-1" />
-                      <div className="flex-1">
-                        <div className="flex flex-wrap items-baseline gap-x-2 mb-1">
-                          <span className="font-medium text-sm">{c.nombre_usuario}</span>
-                          <span className="text-xs text-muted-foreground">{formatDate(c.fecha)}</span>
-                        </div>
-                        <p className="text-sm whitespace-pre-line break-words">{c.comentario}</p>
-                        <div className="mt-2 flex gap-2">
-                          {/* Solo en PRINCIPALES permitimos responder */}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-                            onClick={() => {
-                              setRespondiendoA(c.id)
-                              setRespuestaTexto("")
-                            }}
-                          >
-                            <Reply className="h-3 w-3 mr-1" />
-                            Responder
-                          </Button>
-                          {c.respuestas && c.respuestas.length > 0 && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 px-2 text-xs flex items-center gap-1 text-primary hover:text-primary/80"
-                              onClick={() =>
-                                setExpandedComments((e) => ({ ...e, [c.id]: !e[c.id] }))
-                              }
-                            >
-                              <MessageSquare className="h-3 w-3" />
-                              {c.respuestas.length}{" "}
-                              {c.respuestas.length === 1 ? "respuesta" : "respuestas"}
-                              {expandedComments[c.id] ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                            </Button>
-                          )}
-                        </div>
-                        {/* textarea de respuesta a un root */}
-                        {respondiendoA === c.id && (
-                          <div className="mt-3 bg-slate-50 p-3 rounded-md">
-                            <Badge variant="outline" className="text-xs mb-2">
-                              Respondiendo a {c.nombre_usuario}
-                            </Badge>
-                            <Textarea
-                              rows={2}
-                              className="resize-none text-sm"
-                              value={respuestaTexto}
-                              onChange={(e) => setRespuestaTexto(e.target.value)}
-                            />
-                            <div className="flex justify-end gap-2 mt-2">
-                              <Button size="sm" variant="outline" onClick={() => setRespondiendoA(null)}>
-                                Cancelar
-                              </Button>
-                              <Button size="sm" onClick={() => handleResponder(c.id)} disabled={loading}>
-                                <Send className="h-3.5 w-3.5 mr-1.5" />
-                                Enviar
-                              </Button>
+                <div key={c.id} className="bg-white rounded-lg shadow-sm p-3">
+                  <div className="flex gap-2">
+                    <div className="flex-shrink-0">
+                      <img
+                        src={c.avatarUrl || "/placeholder.svg"}
+                        alt={c.nombre_usuario}
+                        className="h-10 w-10 rounded-full object-cover"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="bg-gray-100 rounded-lg px-4 py-2">
+                        <div className="font-medium text-[#441404]">{c.nombre_usuario}</div>
+                        <p className="whitespace-pre-line break-words">{c.comentario}</p>
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-1 pl-2 text-xs">
+                        <button
+                          className="font-medium text-gray-500 hover:text-gray-700 cursor-pointer"
+                          onClick={() => {
+                            setRespondiendoA(c.id)
+                            setRespuestaTexto("")
+                          }}
+                        >
+                          Responder
+                        </button>
+                        <span className="text-gray-500">·</span>
+                        <span className="text-gray-500">{formatDate(c.fecha)}</span>
+                      </div>
+
+                      {/* textarea de respuesta a un root */}
+                      {respondiendoA === c.id && (
+                        <div className="mt-3 pl-2">
+                          <div className="flex gap-2 items-start">
+                            <div className="flex-shrink-0">
+                              <img
+                                src={user?.avatarUrl || "/placeholder.svg"}
+                                alt={user?.nombre || "Usuario"}
+                                className="h-8 w-8 rounded-full object-cover"
+                              />
+                            </div>
+                            <div className="flex-1 bg-gray-100 rounded-lg p-2">
+                              <Textarea
+                                ref={replyTextareaRef}
+                                rows={1}
+                                className="resize-none text-sm border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
+                                placeholder={`Escribe una respuesta...`}
+                                value={respuestaTexto}
+                                onChange={(e) => setRespuestaTexto(e.target.value)}
+                              />
+                              <div className="flex justify-between items-center mt-2">
+                                <div className="relative">
+                                  <button
+                                    className="p-1 rounded-full hover:bg-gray-200 text-gray-500 cursor-pointer"
+                                    onClick={() => setShowReplyEmojiPicker(!showReplyEmojiPicker)}
+                                  >
+                                    <Smile className="h-5 w-5" />
+                                  </button>
+
+                                  {showReplyEmojiPicker && (
+                                    <div className="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-lg border p-3 z-50 w-64">
+                                      <div className="flex justify-between items-center mb-2 pb-2 border-b">
+                                        <h3 className="text-sm font-medium">Emojis</h3>
+                                        <button
+                                          onClick={() => setShowReplyEmojiPicker(false)}
+                                          className="text-gray-500 hover:text-gray-700 cursor-pointer"
+                                        >
+                                          <X className="h-4 w-4" />
+                                        </button>
+                                      </div>
+                                      <div className="grid grid-cols-6 gap-2">
+                                        {commonEmojis.map((emoji) => (
+                                          <button
+                                            key={emoji}
+                                            onClick={() => insertReplyEmoji(emoji)}
+                                            className="text-xl p-1 hover:bg-gray-100 rounded cursor-pointer"
+                                          >
+                                            {emoji}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setRespondiendoA(null)}
+                                    className="h-8 text-xs rounded-full cursor-pointer"
+                                  >
+                                    Cancelar
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleResponder(c.id)}
+                                    disabled={loading || !respuestaTexto.trim()}
+                                    className="h-8 text-xs rounded-full bg-[#441404] hover:bg-[#5a1a05] cursor-pointer"
+                                  >
+                                    Responder
+                                  </Button>
+                                </div>
+                              </div>
                             </div>
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
+
+                      {/* respuestas anidadas */}
+                      {c.respuestas && c.respuestas.length > 0 && (
+                        <div className="mt-3 pl-12">
+                          {!expandedComments[c.id] && c.respuestas.length > 0 && (
+                            <button
+                              className="flex items-center gap-2 text-[#441404] font-medium text-sm mb-2 cursor-pointer"
+                              onClick={() => setExpandedComments((e) => ({ ...e, [c.id]: true }))}
+                            >
+                              <div className="w-6 h-0.5 bg-gray-300"></div>
+                              Ver {c.respuestas.length} {c.respuestas.length === 1 ? "respuesta" : "respuestas"}
+                            </button>
+                          )}
+
+                          {expandedComments[c.id] && (
+                            <>
+                              {renderRespuestas(c.respuestas)}
+                              {c.respuestas.length > 2 && (
+                                <button
+                                  className="text-[#441404] font-medium text-sm mt-1 ml-2 cursor-pointer"
+                                  onClick={() => setExpandedComments((e) => ({ ...e, [c.id]: false }))}
+                                >
+                                  Ocultar respuestas
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </CardContent>
-                  {/* respuestas anidadas, sin botón de reply */}
-                  {expandedComments[c.id] && c.respuestas && c.respuestas.length > 0 && renderRespuestas(c.respuestas)}
-                </Card>
+                  </div>
+                </div>
               ))}
             </div>
           </>
         )}
-      </CardContent>
 
-      {comentarios.length > 10 && (
-        <CardFooter className="bg-slate-50 py-3 px-6 border-t flex justify-center">
-          <Button size="sm" variant="outline" className="gap-1.5">
-            <MessageSquare className="h-3.5 w-3.5" />
-            Cargar más comentarios
-          </Button>
-        </CardFooter>
-      )}
-    </Card>
+        {comentarios.length > 10 && (
+          <div className="py-3 px-4 flex justify-center mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-lg bg-white text-[#441404] border-gray-300 cursor-pointer"
+            >
+              Ver más comentarios
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }

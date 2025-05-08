@@ -9,16 +9,21 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, CheckCircle2, Calendar, Download, Plus } from "lucide-react"
+import { AlertCircle, CheckCircle2, Calendar, Download, Plus, MessageSquare } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
+import { ComentariosPermisos } from "@/components/permisos/comentarios-permisos"
 
 export default function SolicitudPermisos() {
   const [showReasonModal, setShowReasonModal] = useState(false)
   const [rejectionReason, setRejectionReason] = useState('')
+  const [showComentariosModal, setShowComentariosModal] = useState(false)
+  const [solicitudComentariosId, setSolicitudComentariosId] = useState<string | undefined>(undefined)
+  const [unseenCounts, setUnseenCounts] = useState<Record<string, number>>({})
+  const [userId, setUserId] = useState<string | null>(null)
 
   const handleShowReason = (reason: string) => {
     setRejectionReason(reason)
@@ -79,6 +84,67 @@ export default function SolicitudPermisos() {
     }
   }, [userData])
 
+  // Obtener conteo de mensajes no leídos
+  const fetchUnseenCount = async (solId: string) => {
+    if (!userId) return
+    const supabase = createSupabaseClient()
+    const { count, error } = await supabase
+      .from("comentarios_permisos")
+      .select("*", { head: true, count: "exact" })
+      .eq("solicitud_id", solId)
+      .eq("visto_usuario", false)
+      .neq("usuario_id", userId)
+
+    if (!error) {
+      setUnseenCounts(prev => ({ ...prev, [solId]: count || 0 }))
+    }
+  }
+
+  // Suscribirse a nuevos comentarios
+  useEffect(() => {
+    if (!userId) return
+    const supabase = createSupabaseClient()
+
+    const channel = supabase
+      .channel("user_comentarios_permisos")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "comentarios_permisos" },
+        ({ new: n }: any) => {
+          if (n.usuario_id !== userId) {
+            setUnseenCounts(prev => ({
+              ...prev,
+              [n.solicitud_id]: (prev[n.solicitud_id] || 0) + 1,
+            }))
+          }
+        }
+      )
+      .subscribe()
+
+    return () => void supabase.removeChannel(channel)
+  }, [userId])
+
+  // Marcar comentarios como leídos y abrir modal
+  const markReadAndOpen = async (solId: string) => {
+    if (!userId) return
+    const supabase = createSupabaseClient()
+
+    // Actualizar en BD
+    await supabase
+      .from("comentarios_permisos")
+      .update({ visto_usuario: true })
+      .eq("solicitud_id", solId)
+      .eq("visto_usuario", false)
+      .neq("usuario_id", userId)
+
+    // Limpiar contador local
+    setUnseenCounts(prev => ({ ...prev, [solId]: 0 }))
+
+    // Abrir modal
+    setSolicitudComentariosId(solId)
+    setShowComentariosModal(true)
+  }
+
   // Verificar autenticación y obtener datos del usuario
   useEffect(() => {
     const checkAuth = async () => {
@@ -93,6 +159,8 @@ export default function SolicitudPermisos() {
         router.push("/login")
         return
       }
+
+      setUserId(session.user.id)
 
       // Obtener datos del usuario
       const { data: userData, error: userError } = await supabase
@@ -121,7 +189,9 @@ export default function SolicitudPermisos() {
       if (solicitudesError) {
         console.error("Error al obtener solicitudes:", solicitudesError)
       } else {
-        setSolicitudes(solicitudesData || [])
+        const sols = solicitudesData || []
+        setSolicitudes(sols)
+        sols.forEach(s => fetchUnseenCount(s.id))
       }
 
       setUserData(userData)
@@ -439,14 +509,33 @@ export default function SolicitudPermisos() {
                                     </Button>
                                   )}
                                   {solicitud.estado === 'aprobado' && solicitud.pdf_url && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="flex items-center gap-1"
-                                      onClick={() => descargarPermiso(solicitud.pdf_url)}
-                                    >
-                                      <Download className="h-4 w-4" /> Descargar
-                                    </Button>
+                                    <div className="flex gap-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => descargarPermiso(solicitud.pdf_url)}
+                                      >
+                                        <Download className="h-4 w-4 mr-1" />
+                                        Descargar
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => markReadAndOpen(solicitud.id)}
+                                        className="relative"
+                                      >
+                                        <MessageSquare className="h-4 w-4 mr-1" />
+                                        Comentarios
+                                        {unseenCounts[solicitud.id] > 0 && (
+                                          <Badge
+                                            variant="destructive"
+                                            className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                                          >
+                                            {unseenCounts[solicitud.id]}
+                                          </Badge>
+                                        )}
+                                      </Button>
+                                    </div>
                                   )}
                                 </TableCell>
                               </TableRow>
@@ -468,6 +557,21 @@ export default function SolicitudPermisos() {
           </main>
         </div>
       </div>
+      {/* Modal de comentarios */}
+      <Dialog open={showComentariosModal} onOpenChange={setShowComentariosModal}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Comentarios de la solicitud</DialogTitle>
+          </DialogHeader>
+          {solicitudComentariosId && (
+            <ComentariosPermisos
+              solicitudId={solicitudComentariosId}
+              userId={userId || ""}
+              isAdmin={false}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

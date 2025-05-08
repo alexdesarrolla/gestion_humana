@@ -10,12 +10,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { AlertCircle, CheckCircle2, Search, X, ChevronDown, ChevronUp } from "lucide-react"
+import { AlertCircle, CheckCircle2, Search, X, ChevronDown, ChevronUp, MessageSquare } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FileDown } from "lucide-react";
 import { jsPDF } from "jspdf"
 import html2canvas from "html2canvas"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { ComentariosPermisos } from "@/components/permisos/comentarios-permisos"
 
 export default function AdminSolicitudesPermisos() {
   const router = useRouter()
@@ -28,6 +30,10 @@ export default function AdminSolicitudesPermisos() {
   const [showModal, setShowModal] = useState(false)
   const [solicitudSeleccionada, setSolicitudSeleccionada] = useState<{id: string, usuario: any} | null>(null)
   const [motivoRechazo, setMotivoRechazo] = useState("")
+  const [showComentariosModal, setShowComentariosModal] = useState(false)
+  const [solicitudComentariosId, setSolicitudComentariosId] = useState<string | undefined>(undefined)
+  const [unseenCounts, setUnseenCounts] = useState<Record<string, number>>({})
+  const [adminId, setAdminId] = useState<string | null>(null)
   
   // Estados para filtros
   const [searchTerm, setSearchTerm] = useState("")
@@ -43,12 +49,83 @@ export default function AdminSolicitudesPermisos() {
   // Referencia para el timeout de búsqueda
   const searchTimeout = useRef<NodeJS.Timeout | null>(null)
 
+  // Obtener conteo de mensajes no leídos para una solicitud
+  const fetchUnseenCount = async (solId: string) => {
+    if (!adminId) return
+    const supabase = createSupabaseClient()
+    const { count, error } = await supabase
+      .from("comentarios_permisos")
+      .select("*", { head: true, count: "exact" })
+      .eq("solicitud_id", solId)
+      .eq("visto_admin", false)
+      .neq("usuario_id", adminId)
+
+    if (!error) {
+      setUnseenCounts(prev => ({ ...prev, [solId]: count || 0 }))
+    }
+  }
+
+  // Marcar comentarios como leídos y abrir modal
+  const markReadAndOpen = async (solId: string) => {
+    if (!adminId) return
+    const supabase = createSupabaseClient()
+
+    // Actualizar en BD
+    await supabase
+      .from("comentarios_permisos")
+      .update({ visto_admin: true })
+      .eq("solicitud_id", solId)
+      .eq("visto_admin", false)
+      .neq("usuario_id", adminId)
+
+    // Limpiar contador local
+    setUnseenCounts(prev => ({ ...prev, [solId]: 0 }))
+
+    // Abrir modal
+    setSolicitudComentariosId(solId)
+    setShowComentariosModal(true)
+  }
+
+  // Suscribirse a nuevos comentarios
+  useEffect(() => {
+    if (!adminId) return
+    const supabase = createSupabaseClient()
+
+    const channel = supabase
+      .channel("admin_comentarios_permisos")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "comentarios_permisos" },
+        ({ new: n }: any) => {
+          if (n.usuario_id !== adminId) {
+            setUnseenCounts(prev => ({
+              ...prev,
+              [n.solicitud_id]: (prev[n.solicitud_id] || 0) + 1,
+            }))
+          }
+        }
+      )
+      .subscribe()
+
+    return () => void supabase.removeChannel(channel)
+  }, [adminId])
+
   // Obtener todas las solicitudes
   useEffect(() => {
     const fetchSolicitudes = async () => {
       setLoading(true)
       try {
         const supabase = createSupabaseClient()
+        
+        // Obtener sesión del usuario administrador
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) {
+          router.push("/login")
+          return
+        }
+        
+        // Guardar ID del administrador para uso en comentarios
+        setAdminId(session.user.id)
         
         // Realizar la consulta con una estructura más simple
         const { data, error } = await supabase
@@ -104,6 +181,9 @@ export default function AdminSolicitudesPermisos() {
             new Set(usuariosData?.map((usuario) => usuario.empresas?.nombre).filter(Boolean))
           )
           setEmpresas(uniqueEmpresas)
+          
+          // Obtener conteos de mensajes no leídos para cada solicitud
+          solicitudesCompletas.forEach(s => fetchUnseenCount(s.id))
         } else {
           // Si no hay datos, inicializar con arrays vacíos
           setSolicitudes([])
@@ -119,7 +199,7 @@ export default function AdminSolicitudesPermisos() {
     }
 
     fetchSolicitudes()
-  }, [])
+  }, [router])
 
   const formatDate = (date: Date) => {
     const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' }
@@ -736,40 +816,60 @@ export default function AdminSolicitudesPermisos() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {solicitud.estado === 'pendiente' ? (
-                              <div className="flex space-x-2">
+                            <div className="flex space-x-2">
+                              {solicitud.estado === 'pendiente' ? (
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      const motivo = prompt("Ingrese el motivo del rechazo:")
+                                      if (motivo) rechazarSolicitud(solicitud.id, motivo)
+                                    }}
+                                  >
+                                    Rechazar
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => aprobarSolicitud(solicitud.id, solicitud.usuario)}
+                                  >
+                                    Aprobar
+                                  </Button>
+                                </>
+                              ) : solicitud.estado === 'aprobado' ? (
                                 <Button
-                                  variant="outline"
                                   size="sm"
-                                  onClick={() => {
-                                    const motivo = prompt("Ingrese el motivo del rechazo:")
-                                    if (motivo) rechazarSolicitud(solicitud.id, motivo)
-                                  }}
+                                  onClick={() => window.open(solicitud.pdf_url, '_blank')}
                                 >
-                                  Rechazar
+                                  <FileDown className="h-4 w-4 mr-1" />Ver PDF
                                 </Button>
+                              ) : (
                                 <Button
                                   size="sm"
                                   onClick={() => aprobarSolicitud(solicitud.id, solicitud.usuario)}
                                 >
                                   Aprobar
                                 </Button>
-                              </div>
-                            ) : solicitud.estado === 'aprobado' ? (
+                              )}
                               <Button
+                                variant="ghost"
                                 size="sm"
-                                onClick={() => window.open(solicitud.pdf_url, '_blank')}
+                                onClick={() => markReadAndOpen(solicitud.id)}
+                                className="text-gray-500 hover:text-gray-700 relative"
                               >
-                                <FileDown className="h-4 w-4 mr-1" />Ver PDF
+                                <div className="flex items-center">
+                                  <MessageSquare className="h-4 w-4" />
+                                  {unseenCounts[solicitud.id] > 0 && (
+                                    <Badge 
+                                      variant="destructive" 
+                                      className="ml-1 h-5 w-auto min-w-[20px] flex items-center justify-center p-1 text-xs rounded-full"
+                                    >
+                                      {unseenCounts[solicitud.id]}
+                                    </Badge>
+                                  )}
+                                </div>
                               </Button>
-                            ) : (
-                              <Button
-                                size="sm"
-                                onClick={() => aprobarSolicitud(solicitud.id, solicitud.usuario)}
-                              >
-                                Aprobar
-                              </Button>
-                            )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
@@ -781,6 +881,16 @@ export default function AdminSolicitudesPermisos() {
           </div>
         </main>
       </div>
+
+      {/* Modal de Comentarios */}
+      <Dialog open={showComentariosModal} onOpenChange={setShowComentariosModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Comentarios de la solicitud</DialogTitle>
+          </DialogHeader>
+          <ComentariosPermisos solicitudId={solicitudComentariosId} isAdmin={true} />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -1,504 +1,410 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { Sidebar } from "@/components/ui/sidebar"
 import { createSupabaseClient } from "@/lib/supabase"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Sidebar } from "@/components/ui/sidebar"
+import { Card, CardContent, CardHeader, CardDescription, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, CheckCircle2, Calendar, Download, Plus, FileText, Upload } from "lucide-react"
+import {
+  AlertCircle,
+  CheckCircle2,
+  Calendar,
+  Download,
+  Plus,
+  Upload,
+  MessageSquare,
+} from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { ComentariosIncapacidades } from "@/components/incapacidades/comentarios-incapacidades"
 
 export default function IncapacidadesUsuario() {
   const router = useRouter()
+  const supabase = createSupabaseClient()
+
   const [loading, setLoading] = useState(false)
-  const [userData, setUserData] = useState<any>(null)
+  const [userData, setUserData] = useState<any>(null) // perfil de usuario_nomina
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null) // auth user ID
   const [incapacidades, setIncapacidades] = useState<any[]>([])
   const [showModal, setShowModal] = useState(false)
   const [formData, setFormData] = useState({
     fechaInicio: "",
     fechaFin: "",
-    documento: null as File | null
+    documento: null as File | null,
   })
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [fileError, setFileError] = useState("")
 
-  // Suscribirse a cambios en tiempo real
+  // Comentarios
+  const [showCommentsModal, setShowCommentsModal] = useState(false)
+  const [currentIncapacidadComent, setCurrentIncapacidadComent] = useState<string | null>(null)
+  const [unseenCounts, setUnseenCounts] = useState<Record<string, number>>({})
+
+  // Formatea fecha
+  const formatDate = (date: string | Date) => {
+    const options: Intl.DateTimeFormatOptions = { year: "numeric", month: "long", day: "numeric" }
+    return new Date(date).toLocaleDateString("es-CO", options)
+  }
+
+  // Función para contar comentarios no vistos por el usuario
+  const fetchUserUnseenCount = async (incId: string) => {
+    if (!sessionUserId) return
+    const { count, error: cntErr } = await supabase
+      .from("comentarios_incapacidades")
+      .select("*", { head: true, count: "exact" })
+      .eq("incapacidad_id", incId)
+      .eq("visto_usuario", false)
+      .neq("usuario_id", sessionUserId)
+    if (!cntErr) {
+      setUnseenCounts((prev) => ({ ...prev, [incId]: count || 0 }))
+    }
+  }
+
+  // Carga inicial: auth, perfil e incapacidades
   useEffect(() => {
-    const supabase = createSupabaseClient()
-    
-    // Suscribirse a cambios en la tabla de incapacidades
+    const init = async () => {
+      setLoading(true)
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session) {
+        router.push("/login")
+        return
+      }
+      setSessionUserId(session.user.id)
+
+      // Obtener perfil de usuario_nomina
+      const { data: usuario, error: userError } = await supabase
+        .from("usuario_nomina")
+        .select(`*, empresas:empresa_id(nombre, razon_social, nit), sedes:sede_id(nombre)`)
+        .eq("auth_user_id", session.user.id)
+        .single()
+      if (userError) {
+        console.error(userError)
+      } else {
+        setUserData(usuario)
+      }
+
+      // Obtener incapacidades del usuario
+      const { data: incs, error: incError } = await supabase
+        .from("incapacidades")
+        .select("*")
+        .eq("usuario_id", session.user.id)
+        .order("fecha_subida", { ascending: false })
+      if (incError) {
+        console.error(incError)
+      } else {
+        setIncapacidades(incs || [])
+        // Inicializar contador de no leídos
+        incs?.forEach((inc) => fetchUserUnseenCount(inc.id))
+      }
+
+      setLoading(false)
+    }
+    init()
+  }, [router, supabase])
+
+  // Realtime: actualizar contador cuando llega un nuevo comentario
+  useEffect(() => {
+    if (!sessionUserId) return
     const channel = supabase
-      .channel('user_incapacidades_changes')
+      .channel("user_comments_incapacidades")
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'incapacidades',
-          filter: `usuario_id=eq.${userData?.auth_user_id}`
+          event: "INSERT",
+          schema: "public",
+          table: "comentarios_incapacidades",
         },
         (payload) => {
-          // Actualizar la lista de incapacidades cuando haya cambios
-          if (payload.eventType === 'INSERT') {
-            setIncapacidades(prev => [payload.new, ...prev])
-          } else if (payload.eventType === 'UPDATE') {
-            setIncapacidades(prev =>
-              prev.map(inc => inc.id === payload.new.id ? payload.new : inc)
-            )
-          } else if (payload.eventType === 'DELETE') {
-            setIncapacidades(prev =>
-              prev.filter(inc => inc.id !== payload.old.id)
-            )
+          const nuevo = payload.new as any
+          // Si no lo escribió este usuario, aumentar contador
+          if (nuevo.usuario_id !== sessionUserId) {
+            setUnseenCounts((prev) => ({
+              ...prev,
+              [nuevo.incapacidad_id]: (prev[nuevo.incapacidad_id] || 0) + 1,
+            }))
           }
         }
       )
       .subscribe()
-
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [userData])
+  }, [sessionUserId, supabase])
 
-  // Verificar autenticación y obtener datos del usuario
-  useEffect(() => {
-    const checkAuth = async () => {
-      setLoading(true)
-      const supabase = createSupabaseClient()
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession()
-
-      if (error || !session) {
-        router.push("/login")
-        return
-      }
-
-      // Obtener datos del usuario
-      const { data: userData, error: userError } = await supabase
-        .from("usuario_nomina")
-        .select(`
-          *,
-          empresas:empresa_id(nombre, razon_social, nit)
-          sedes:sede_id(nombre)
-        `)
-        .eq("auth_user_id", session.user.id)
-        .single()
-
-      if (userError) {
-        console.error("Error al obtener datos del usuario:", userError)
-        setLoading(false)
-        return
-      }
-
-      // Obtener incapacidades del usuario
-      const { data: incapacidadesData, error: incapacidadesError } = await supabase
-        .from('incapacidades')
-        .select('*')
-        .eq('usuario_id', session.user.id)
-        .order('fecha_subida', { ascending: false })
-
-      if (incapacidadesError) {
-        console.error("Error al obtener incapacidades:", incapacidadesError)
-      } else {
-        setIncapacidades(incapacidadesData || [])
-      }
-
-      setUserData(userData)
-      setLoading(false)
+  // Manejador al abrir comentarios: marcar como vistos y resetear contador
+  const openComments = async (incId: string) => {
+    if (sessionUserId) {
+      await supabase
+        .from("comentarios_incapacidades")
+        .update({ visto_usuario: true })
+        .eq("incapacidad_id", incId)
+        .eq("visto_usuario", false)
+        .neq("usuario_id", sessionUserId)
     }
-
-    checkAuth()
-  }, [])
-
-  const formatDate = (date: string | Date) => {
-    const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' }
-    return new Date(date).toLocaleDateString('es-CO', options)
+    setUnseenCounts((prev) => ({ ...prev, [incId]: 0 }))
+    setCurrentIncapacidadComent(incId)
+    setShowCommentsModal(true)
   }
 
+  // Manejadores de formulario de nueva incapacidad...
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null
-    setFormData({ ...formData, documento: file })
+    setFormData((f) => ({ ...f, documento: file }))
     setFileError("")
-    
-    // Validar que sea un PDF
-    if (file && file.type !== 'application/pdf') {
+    if (file && file.type !== "application/pdf") {
       setFileError("El archivo debe ser un PDF")
     }
-    
-    // Validar tamaño (máximo 5MB)
     if (file && file.size > 5 * 1024 * 1024) {
-      setFileError("El archivo es demasiado grande. Máximo 5MB.")
+      setFileError("Máximo 5MB")
     }
   }
 
   const enviarIncapacidad = async () => {
     try {
-      // Validar campos requeridos
       if (!formData.fechaInicio || !formData.fechaFin || !formData.documento) {
-        setError("Por favor complete todos los campos requeridos y adjunte un documento PDF.")
+        setError("Complete todos los campos y adjunte un PDF.")
         return
       }
-
-      // Validar que la fecha de fin sea posterior o igual a la fecha de inicio
-      const fechaInicio = new Date(formData.fechaInicio)
-      const fechaFin = new Date(formData.fechaFin)
-      
-      if (fechaFin < fechaInicio) {
-        setError("La fecha de fin debe ser posterior o igual a la fecha de inicio.")
+      const fi = new Date(formData.fechaInicio)
+      const ff = new Date(formData.fechaFin)
+      if (ff < fi) {
+        setError("La fecha de fin debe ser igual o posterior a la de inicio.")
         return
       }
-
-      // Validar que el archivo sea un PDF
-      if (formData.documento && formData.documento.type !== 'application/pdf') {
-        setError("El documento debe ser un archivo PDF.")
+      if (formData.documento.type !== "application/pdf") {
+        setError("El documento debe ser PDF.")
         return
       }
-
-      // Validar el tamaño del archivo
-      if (formData.documento && formData.documento.size > 5 * 1024 * 1024) {
-        setError("El archivo es demasiado grande. El tamaño máximo permitido es 5MB.")
-        return
-      }
-
       setLoading(true)
-      setError("")
-      
-      const supabase = createSupabaseClient()
       const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        router.push("/login")
-        return
-      }
+      if (!session) return router.push("/login")
 
-      // Subir el documento a Supabase Storage
-      const fileHash = `${session.user.id}_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`
-      const fileName = `${fileHash}.pdf`
-      
-      const { data: uploadData, error: uploadError } = await supabase
-        .storage
-        .from('incapacidades')
-        .upload(fileName, formData.documento, {
-          cacheControl: '3600',
-          upsert: false,
-          contentType: 'application/pdf'
-        })
+      const fileName = `${session.user.id}_${Date.now().toString(36)}.pdf`
+      const { error: uploadError } = await supabase
+        .storage.from("incapacidades")
+        .upload(fileName, formData.documento, { upsert: false })
+      if (uploadError) throw uploadError
 
-      if (uploadError) {
-        console.error('Error de carga:', uploadError)
-        if (uploadError.message.includes('duplicate')) {
-          setError('Ya existe un documento con el mismo nombre. Por favor, intente nuevamente.')
-        } else if (uploadError.message.includes('permission')) {
-          setError('No tiene permisos para subir documentos. Por favor contacte al administrador.')
-        } else {
-          setError(`Error al subir el documento: ${uploadError.message}`)
-        }
-        return
-      }
-
-      // Obtener la URL pública del documento
-      const { data: urlData } = supabase
-        .storage
-        .from('incapacidades')
-        .getPublicUrl(fileName)
-
-      // Crear el registro de incapacidad en la base de datos
-      const { data, error } = await supabase
-        .from('incapacidades')
+      const { data: urlData } = supabase.storage.from("incapacidades").getPublicUrl(fileName)
+      const { error: dbError } = await supabase
+        .from("incapacidades")
         .insert([{
           usuario_id: session.user.id,
           fecha_inicio: formData.fechaInicio,
           fecha_fin: formData.fechaFin,
           fecha_subida: new Date().toISOString(),
-          documento_url: urlData.publicUrl
+          documento_url: urlData.publicUrl,
         }])
-        .select()
+      if (dbError) throw dbError
 
-      if (error) throw error
+      // Refrescar lista y contadores
+      const { data: incs } = await supabase
+        .from("incapacidades")
+        .select("*")
+        .eq("usuario_id", session.user.id)
+        .order("fecha_subida", { ascending: false })
+      setIncapacidades(incs || [])
+      incs?.forEach((inc) => fetchUserUnseenCount(inc.id))
 
-      // Actualizar la lista de incapacidades
-      const { data: incapacidadesData } = await supabase
-        .from('incapacidades')
-        .select('*')
-        .eq('usuario_id', session.user.id)
-        .order('fecha_subida', { ascending: false })
-
-      setIncapacidades(incapacidadesData || [])
       setSuccess("Incapacidad registrada correctamente.")
       setShowModal(false)
       setFormData({ fechaInicio: "", fechaFin: "", documento: null })
     } catch (err: any) {
-      console.error("Error al registrar la incapacidad:", err)
-      setError("Error al registrar la incapacidad. Por favor intente nuevamente.")
+      console.error(err)
+      setError(err.message ?? "Error al registrar incapacidad.")
     } finally {
       setLoading(false)
     }
   }
 
-  const descargarDocumento = async (documentoUrl: string) => {
+  const descargarDocumento = async (url: string) => {
     try {
-      const response = await fetch(documentoUrl)
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'incapacidad.pdf'
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-    } catch (error) {
-      console.error('Error al descargar el documento:', error)
-      setError('Error al descargar el documento. Por favor intente nuevamente.')
+      const res = await fetch(url)
+      const blob = await res.blob()
+      const link = document.createElement("a")
+      link.href = URL.createObjectURL(blob)
+      link.download = "incapacidad.pdf"
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    } catch {
+      setError("Error al descargar documento.")
     }
   }
 
   return (
     <>
-      {loading && !userData ? (
-        <div className="min-h-screen bg-gray-100 flex flex-col justify-center items-center">
-          <div className="text-2xl font-semibold text-gray-700">Cargando...</div>
+      {!userData && loading ? (
+        <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+          Cargando…
         </div>
       ) : (
-        <div className="min-h-screen bg-slate-50">
+        <div className="flex min-h-screen bg-slate-50">
           <Sidebar userName={userData?.colaborador} />
 
-          {/* Main content */}
-          <div className="md:pl-64 flex flex-col flex-1">
-            <main className="flex-1">
-              <div className="py-6">
-                <div className="max-w-[90%] mx-auto px-4 sm:px-6 md:px-8">
-                  <div className="space-y-6">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h1 className="text-2xl font-bold tracking-tight">Mis Incapacidades</h1>
-                        <p className="text-muted-foreground">
-                          Registra y consulta tus incapacidades médicas
-                        </p>
-                      </div>
-                      <Button onClick={() => setShowModal(true)}>
-                        <Plus className="mr-2 h-4 w-4" /> Nueva Incapacidad
-                      </Button>
-                    </div>
-
-                    {error && (
-                      <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>{error}</AlertDescription>
-                      </Alert>
-                    )}
-
-                    {success && (
-                      <Alert className="bg-green-50 text-green-800 border-green-200">
-                        <CheckCircle2 className="h-4 w-4 text-green-600" />
-                        <AlertDescription>{success}</AlertDescription>
-                      </Alert>
-                    )}
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Historial de incapacidades</CardTitle>
-                        <CardDescription>
-                          Registro de incapacidades médicas presentadas.
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="p-0">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Fecha de Inicio</TableHead>
-                              <TableHead>Fecha de Fin</TableHead>
-                              <TableHead>Fecha de Registro</TableHead>
-                              <TableHead>Documento</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {loading ? (
-                              <TableRow>
-                                <TableCell colSpan={4} className="text-center py-4">
-                                  <div className="flex justify-center">
-                                    <svg
-                                      className="animate-spin h-6 w-6 text-primary"
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      fill="none"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <circle
-                                        className="opacity-25"
-                                        cx="12"
-                                        cy="12"
-                                        r="10"
-                                        stroke="currentColor"
-                                        strokeWidth="4"
-                                      ></circle>
-                                      <path
-                                        className="opacity-75"
-                                        fill="currentColor"
-                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                      ></path>
-                                    </svg>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            ) : incapacidades.length === 0 ? (
-                              <TableRow>
-                                <TableCell colSpan={4} className="text-center py-4">
-                                  No has registrado incapacidades
-                                </TableCell>
-                              </TableRow>
-                            ) : (
-                              incapacidades.map((incapacidad) => (
-                                <TableRow key={incapacidad.id}>
-                                  <TableCell>
-                                    {incapacidad.fecha_inicio ? formatDate(incapacidad.fecha_inicio) : "N/A"}
-                                  </TableCell>
-                                  <TableCell>
-                                    {incapacidad.fecha_fin ? formatDate(incapacidad.fecha_fin) : "N/A"}
-                                  </TableCell>
-                                  <TableCell>
-                                    {incapacidad.fecha_subida ? formatDate(incapacidad.fecha_subida) : "N/A"}
-                                  </TableCell>
-                                  <TableCell>
-                                    {incapacidad.documento_url ? (
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => descargarDocumento(incapacidad.documento_url)}
-                                        className="flex items-center gap-1"
-                                      >
-                                        <Download className="h-4 w-4" />
-                                        PDF
-                                      </Button>
-                                    ) : (
-                                      "No disponible"
-                                    )}
-                                  </TableCell>
-                                </TableRow>
-                              ))
-                            )}
-                          </TableBody>
-                        </Table>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-              </div>
-            </main>
-          </div>
-        </div>
-      )}
-
-        {/* Modal para registrar nueva incapacidad */}
-        <Dialog open={showModal} onOpenChange={setShowModal}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Registrar Incapacidad</DialogTitle>
-              <DialogDescription>
-                Complete el formulario para registrar una nueva incapacidad médica.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="fechaInicio" className="text-right">
-                  Fecha de inicio
-                </Label>
-                <Input
-                  id="fechaInicio"
-                  type="date"
-                  className="col-span-3"
-                  value={formData.fechaInicio}
-                  onChange={(e) => setFormData({ ...formData, fechaInicio: e.target.value })}
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="fechaFin" className="text-right">
-                  Fecha de fin
-                </Label>
-                <Input
-                  id="fechaFin"
-                  type="date"
-                  className="col-span-3"
-                  value={formData.fechaFin}
-                  onChange={(e) => setFormData({ ...formData, fechaFin: e.target.value })}
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="documento" className="text-right">
-                  Documento PDF
-                </Label>
-                <div className="col-span-3">
-                  <Input
-                    id="documento"
-                    type="file"
-                    accept="application/pdf"
-                    onChange={handleFileChange}
-                  />
-                  {fileError && (
-                    <p className="text-sm text-red-500 mt-1">{fileError}</p>
-                  )}
-                  <p className="text-xs text-gray-500 mt-1">
-                    Adjunte el documento de incapacidad en formato PDF (máx. 5MB)
-                  </p>
-                </div>
-              </div>
+          {/* ↓ El cambio visual principal: */}
+          <div className="max-w-[90%] mx-auto flex-1 p-8 md:pl-64">
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-2xl font-bold">Mis Incapacidades</h1>
+              <Button onClick={() => setShowModal(true)}>
+                <Plus className="mr-2 h-4 w-4" /> Nueva
+              </Button>
             </div>
+
             {error && (
-              <Alert variant="destructive" className="mt-2">
+              <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" onClick={() => setShowModal(false)}>
-                Cancelar
-              </Button>
-              <Button 
-                onClick={enviarIncapacidad} 
-                disabled={loading || !!fileError}
-                className="flex items-center gap-1"
-              >
-                {loading ? (
-                  <>
-                    <svg
-                      className="animate-spin h-4 w-4 mr-2"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    Procesando...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Registrar Incapacidad
-                  </>
-                )}
-              </Button>
+            {success && (
+              <Alert className="mb-4 bg-green-50 text-green-800 border-green-200">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <AlertDescription>{success}</AlertDescription>
+              </Alert>
+            )}
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Historial</CardTitle>
+                <CardDescription>Documentos de incapacidad</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Inicio</TableHead>
+                      <TableHead>Fin</TableHead>
+                      <TableHead>Registro</TableHead>
+                      <TableHead>Documento</TableHead>
+                      <TableHead>Comentarios</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8">
+                          <div className="animate-spin border-4 border-[#441404] border-t-transparent rounded-full w-10 h-10 mx-auto" />
+                        </TableCell>
+                      </TableRow>
+                    ) : incapacidades.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8">
+                          No has registrado incapacidades.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      incapacidades.map(inc => (
+                        <TableRow key={inc.id}>
+                          <TableCell>{formatDate(inc.fecha_inicio)}</TableCell>
+                          <TableCell>{formatDate(inc.fecha_fin)}</TableCell>
+                          <TableCell>{formatDate(inc.fecha_subida)}</TableCell>
+                          <TableCell>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => descargarDocumento(inc.documento_url)}
+                            >
+                              <Download className="h-4 w-4 mr-1" /> PDF
+                            </Button>
+                          </TableCell>
+                          <TableCell>
+                            <div className="relative inline-block">
+                              {unseenCounts[inc.id] > 0 && (
+                                <span className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full text-xs w-5 h-5 flex items-center justify-center">
+                                  {unseenCounts[inc.id]}
+                                </span>
+                              )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openComments(inc.id)}
+                              >
+                                <MessageSquare className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* Modal registro */}
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar Incapacidad</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Fecha inicio</Label>
+              <Input
+                type="date"
+                className="col-span-3"
+                value={formData.fechaInicio}
+                onChange={e => setFormData(f => ({ ...f, fechaInicio: e.target.value }))}
+              />
             </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Fecha fin</Label>
+              <Input
+                type="date"
+                className="col-span-3"
+                value={formData.fechaFin}
+                onChange={e => setFormData(f => ({ ...f, fechaFin: e.target.value }))}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Documento (PDF)</Label>
+              <Input
+                type="file"
+                accept="application/pdf"
+                className="col-span-3"
+                onChange={handleFileChange}
+              />
+            </div>
+            {fileError && <p className="text-sm text-red-500">{fileError}</p>}
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setShowModal(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={enviarIncapacidad} disabled={loading || !!fileError}>
+              <Upload className="h-4 w-4 mr-1" /> Registrar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal comentarios */}
+      {currentIncapacidadComent && (
+        <Dialog
+          open={showCommentsModal}
+          onOpenChange={open => {
+            if (!open) setCurrentIncapacidadComent(null)
+            setShowCommentsModal(open)
+          }}
+        >
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
+            <DialogHeader>
+              <DialogTitle>Comentarios</DialogTitle>
+            </DialogHeader>
+            <ComentariosIncapacidades incapacidadId={currentIncapacidadComent} />
           </DialogContent>
         </Dialog>
-      </>
-    )
+      )}
+    </>
+  )
 }

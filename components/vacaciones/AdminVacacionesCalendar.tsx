@@ -4,11 +4,21 @@
 import React, { useEffect, useState } from "react"
 import { DayPicker, SelectRangeEventHandler } from "react-day-picker"
 import "react-day-picker/dist/style.css"
-import { eachDayOfInterval, isSameDay } from "date-fns"
+import { eachDayOfInterval, isSameDay, format } from "date-fns"
+import { es } from "date-fns/locale"
 import { createSupabaseClient } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Loader2 } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import {
+  Loader2,
+  Calendar,
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react"
 
 interface Disponibilidad {
   id: string
@@ -24,6 +34,65 @@ interface Vacacion {
   usuario_id: string
 }
 
+// Navegación de meses personalizada
+function MonthNavigation({
+  currentMonth,
+  setCurrentMonth,
+}: {
+  currentMonth: Date
+  setCurrentMonth: (d: Date) => void
+}) {
+  const prev = () => {
+    const d = new Date(currentMonth)
+    d.setMonth(d.getMonth() - 1)
+    setCurrentMonth(d)
+  }
+  const next = () => {
+    const d = new Date(currentMonth)
+    d.setMonth(d.getMonth() + 1)
+    setCurrentMonth(d)
+  }
+  const today = () => setCurrentMonth(new Date())
+
+  return (
+    <div className="flex items-center justify-between rounded-lg bg-primary/5 p-2 mb-4">
+      <Button variant="ghost" size="icon" onClick={prev} className="text-primary hover:bg-primary/10">
+        <ChevronLeft className="h-5 w-5" />
+      </Button>
+      <Button variant="ghost" size="sm" onClick={today} className="font-medium hover:bg-primary/10">
+        <Calendar className="h-4 w-4 mr-2" />
+        {format(currentMonth, "MMMM yyyy", { locale: es })}
+      </Button>
+      <Button variant="ghost" size="icon" onClick={next} className="text-primary hover:bg-primary/10">
+        <ChevronRight className="h-5 w-5" />
+      </Button>
+    </div>
+  )
+}
+
+// Tarjeta de estadísticas
+function StatisticCard({
+  title,
+  value,
+  icon,
+  colorClass,
+}: {
+  title: string
+  value: number
+  icon: React.ReactNode
+  colorClass: string
+}) {
+  return (
+    <div className={`flex items-center p-3 rounded-lg ${colorClass}`}>
+      <div className="mr-3">{icon}</div>
+      <div>
+        <p className="text-sm font-medium opacity-90">{title}</p>
+        <p className="text-xl font-bold">{value}</p>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminVacacionesCalendar({
   empresaId,
 }: {
@@ -32,11 +101,13 @@ export default function AdminVacacionesCalendar({
   const supabase = createSupabaseClient()
 
   const [disponibilidad, setDisponibilidad] = useState<Disponibilidad[]>([])
-  const [vacaciones, setVacaciones]         = useState<Vacacion[]>([])
-  const [selectedRange, setSelectedRange]   = useState<{ from?: Date; to?: Date }>({})
-  const [loading, setLoading]               = useState(true)
-  const [actionLoading, setActionLoading]   = useState(false)
-  const [error, setError]                   = useState<string | null>(null)
+  const [vacaciones, setVacaciones] = useState<Vacacion[]>([])
+  const [selectedRange, setSelectedRange] = useState<{ from?: Date; to?: Date }>({})
+  const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   // Carga datos
   const fetchData = async () => {
@@ -56,13 +127,13 @@ export default function AdminVacacionesCalendar({
         .eq("estado", "aprobado")
       if (vacErr) throw vacErr
 
-      const userIds = Array.from(new Set(vacData.map((v) => v.usuario_id)))
+      const uids = Array.from(new Set(vacData.map((v) => v.usuario_id)))
       let usuarios: { auth_user_id: string; empresa_id: number }[] = []
-      if (userIds.length) {
+      if (uids.length) {
         const { data: uData, error: uErr } = await supabase
           .from("usuario_nomina")
           .select("auth_user_id, empresa_id")
-          .in("auth_user_id", userIds)
+          .in("auth_user_id", uids)
         if (uErr) throw uErr
         usuarios = uData
       }
@@ -86,12 +157,11 @@ export default function AdminVacacionesCalendar({
     fetchData()
   }, [empresaId])
 
-  // Solo guarda cuando el admin pulse el botón
   const onSelect: SelectRangeEventHandler = (range) => {
-    setSelectedRange(range)
+    setSelectedRange(range || {})
+    setSuccessMessage(null)
   }
 
-  // Inserta rango bloqueado
   const handleDisable = async () => {
     if (!selectedRange.from || !selectedRange.to) return
     setActionLoading(true)
@@ -107,15 +177,15 @@ export default function AdminVacacionesCalendar({
       ])
       await fetchData()
       setSelectedRange({})
+      setSuccessMessage("Días deshabilitados correctamente")
     } catch (err: any) {
       console.error(err)
-      setError(err.message || "Error al deshabilitar")
+      setError(err.message || "Error al deshabilitar días")
     } finally {
       setActionLoading(false)
     }
   }
 
-  // Inserta rango habilitado
   const handleEnable = async () => {
     if (!selectedRange.from || !selectedRange.to) return
     setActionLoading(true)
@@ -131,15 +201,16 @@ export default function AdminVacacionesCalendar({
       ])
       await fetchData()
       setSelectedRange({})
+      setSuccessMessage("Días habilitados correctamente")
     } catch (err: any) {
       console.error(err)
-      setError(err.message || "Error al habilitar")
+      setError(err.message || "Error al habilitar días")
     } finally {
       setActionLoading(false)
     }
   }
 
-  // Calcula los días para los modificadores
+  // Construcción de modificadores
   const blockedDays = disponibilidad
     .filter((d) => !d.disponible)
     .flatMap((d) =>
@@ -157,9 +228,8 @@ export default function AdminVacacionesCalendar({
         end: new Date(d.fecha_fin),
       })
     )
-  // Quita de availableDays los que están en blockedDays
-  availableDays = availableDays.filter(
-    (day) => !blockedDays.some((b) => isSameDay(b, day))
+  availableDays = availableDays.filter((day) =>
+    !blockedDays.some((b) => isSameDay(b, day))
   )
 
   const bookedDays = vacaciones.flatMap((v) =>
@@ -171,64 +241,172 @@ export default function AdminVacacionesCalendar({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="animate-spin mr-2" /> Cargando…
+      <div className="flex flex-col items-center justify-center py-16 space-y-4">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="text-muted-foreground">Cargando calendario…</p>
       </div>
     )
   }
 
   return (
-    <div>
-      <div className="flex items-center gap-4 mb-4">
-        <h2 className="text-xl font-semibold">
-          Calendario de Vacaciones (Admin)
-        </h2>
-        <Badge variant="outline">Selecciona un rango</Badge>
-      </div>
-
-      {error && <div className="mb-4 text-red-600">Error: {error}</div>}
-
-      <DayPicker
-        mode="range"
-        selected={selectedRange}
-        onSelect={onSelect}
-        // Solo bloquea las vacaciones aprobadas
-        disabled={bookedDays}
-        modifiers={{
-          booked: bookedDays,
-          blocked: blockedDays,
-          available: availableDays,
-        }}
-        modifiersClassNames={{
-          booked: "bg-red-500 text-white",
-          blocked: "bg-gray-200 text-gray-500",
-          available: "bg-green-500 text-white",
-          selected: "bg-blue-500 text-white",
-          range_start: "rounded-l-full",
-          range_end: "rounded-r-full",
-          range_middle: "bg-blue-300 text-white",
-        }}
-      />
-
-      {selectedRange.from && selectedRange.to && (
-        <div className="mt-4 flex items-center gap-2">
-          <Button onClick={handleEnable} disabled={actionLoading}>
-            {actionLoading && <Loader2 className="animate-spin mr-2" />}
-            Habilitar días
-          </Button>
-          <Button variant="outline" onClick={handleDisable} disabled={actionLoading}>
-            {actionLoading && <Loader2 className="animate-spin mr-2" />}
-            Deshabilitar días
-          </Button>
-        </div>
+    <div className="space-y-6">
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      {successMessage && (
+        <Alert variant="success" className="mb-4 bg-green-50 text-green-700 border-green-200">
+          <CheckCircle2 className="h-4 w-4" />
+          <AlertDescription>{successMessage}</AlertDescription>
+        </Alert>
       )}
 
-      <div className="mt-6">
-        <h3 className="font-medium mb-2">Leyenda:</h3>
-        <div className="flex gap-4 flex-wrap">
-          <Badge variant="destructive">Vacaciones aprobadas</Badge>
-          <Badge variant="outline">Días bloqueados</Badge>
-          <Badge variant="success">Días disponibles</Badge>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Calendario */}
+        <div className="lg:col-span-7 flex justify-center">
+          <Card className="shadow-lg border-0 w-max">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center">
+                <Calendar className="h-5 w-5 mr-2 text-primary" />
+                Calendario de Vacaciones
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <MonthNavigation currentMonth={currentMonth} setCurrentMonth={setCurrentMonth} />
+              <div className="p-3 border rounded-lg bg-white shadow-sm">
+                <DayPicker
+                  mode="range"
+                  month={currentMonth}
+                  onMonthChange={setCurrentMonth}
+                  selected={selectedRange}
+                  onSelect={onSelect}
+                  disabled={bookedDays}
+                  modifiers={{
+                    booked: bookedDays,
+                    blocked: blockedDays,
+                    available: availableDays,
+                  }}
+                  modifiersClassNames={{
+                    booked: "bg-red-500 text-white",
+                    blocked: "bg-gray-200 text-gray-500",
+                    available: "bg-green-500 text-white",
+                    selected: "bg-blue-500 text-white",
+                    range_start: "rounded-l-full",
+                    range_end: "rounded-r-full",
+                    range_middle: "bg-blue-300 text-white",
+                  }}
+                  numberOfMonths={2}
+                  captionLayout="buttons"
+                  locale={es}
+                  classNames={{
+                    day: "h-10 w-10 text-base font-medium",
+                    caption: "hidden",
+                    nav: "hidden",
+                    months: "flex gap-4",
+                    month: "flex-1",
+                  }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Panel derecho */}
+        <div className="lg:col-span-5 space-y-6">
+          <Card className="shadow-md border-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Leyenda</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 bg-red-500 rounded-full" />
+                  <span className="text-sm">Vacaciones aprobadas</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 bg-gray-200 rounded-full" />
+                  <span className="text-sm">Días bloqueados</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 bg-green-500 rounded-full" />
+                  <span className="text-sm">Días disponibles</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 bg-blue-500 rounded-full" />
+                  <span className="text-sm">Días seleccionados</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-md border-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Resumen</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <StatisticCard
+                  title="Días disponibles"
+                  value={availableDays.length}
+                  icon={<CheckCircle2 className="h-5 w-5 text-green-600" />}
+                  colorClass="bg-green-50"
+                />
+                <StatisticCard
+                  title="Días bloqueados"
+                  value={blockedDays.length}
+                  icon={<XCircle className="h-5 w-5 text-gray-600" />}
+                  colorClass="bg-gray-50"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {selectedRange.from && selectedRange.to && (
+            <Card className="shadow-md border-0 bg-blue-50 w-max">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg text-blue-800">Rango seleccionado</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="mb-4 font-medium text-blue-700">
+                  {format(selectedRange.from, "d 'de' MMMM", { locale: es })} al{" "}
+                  {format(selectedRange.to, "d 'de' MMMM", { locale: es })}
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    onClick={handleEnable}
+                    disabled={actionLoading}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    {actionLoading ? (
+                      <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                    ) : (
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                    )}
+                    Habilitar días
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleDisable}
+                    disabled={actionLoading}
+                    className="border-red-300 text-red-600 hover:bg-red-50"
+                  >
+                    {actionLoading ? (
+                      <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                    ) : (
+                      <XCircle className="mr-2 h-4 w-4" />
+                    )}
+                    Deshabilitar días
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="text-sm text-muted-foreground bg-white p-3 rounded-lg border shadow-sm">
+            Última actualización: {new Date().toLocaleString("es-ES")}
+          </div>
         </div>
       </div>
     </div>

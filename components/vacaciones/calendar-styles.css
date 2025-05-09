@@ -1,0 +1,37 @@
+/* Estilos personalizados para el calendario */
+.rdp {
+    --rdp-cell-size: 40px;
+    --rdp-accent-color: #3b82f6;
+    --rdp-background-color: #e0f2fe;
+    --rdp-accent-color-dark: #2563eb;
+    --rdp-background-color-dark: #bfdbfe;
+    --rdp-outline: 2px solid var(--rdp-accent-color);
+    --rdp-outline-selected: 2px solid var(--rdp-accent-color);
+    margin: 0;
+  }
+  
+  .rdp-day_selected:not(.rdp-day_outside):hover {
+    background-color: var(--rdp-accent-color-dark);
+  }
+  
+  .rdp-day:focus {
+    outline: var(--rdp-outline);
+    outline-offset: 2px;
+    z-index: 1;
+  }
+  
+  .rdp-day_selected:focus {
+    outline: var(--rdp-outline-selected);
+    outline-offset: 2px;
+    z-index: 1;
+  }
+  
+  /* Estilos para los selectores de mes y año */
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23475569'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 1rem;
+    padding-right: 2rem;
+  }
+  

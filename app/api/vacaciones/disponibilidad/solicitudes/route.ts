@@ -37,5 +37,5 @@ export async function POST(req: Request) {
       fecha_solicitud: new Date().toISOString()
     }])
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data[0])
+  return NextResponse.json(data?.[0] ?? null)
 }

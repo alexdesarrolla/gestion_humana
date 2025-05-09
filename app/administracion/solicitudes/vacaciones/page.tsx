@@ -39,10 +39,10 @@ export default function AdminVacacionesPage() {
           .order("nombre", { ascending: true })
 
         if (error) throw error
-        setEmpresas(data || [])
+        setEmpresas((data as Empresa[]) || [])
         // por defecto, selecciona la primera empresa
         if (data && data.length > 0) {
-          setSelectedEmpresaId(data[0].id)
+          setSelectedEmpresaId(Number(data[0].id))
         }
       } catch (err: any) {
         console.error("Error al cargar empresas:", err.message)
@@ -83,7 +83,7 @@ export default function AdminVacacionesPage() {
               Empresa
             </Label>
             <Select
-              id="empresa-select"
+              // Remove id prop as it's not supported by SelectProps type
               value={selectedEmpresaId?.toString() || ""}
               onValueChange={(v) => setSelectedEmpresaId(Number(v))}
             >

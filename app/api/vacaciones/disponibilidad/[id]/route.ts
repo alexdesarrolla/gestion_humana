@@ -1,29 +1,15 @@
-import { NextResponse } from "next/server"
-import { createSupabaseClient } from "@/lib/supabase"
+import { NextRequest } from 'next/server';
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
-  const body = await req.json()
-  const supabase = createSupabaseClient()
-  const { data, error } = await supabase
-    .from("vacaciones_disponibilidad")
-    .update(body)
-    .eq("id", params.id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data[0])
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  console.log(`Procesando PATCH para el ID: ${id}`);
+  return new Response(JSON.stringify({ message: `Actualizado el ID: ${id}` }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
 }
 
-export async function DELETE(
-  _: Request,
-  { params }: { params: { id: string } }
-) {
-  const supabase = createSupabaseClient()
-  const { error } = await supabase
-    .from("vacaciones_disponibilidad")
-    .delete()
-    .eq("id", params.id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true })
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return new Response(JSON.stringify({ id }), { status: 200 });
 }

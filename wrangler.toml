@@ -1,0 +1,10 @@
+name = "gestion_humana"
+account_id = "f8f1ec6f95d27bef191f1278cee666f05"
+workers_dev = true
+
+[build]
+command = "npm run build"
+
+[site]
+bucket = "out" # o "public" si usas esa carpeta
+entry-point = "workers-site"

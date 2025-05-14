@@ -18,9 +18,11 @@ interface ComunicadoDetalle {
     imagen_url: string | null
     fecha_publicacion: string | null
     area_responsable: string
-    categoria_id?: string
-    empresas_destinatarias?: { nombre: string }[]
-    usuarios_destinatarios?: { colaborador: string }[]
+    categoria_id: string | null
+    comunicados_empresas?: any[]
+    comunicados_usuarios?: any[]
+    empresas_destinatarias: { nombre: string }[]
+    usuarios_destinatarios: { colaborador: string }[]
 }
 
 export default function DetalleComunicadoPage() {
@@ -52,11 +54,30 @@ export default function DetalleComunicadoPage() {
             if (error || !data) {
                 setComunicado(null)
             } else {
-                const empresas_destinatarias = data.comunicados_empresas?.map((item: any) => item.empresas).filter(Boolean)
-                const usuarios_destinatarios = data.comunicados_usuarios
-                    ?.map((item: any) => item.usuario_nomina)
-                    .filter(Boolean)
-                setComunicado({ ...data, empresas_destinatarias, usuarios_destinatarios })
+                const empresas_destinatarias = Array.isArray(data.comunicados_empresas) 
+                    ? data.comunicados_empresas
+                        .map(item => item.empresas)
+                        .filter((empresa): empresa is { nombre: string } => Boolean(empresa && empresa.nombre))
+                    : []
+                const usuarios_destinatarios = Array.isArray(data.comunicados_usuarios)
+                    ? data.comunicados_usuarios
+                        .map(item => item.usuario_nomina)
+                        .filter((usuario): usuario is { colaborador: string } => Boolean(usuario && usuario.colaborador))
+                    : []
+                // Creamos un objeto con los datos necesarios para evitar problemas de tipado
+                const comunicadoData: ComunicadoDetalle = {
+                    id: data.id as string,
+                    titulo: data.titulo as string,
+                    contenido: data.contenido as string,
+                    imagen_url: data.imagen_url as string | null,
+                    fecha_publicacion: data.fecha_publicacion as string | null,
+                    area_responsable: data.area_responsable as string,
+                    categoria_id: data.categoria_id as string | null,
+                    empresas_destinatarias,
+                    usuarios_destinatarios
+                }
+                
+                setComunicado(comunicadoData)
             }
             setLoading(false)
         }

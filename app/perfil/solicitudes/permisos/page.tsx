@@ -191,7 +191,7 @@ export default function SolicitudPermisos() {
       } else {
         const sols = solicitudesData || []
         setSolicitudes(sols)
-        sols.forEach(s => fetchUnseenCount(s.id))
+        sols.forEach(s => typeof s.id === 'string' && fetchUnseenCount(s.id))
       }
 
       setUserData(userData)
@@ -566,7 +566,6 @@ export default function SolicitudPermisos() {
           {solicitudComentariosId && (
             <ComentariosPermisos
               solicitudId={solicitudComentariosId}
-              userId={userId || ""}
               isAdmin={false}
             />
           )}

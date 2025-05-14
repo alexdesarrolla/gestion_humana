@@ -20,10 +20,19 @@ interface Comunicado {
   imagen_url: string | null;
   fecha_publicacion: string | null;
   area_responsable: string;
-  empresas_destinatarias?: { nombre: string }[];
-  usuarios_destinatarios?: { colaborador: string }[];
-  comunicados_empresas?: { empresa_id: string; empresas: { nombre: string } }[];
-  comunicados_usuarios?: { usuario_id: string; usuario_nomina: { colaborador: string } }[];
+  estado: string;
+  comunicados_empresas: {
+    empresa_id: string;
+    empresas: {
+      nombre: string;
+    };
+  }[];
+  comunicados_usuarios: {
+    usuario_id: string;
+    usuario_nomina: {
+      colaborador: string;
+    };
+  }[];
 }
 
 export default function ComunicadosPage() {
@@ -59,11 +68,16 @@ export default function ComunicadosPage() {
       }
 
       // 2) Obtener empresa_id e id del usuario en “usuario_nomina”
+      interface PerfilUsuario {
+        empresa_id: string;
+        id: string;
+      }
+
       const { data: perfil, error: perfilError } = await supabase
-        .from<{ empresa_id: string; id: string }>("usuario_nomina")
+        .from("usuario_nomina")
         .select("empresa_id, id")
         .eq("auth_user_id", user.id)
-        .single();
+        .single<PerfilUsuario>();
 
       if (perfilError || !perfil) {
         console.error("No se pudo determinar la empresa del usuario:", perfilError);
@@ -75,15 +89,16 @@ export default function ComunicadosPage() {
 
       // 3) Obtener todos los comunicados publicados
       const { data, error } = await supabase
-        .from<Comunicado>("comunicados")
+        .from("comunicados")
         .select(`
           id,
           titulo,
           imagen_url,
           fecha_publicacion,
           area_responsable,
-          comunicados_empresas(empresa_id, empresas:empresa_id(nombre)),
-          comunicados_usuarios(usuario_id, usuario_nomina:usuario_id(colaborador))
+          estado,
+          comunicados_empresas!inner(empresa_id, empresas!inner(nombre)),
+          comunicados_usuarios!left(usuario_id, usuario_nomina!inner(colaborador))
         `)
         .eq("estado", "publicado")
         .order("fecha_publicacion", { ascending: false });
@@ -93,17 +108,25 @@ export default function ComunicadosPage() {
         setComunicados([]);
       } else {
         const lista = data.map((comunicado) => {
-          const empresas_destinatarias = comunicado.comunicados_empresas
-            ?.map((item) => item.empresas)
-            .filter(Boolean);
-          const usuarios_destinatarios = comunicado.comunicados_usuarios
-            ?.map((item) => item.usuario_nomina)
-            .filter(Boolean);
-
           return {
-            ...comunicado,
-            empresas_destinatarias,
-            usuarios_destinatarios,
+            id: comunicado.id as string,
+            titulo: comunicado.titulo as string,
+            imagen_url: comunicado.imagen_url as string | null,
+            fecha_publicacion: comunicado.fecha_publicacion as string | null,
+            area_responsable: comunicado.area_responsable as string,
+            estado: comunicado.estado as string,
+            comunicados_empresas: (comunicado.comunicados_empresas as unknown) as {
+              empresa_id: string;
+              empresas: {
+                nombre: string;
+              };
+            }[],
+            comunicados_usuarios: (comunicado.comunicados_usuarios as unknown) as {
+              usuario_id: string;
+              usuario_nomina: {
+                colaborador: string;
+              };
+            }[]
           };
         });
 

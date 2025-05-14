@@ -1,7 +1,13 @@
 "use client"
 
 import * as React from "react"
-import * as AvatarPrimitive from "@radix-ui/react-avatar"
+// @ts-ignore
+import * as AvatarPrimitive from "@radix-ui/react-avatar";
+// If you're seeing a module not found error, install the package with:
+// npm install @radix-ui/react-avatar
+// or
+// yarn add @radix-ui/react-avatar
+// First install the package with: npm install @radix-ui/react-avatar
 
 import { cn } from "@/lib/utils"
 

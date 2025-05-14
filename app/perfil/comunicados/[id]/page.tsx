@@ -28,8 +28,8 @@ interface ComunicadoDetalle {
   fecha_publicacion: string | null
   area_responsable: string
   categoria_id?: string
-  empresas_destinatarias?: { nombre: string }[]
-  usuarios_destinatarios?: { colaborador: string }[]
+  empresas_destinatarias: { nombre: string }[]
+  usuarios_destinatarios: { colaborador: string }[]
 }
 
 export default function DetalleComunicadoPage() {
@@ -75,14 +75,30 @@ export default function DetalleComunicadoPage() {
         .single()
 
       if (!error && data) {
-        const empresas_destinatarias = data.comunicados_empresas?.map((i: any) => i.empresas).filter(Boolean)
-        const usuarios_destinatarios = data.comunicados_usuarios?.map((i: any) => i.usuario_nomina).filter(Boolean)
+        const empresas_destinatarias = Array.isArray(data.comunicados_empresas)
+          ? data.comunicados_empresas
+              .map((i: any) => i.empresas)
+              .filter((empresa: any): empresa is { nombre: string } => Boolean(empresa && empresa.nombre))
+          : []
+        const usuarios_destinatarios = Array.isArray(data.comunicados_usuarios)
+          ? data.comunicados_usuarios
+              .map((i: any) => i.usuario_nomina)
+              .filter((usuario: any): usuario is { colaborador: string } => Boolean(usuario && usuario.colaborador))
+          : []
 
-        setComunicado({
-          ...data,
-          empresas_destinatarias,
-          usuarios_destinatarios,
-        })
+        // Mapeo explícito de cada campo para asegurar el tipado correcto
+        const comunicadoData: ComunicadoDetalle = {
+          id: data.id as string,
+          titulo: data.titulo as string,
+          contenido: data.contenido as string,
+          imagen_url: data.imagen_url as string | null,
+          fecha_publicacion: data.fecha_publicacion as string | null,
+          area_responsable: data.area_responsable as string,
+          categoria_id: data.categoria_id as string | undefined,
+          empresas_destinatarias: empresas_destinatarias ?? [],
+          usuarios_destinatarios: usuarios_destinatarios ?? [],
+        }
+        setComunicado(comunicadoData)
       } else {
         setComunicado(null)
       }

@@ -16,7 +16,13 @@ export default function AdminVacacionesPage() {
         .select("empresa_id")
         .eq("auth_user_id", session.user.id)
         .single()
-        .then(({ data }) => setEmpresaId(data?.empresa_id))
+        .then(({ data }) => {
+          if (data?.empresa_id) {
+            setEmpresaId(data.empresa_id as number)
+          } else {
+            setEmpresaId(null)
+          }
+        })
     })
   }, [supabase])
 

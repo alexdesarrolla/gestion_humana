@@ -27,5 +27,5 @@ export async function POST(req: Request) {
     .from("vacaciones_disponibilidad")
     .insert([{ empresa_id, fecha_inicio, fecha_fin, disponible }])
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data[0])
+  return NextResponse.json(data?.[0] ?? null)
 }

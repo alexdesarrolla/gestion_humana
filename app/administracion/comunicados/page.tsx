@@ -61,16 +61,16 @@ export default function Comunicados() {
 
   // Modal de eliminación
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleteComunicadoId, setDeleteComunicadoId] = useState<string | null>(
-    null
-  );
+  const [deleteComunicadoId, setDeleteComunicadoId] = useState<string>("");
   const [deleteInput, setDeleteInput] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const openDeleteDialog = (comunicadoId: string) => {
-    setDeleteComunicadoId(comunicadoId);
-    setDeleteInput("");
-    setDeleteDialogOpen(true);
+    if (comunicadoId) {
+      setDeleteComunicadoId(comunicadoId);
+      setDeleteInput("");
+      setDeleteDialogOpen(true);
+    }
   };
 
   const confirmDeleteComunicado = async () => {
@@ -82,6 +82,10 @@ export default function Comunicados() {
     setError(null);
     try {
       const supabase = createSupabaseClient();
+      if (!deleteComunicadoId) {
+        setError("ID del comunicado no válido");
+        return;
+      }
       const { error } = await supabase
         .from("comunicados")
         .delete()

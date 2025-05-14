@@ -455,7 +455,7 @@ export default function AdminCertificacionLaboral() {
         localStorage.setItem("certificacion_tipoContrato", salarioData.tipoContrato)
       }
 
-      await aprobarSolicitud(newSol.id, usuarioEncontrado)
+      await aprobarSolicitud(newSol.id as string, usuarioEncontrado)
 
       setShowCreateModal(false)
       setFormData({ cedula: "", dirigidoA: "", ciudad: "", incluirSalario: false })

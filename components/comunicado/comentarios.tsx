@@ -70,20 +70,23 @@ export function ComentariosComunicados({ comunicadoId }: { comunicadoId: string 
         .or(`auth_user_id.eq.${authUser.id},user_id.eq.${authUser.id}`)
         .single()
 
-      const nombre = perfil?.colaborador || "Usuario"
+      const nombre: string = perfil?.colaborador ? String(perfil.colaborador) : 'Usuario'
       const path   = perfil?.avatar_path
       const gender = perfil?.genero
 
       let avatarUrl: string
-      if (path) {
-        avatarUrl = supabase.storage.from("avatar").getPublicUrl(path).data.publicUrl
-      } else if (gender === "F") {
-        avatarUrl = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-f.webp").data.publicUrl
-      } else {
-        avatarUrl = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-m.webp").data.publicUrl
-      }
+      if (path && typeof path === 'string') {
+            const { data } = supabase.storage.from("avatar").getPublicUrl(path)
+            avatarUrl = data.publicUrl
+          } else if (gender === "F") {
+            const { data } = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-f.webp")
+            avatarUrl = data.publicUrl
+          } else {
+            const { data } = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-m.webp")
+            avatarUrl = data.publicUrl
+          }
 
-      setUser({ id: authUser.id, nombre, avatarUrl })
+      setUser({ id: authUser.id, nombre: nombre, avatarUrl: avatarUrl })
     }
     fetchUser()
   }, [])
@@ -122,13 +125,16 @@ export function ComentariosComunicados({ comunicadoId }: { comunicadoId: string 
         const gender = c.usuario_nomina?.genero
 
         let avatarUrl: string
-        if (path) {
-          avatarUrl = supabase.storage.from("avatar").getPublicUrl(path).data.publicUrl
-        } else if (gender === "F") {
-          avatarUrl = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-f.webp").data.publicUrl
-        } else {
-          avatarUrl = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-m.webp").data.publicUrl
-        }
+        if (path && typeof path === 'string') {
+            const { data } = supabase.storage.from("avatar").getPublicUrl(path)
+            avatarUrl = data.publicUrl
+          } else if (gender === "F") {
+            const { data } = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-f.webp")
+            avatarUrl = data.publicUrl
+          } else {
+            const { data } = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-m.webp")
+            avatarUrl = data.publicUrl
+          }
 
         map[c.id] = {
           id: c.id,

@@ -1,10 +1,19 @@
-import lowlight from 'lowlight'
+import { createLowlight } from 'lowlight'
+import xml from 'highlight.js/lib/languages/xml'
+import css from 'highlight.js/lib/languages/css'
+import javascript from 'highlight.js/lib/languages/javascript'
+import typescript from 'highlight.js/lib/languages/typescript'
+import python from 'highlight.js/lib/languages/python'
 
-// Register common languages
-lowlight.registerLanguage('html', require('highlight.js/lib/languages/xml'))
-lowlight.registerLanguage('css', require('highlight.js/lib/languages/css'))
-lowlight.registerLanguage('javascript', require('highlight.js/lib/languages/javascript'))
-lowlight.registerLanguage('typescript', require('highlight.js/lib/languages/typescript'))
-lowlight.registerLanguage('python', require('highlight.js/lib/languages/python'))
+const lowlight = createLowlight()
+
+// Register languages
+lowlight.register({
+  html: xml,
+  css,
+  javascript,
+  typescript,
+  python
+})
 
 export { lowlight }

@@ -5,13 +5,25 @@ import { useRouter } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase";
 import { AdminSidebar } from "@/components/ui/admin-sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "@/components/ui/table";
 import { Alert } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import { Search, X, FileDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -33,6 +45,9 @@ type SolicitudPermiso = {
   };
 };
 
+// 1) Filas crudas de la tabla (sin la propiedad `usuario`)
+type PermisoRow = Omit<SolicitudPermiso, "usuario">;
+
 export default function AdminPermisosHistorico() {
   const router = useRouter();
   const [solicitudes, setSolicitudes] = useState<SolicitudPermiso[]>([]);
@@ -51,33 +66,47 @@ export default function AdminPermisosHistorico() {
       try {
         const supabase = createSupabaseClient();
 
-        // 1) Traer solicitudes
+        // 2) Traer solicitudes tipadas
         const { data: solData, error: solError } = await supabase
           .from("solicitudes_permisos")
           .select(`
-            id, usuario_id, tipo_permiso, fecha_inicio, fecha_fin, fecha_solicitud,
-            estado, fecha_resolucion, pdf_url, hora_inicio, hora_fin
+            id,
+            usuario_id,
+            tipo_permiso,
+            fecha_inicio,
+            fecha_fin,
+            fecha_solicitud,
+            estado,
+            fecha_resolucion,
+            pdf_url,
+            hora_inicio,
+            hora_fin
           `)
           .order("fecha_solicitud", { ascending: false });
         if (solError) throw solError;
-        if (!solData || solData.length === 0) {
+        if (!solData) {
           setSolicitudes([]);
           setFilteredSolicitudes([]);
           return;
         }
 
-        // 2) Traer datos de los colaboradores
-        const userIds = Array.from(new Set(solData.map(s => s.usuario_id)));
+        // 3) Traer colaboradores tipados
+        const userIds = Array.from(new Set(solData.map((s: any) => s.usuario_id)));
         const { data: usersData, error: usersError } = await supabase
           .from("usuario_nomina")
           .select("auth_user_id, colaborador, cedula")
           .in("auth_user_id", userIds);
         if (usersError) throw usersError;
 
-        // 3) Combinar
-        const combined = solData.map(s => {
-          const usuario = usersData?.find(u => u.auth_user_id === s.usuario_id);
-          return { ...s, usuario: usuario ? { colaborador: usuario.colaborador, cedula: usuario.cedula } : undefined };
+        // 4) Combinar en SolicitudPermiso[]
+        const combined: SolicitudPermiso[] = solData.map((s: any) => {
+          const u = usersData?.find((u: any) => u.auth_user_id === s.usuario_id);
+          return {
+            ...s,
+            usuario: u
+              ? { colaborador: u.colaborador, cedula: u.cedula }
+              : undefined,
+          };
         });
 
         setSolicitudes(combined);
@@ -99,32 +128,36 @@ export default function AdminPermisosHistorico() {
     if (searchTerm) {
       const lc = searchTerm.toLowerCase();
       result = result.filter(
-        s =>
+        (s) =>
           s.usuario?.colaborador.toLowerCase().includes(lc) ||
           s.usuario?.cedula.includes(lc)
       );
     }
     if (selectedEstado !== "all") {
-      result = result.filter(s => s.estado === selectedEstado);
+      result = result.filter((s) => s.estado === selectedEstado);
     }
     setFilteredSolicitudes(result);
   }, [searchTerm, selectedEstado, solicitudes]);
 
   const formatDate = (d: string | null) =>
-    d ? new Date(d).toLocaleDateString("es-CO", { day: "2-digit", month: "2-digit", year: "numeric" }) : "N/A";
-
-  const formatTime = (t: string | null) => {
-    if (!t) return "";
-    const [h, m] = t.split(":");
-    return h && m ? `${h}:${m}` : t;
-  };
+    d
+      ? new Date(d).toLocaleDateString("es-CO", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        })
+      : "N/A";
 
   const humanType = (t: string) => {
     switch (t) {
-      case "no_remunerado": return "No remunerado";
-      case "remunerado": return "Remunerado";
-      case "actividad_interna": return "Actividad interna";
-      default: return t;
+      case "no_remunerado":
+        return "No remunerado";
+      case "remunerado":
+        return "Remunerado";
+      case "actividad_interna":
+        return "Actividad interna";
+      default:
+        return t;
     }
   };
 
@@ -142,12 +175,20 @@ export default function AdminPermisosHistorico() {
             {/* Título */}
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="text-2xl font-bold">Histórico - Solicitudes de Permisos</h1>
+                <h1 className="text-2xl font-bold">
+                  Histórico - Solicitudes de Permisos
+                </h1>
                 <p className="text-muted-foreground">
                   Consulta y filtra el historial de permisos laborales.
                 </p>
               </div>
-              <Button onClick={() => router.push('/administracion/solicitudes/permisos')}>Ir a Permisos Pendientes</Button>
+              <Button
+                onClick={() =>
+                  router.push("/administracion/solicitudes/permisos")
+                }
+              >
+                Ir a Permisos Pendientes
+              </Button>
             </div>
 
             {/* Filtros */}
@@ -166,7 +207,7 @@ export default function AdminPermisosHistorico() {
                         placeholder="Por nombre o cédula..."
                         className="pl-8 h-9"
                         value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
+                        onChange={(e) => setSearchTerm(e.target.value)}
                       />
                       {searchTerm && (
                         <button
@@ -185,7 +226,7 @@ export default function AdminPermisosHistorico() {
                       Estado
                     </Label>
                     <Select
-                      id="estado"
+                      name="estado"
                       value={selectedEstado}
                       onValueChange={setSelectedEstado}
                     >
@@ -233,7 +274,9 @@ export default function AdminPermisosHistorico() {
                           <TableHead>Fecha Inicio</TableHead>
                           <TableHead>Fecha Fin</TableHead>
                           <TableHead>Estado</TableHead>
-                          <TableHead className="text-right">Acciones</TableHead>
+                          <TableHead className="text-right">
+                            Acciones
+                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -244,7 +287,7 @@ export default function AdminPermisosHistorico() {
                             </TableCell>
                           </TableRow>
                         ) : (
-                          filteredSolicitudes.map(s => (
+                          filteredSolicitudes.map((s) => (
                             <TableRow key={s.id}>
                               <TableCell>
                                 {s.usuario?.colaborador ?? s.usuario_id}
@@ -252,9 +295,15 @@ export default function AdminPermisosHistorico() {
                               <TableCell>
                                 {s.usuario?.cedula ?? "-"}
                               </TableCell>
-                              <TableCell>{humanType(s.tipo_permiso)}</TableCell>
-                              <TableCell>{formatDate(s.fecha_inicio)}</TableCell>
-                              <TableCell>{formatDate(s.fecha_fin)}</TableCell>
+                              <TableCell>
+                                {humanType(s.tipo_permiso)}
+                              </TableCell>
+                              <TableCell>
+                                {formatDate(s.fecha_inicio)}
+                              </TableCell>
+                              <TableCell>
+                                {formatDate(s.fecha_fin)}
+                              </TableCell>
                               <TableCell>
                                 <Badge
                                   variant={
@@ -272,10 +321,12 @@ export default function AdminPermisosHistorico() {
                                 {s.pdf_url ? (
                                   <Button
                                     size="sm"
-                                    onClick={() => window.open(s.pdf_url!, "_blank")}
-                                >
-                                  <FileDown className="h-4 w-4 mr-1" /> Ver PDF
-                                </Button>
+                                    onClick={() =>
+                                      window.open(s.pdf_url!, "_blank")
+                                    }
+                                  >
+                                    <FileDown className="h-4 w-4 mr-1" /> Ver PDF
+                                  </Button>
                                 ) : (
                                   <span className="text-xs text-gray-500">
                                     Sin PDF

@@ -83,7 +83,11 @@ export default function Login() {
           throw new Error("No se encontró ningún usuario con esta cédula")
         }
 
-        emailToUse = userData.correo_electronico
+        if (typeof userData.correo_electronico === "string") {
+          emailToUse = userData.correo_electronico
+        } else {
+          throw new Error("El correo electrónico recuperado no es válido")
+        }
       }
 
       // Iniciar sesión con el correo (original o encontrado) y la contraseña

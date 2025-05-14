@@ -102,7 +102,8 @@ export default function AdminVacacionesCalendar({
 
   const [disponibilidad, setDisponibilidad] = useState<Disponibilidad[]>([])
   const [vacaciones, setVacaciones] = useState<Vacacion[]>([])
-  const [selectedRange, setSelectedRange] = useState<{ from?: Date; to?: Date }>({})
+  const [selectedRange, setSelectedRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined })
+  type DateRange = { from: Date | undefined; to: Date | undefined }
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
@@ -135,7 +136,7 @@ export default function AdminVacacionesCalendar({
           .select("auth_user_id, empresa_id")
           .in("auth_user_id", uids)
         if (uErr) throw uErr
-        usuarios = uData
+        usuarios = uData as { auth_user_id: string; empresa_id: number }[]
       }
 
       const vacFiltered = vacData.filter((v) => {
@@ -143,8 +144,20 @@ export default function AdminVacacionesCalendar({
         return u?.empresa_id === empresaId
       })
 
-      setDisponibilidad(dispData || [])
-      setVacaciones(vacFiltered || [])
+      setDisponibilidad(
+        (dispData as unknown as Disponibilidad[])?.map((item) => ({
+          id: item.id,
+          fecha_inicio: item.fecha_inicio,
+          fecha_fin: item.fecha_fin,
+          disponible: item.disponible,
+        })) || []
+      )
+      setVacaciones((vacFiltered || []).map(v => ({
+        id: String(v.id),
+        fecha_inicio: String(v.fecha_inicio),
+        fecha_fin: String(v.fecha_fin), 
+        usuario_id: String(v.usuario_id)
+      })))
     } catch (err: any) {
       console.error(err)
       setError(err.message || "Error al cargar datos")
@@ -158,7 +171,7 @@ export default function AdminVacacionesCalendar({
   }, [empresaId])
 
   const onSelect: SelectRangeEventHandler = (range) => {
-    setSelectedRange(range || {})
+    setSelectedRange(range ? { from: range.from, to: range.to ?? undefined } : { from: undefined, to: undefined })
     setSuccessMessage(null)
   }
 
@@ -176,7 +189,7 @@ export default function AdminVacacionesCalendar({
         },
       ])
       await fetchData()
-      setSelectedRange({})
+      setSelectedRange({ from: undefined, to: undefined })
       setSuccessMessage("Días deshabilitados correctamente")
     } catch (err: any) {
       console.error(err)
@@ -200,7 +213,7 @@ export default function AdminVacacionesCalendar({
         },
       ])
       await fetchData()
-      setSelectedRange({})
+      setSelectedRange({ from: undefined, to: undefined })
       setSuccessMessage("Días habilitados correctamente")
     } catch (err: any) {
       console.error(err)
@@ -257,7 +270,7 @@ export default function AdminVacacionesCalendar({
         </Alert>
       )}
       {successMessage && (
-        <Alert variant="success" className="mb-4 bg-green-50 text-green-700 border-green-200">
+        <Alert variant="default" className="mb-4 bg-green-50 text-green-700 border-green-200">
           <CheckCircle2 className="h-4 w-4" />
           <AlertDescription>{successMessage}</AlertDescription>
         </Alert>
@@ -298,7 +311,7 @@ export default function AdminVacacionesCalendar({
                     range_middle: "bg-blue-300 text-white",
                   }}
                   numberOfMonths={2}
-                  captionLayout="buttons"
+                  captionLayout="dropdown"
                   locale={es}
                   classNames={{
                     day: "h-10 w-10 text-base font-medium",

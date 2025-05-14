@@ -28,12 +28,14 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 
 interface Lectura {
   usuario_id: string
-  usuario_nomina: { colaborador: string }
+  usuario_nomina: {
+    colaborador: string | null
+  } | null
   leido_at: string
 }
 interface Destinatario {
   usuario_id: string
-  colaborador: string
+  colaborador: string | undefined
 }
 
 export default function DetallesComunicadoPage() {
@@ -63,21 +65,24 @@ export default function DetallesComunicadoPage() {
         .eq("id", comunicadoId)
         .single()
       if (comErr) throw comErr
+      const titulo = comData?.titulo as string
 
       // 2) IDs de usuarios explícitos
-      const { data: cuData = [], error: cuErr } = await supabase
+      const { data: usuariosData, error: cuErr } = await supabase
         .from("comunicados_usuarios")
         .select("usuario_id")
         .eq("comunicado_id", comunicadoId)
       if (cuErr) throw cuErr
+      const cuData = usuariosData || []
       const usuarioIds = cuData.map((r) => r.usuario_id)
 
       // 3) IDs de empresas
-      const { data: ceData = [], error: ceErr } = await supabase
+      const { data: empresasData, error: ceErr } = await supabase
         .from("comunicados_empresas")
         .select("empresa_id")
         .eq("comunicado_id", comunicadoId)
       if (ceErr) throw ceErr
+      const ceData = empresasData || []
       const empresaIds = ceData.map((r) => r.empresa_id)
 
       // 4) Calcular total destinatarios
@@ -92,18 +97,31 @@ export default function DetallesComunicadoPage() {
         totalDest = count || 0
       }
       setComunicadoInfo({
-        titulo: comData.titulo,
+        titulo: titulo,
         total_destinatarios: totalDest,
       })
 
       // 5) Obtener lecturas
-      const { data: leData = [], error: leErr } = await supabase
+      const { data: lecturasData, error: leErr } = await supabase
         .from("comunicados_leidos")
-        .select("usuario_id, leido_at, usuario_nomina:usuario_id(colaborador)")
+        .select(`
+          usuario_id,
+          leido_at,
+          usuario_nomina:usuario_id (colaborador)
+        `)
         .eq("comunicado_id", comunicadoId)
         .order("leido_at", { ascending: false })
       if (leErr) throw leErr
-      setUsuariosLeidos(leData)
+      const leData = lecturasData || []
+      // Convertir explícitamente los datos al tipo Lectura
+      const lecturas: Lectura[] = leData.map(item => ({
+          usuario_id: item.usuario_id as string,
+          usuario_nomina: item.usuario_nomina && typeof item.usuario_nomina === 'object' ? {
+            colaborador: (item.usuario_nomina as { colaborador: string | null }).colaborador || "Usuario desconocido"
+          } : null,
+          leido_at: item.leido_at as string
+        }))
+      setUsuariosLeidos(lecturas)
 
       // 6) Obtener todos los destinatarios (usuarios explícitos + empresas)
       let query = supabase
@@ -129,12 +147,13 @@ export default function DetallesComunicadoPage() {
       const { data: recData = [], error: recErr } = await query
       if (recErr) throw recErr
 
-      setDestinatarios(
-        recData.map((u) => ({
-          usuario_id: u.auth_user_id,
-          colaborador: u.colaborador,
-        }))
-      )
+      // Asegurarse de que recData sea un array antes de mapearlo
+      const destinatariosData = Array.isArray(recData) ? recData.map((u) => ({
+        usuario_id: u.auth_user_id as string,
+        colaborador: u.colaborador as string | undefined,
+      })) : []
+      
+      setDestinatarios(destinatariosData)
     } catch (err: any) {
       console.error("Error en fetchData:", err)
     } finally {
@@ -182,15 +201,15 @@ export default function DetallesComunicadoPage() {
       : 0
 
   const filteredLeidos = usuariosLeidos.filter((u) =>
-    u.usuario_nomina.colaborador
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase())
+    u.usuario_nomina?.colaborador
+      ?.toLowerCase()
+      ?.includes(searchTerm.toLowerCase()) ?? false
   )
   const faltantes = destinatarios.filter(
     (d) => !usuariosLeidos.some((l) => l.usuario_id === d.usuario_id)
   )
   const filteredFaltantes = faltantes.filter((d) =>
-    d.colaborador.toLowerCase().includes(searchTerm.toLowerCase())
+    d.colaborador?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false
   )
 
   return (
@@ -333,14 +352,16 @@ export default function DetallesComunicadoPage() {
                       >
                         <div className="flex items-center gap-3">
                           <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                            {u.usuario_nomina.colaborador
-                              .split(" ")
-                              .map((w) => w[0])
-                              .join("")
-                              .toUpperCase()
-                              .slice(0, 2)}
+                            {u.usuario_nomina?.colaborador
+                              ? u.usuario_nomina.colaborador
+                                .split(" ")
+                                .map((w) => w[0])
+                                .join("")
+                                .toUpperCase()
+                                .slice(0, 2)
+                              : "--"}
                           </div>
-                          <span>{u.usuario_nomina.colaborador}</span>
+                          <span>{u.usuario_nomina?.colaborador || "Usuario desconocido"}</span>
                         </div>
                         <div className="text-sm text-muted-foreground flex items-center">
                           <CalendarIcon className="h-4 w-4 mr-1" />
@@ -400,13 +421,15 @@ export default function DetallesComunicadoPage() {
                       >
                         <div className="h-9 w-9 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
                           {d.colaborador
-                            .split(" ")
-                            .map((w) => w[0])
-                            .join("")
-                            .toUpperCase()
-                            .slice(0, 2)}
+                            ? d.colaborador
+                              .split(" ")
+                              .map((w) => w[0])
+                              .join("")
+                              .toUpperCase()
+                              .slice(0, 2)
+                            : "--"}
                         </div>
-                        <span>{d.colaborador}</span>
+                        <span>{d.colaborador || "Usuario desconocido"}</span>
                       </div>
                     ))
                   )}

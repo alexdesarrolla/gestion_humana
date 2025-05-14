@@ -100,7 +100,11 @@ export default function IncapacidadesUsuario() {
       } else {
         setIncapacidades(incs || [])
         // Inicializar contador de no leídos
-        incs?.forEach((inc) => fetchUserUnseenCount(inc.id))
+        incs?.forEach((inc) => {
+          if (typeof inc.id === 'string') {
+            fetchUserUnseenCount(inc.id)
+          }
+        })
       }
 
       setLoading(false)
@@ -210,7 +214,11 @@ export default function IncapacidadesUsuario() {
         .eq("usuario_id", session.user.id)
         .order("fecha_subida", { ascending: false })
       setIncapacidades(incs || [])
-      incs?.forEach((inc) => fetchUserUnseenCount(inc.id))
+      incs?.forEach((inc) => {
+        if (typeof inc.id === 'string') {
+          fetchUserUnseenCount(inc.id)
+        }
+      })
 
       setSuccess("Incapacidad registrada correctamente.")
       setShowModal(false)

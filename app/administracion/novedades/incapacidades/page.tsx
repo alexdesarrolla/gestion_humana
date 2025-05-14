@@ -64,49 +64,58 @@ export default function AdminNovedadesIncapacidades() {
     return d.toLocaleDateString("es-CO", { year: "numeric", month: "long", day: "numeric" })
   }
 
-  // — Obtener incapacidades
+  // — Obtener incapacidades y empresas
   useEffect(() => {
     const fetchIncapacidades = async () => {
       setLoading(true)
       try {
-        // 1) datos básicos
+        // 1) datos básicos de incapacidades
         const { data, error: err1 } = await supabase
           .from("incapacidades")
           .select(`id, fecha_inicio, fecha_fin, fecha_subida, documento_url, usuario_id`)
           .order("fecha_subida", { ascending: false })
         if (err1) throw err1
 
-        // 2) datos de usuario
-        const userIds = Array.from(new Set(data.map((i) => i.usuario_id)))
+        // 2) datos de usuarios (sin relacional)
         const { data: usuariosData, error: err2 } = await supabase
           .from("usuario_nomina")
-          .select(`
-            auth_user_id,
-            colaborador,
-            cedula,
-            cargo,
-            empresa_id,
-            empresas:empresa_id(nombre)
-          `)
-          .in("auth_user_id", userIds)
+          .select(`auth_user_id, colaborador, cedula, cargo, empresa_id`)
         if (err2) throw err2
 
+        // 3) obtener nombres de empresas por separado
+        const empresaIds = Array.from(new Set(
+          usuariosData.map((u) => u.empresa_id).filter((id): id is number => !!id)
+        ))
+        const { data: empresasData, error: err3 } = await supabase
+          .from("empresa")
+          .select(`id, nombre`)
+          .in("id", empresaIds)
+        if (err3) throw err3
+
+        // 4) unir usuario + nombre de empresa
         const completos = data.map((inc) => {
+          // buscamos al usuario (puede ser undefined)
           const usu = usuariosData.find((u) => u.auth_user_id === inc.usuario_id)
-          return { ...inc, usuario: usu || null }
+          // extraemos el nombre de la empresa si existe
+          const emp = empresasData.find((e) => e.id === usu?.empresa_id)
+        
+          return {
+            ...inc,
+            usuario: {
+              colaborador: usu?.colaborador  || "—",
+              cedula:       usu?.cedula      || "—",
+              cargo:        usu?.cargo       || "—",
+              empresa_nombre: emp?.nombre    || "—",
+            },
+          }
         })
+        
 
         setIncapacidades(completos)
         setFilteredIncapacidades(completos)
-        setEmpresas(
-          Array.from(
-            new Set(
-              usuariosData
-                .map((u) => u.empresas?.nombre)
-                .filter((n): n is string => Boolean(n))
-            )
-          )
-        )
+
+        // 5) lista de empresas para el filtro
+        setEmpresas(empresasData.map((e) => e.nombre as string))
       } catch (err: any) {
         console.error(err)
         setError("Error al cargar las incapacidades: " + (err.message || err))
@@ -205,11 +214,11 @@ export default function AdminNovedadesIncapacidades() {
           i.usuario?.colaborador?.toLowerCase().includes(term) ||
           i.usuario?.cedula?.toLowerCase().includes(term) ||
           i.usuario?.cargo?.toLowerCase().includes(term) ||
-          i.usuario?.empresas?.nombre?.toLowerCase().includes(term)
+          i.usuario?.empresa_nombre?.toLowerCase().includes(term)
       )
     }
     if (empresa !== "all") {
-      res = res.filter((i) => i.usuario?.empresas?.nombre === empresa)
+      res = res.filter((i) => i.usuario?.empresa_nombre === empresa)
     }
     if (sort) {
       res.sort((a, b) => {
@@ -279,7 +288,7 @@ export default function AdminNovedadesIncapacidades() {
               </Alert>
             )}
 
-            {/* Filtros */}
+            {/* Filtros */}  
             <div className="flex flex-col md:flex-row gap-4 mb-6">
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
@@ -317,7 +326,7 @@ export default function AdminNovedadesIncapacidades() {
               </Button>
             </div>
 
-            {/* Tabla */}
+            {/* Tabla */}  
             <div className="rounded-md border overflow-auto">
               <Table>
                 <TableHeader>
@@ -365,7 +374,7 @@ export default function AdminNovedadesIncapacidades() {
                       <TableRow key={inc.id}>
                         <TableCell>{inc.usuario?.colaborador || "—"}</TableCell>
                         <TableCell>{inc.usuario?.cedula || "—"}</TableCell>
-                        <TableCell>{inc.usuario?.empresas?.nombre || "—"}</TableCell>
+                        <TableCell>{inc.usuario?.empresa_nombre || "—"}</TableCell>
                         <TableCell>{inc.fecha_inicio ? formatDate(inc.fecha_inicio) : "—"}</TableCell>
                         <TableCell>{inc.fecha_fin ? formatDate(inc.fecha_fin) : "—"}</TableCell>
                         <TableCell>{inc.fecha_subida ? formatDate(inc.fecha_subida) : "—"}</TableCell>

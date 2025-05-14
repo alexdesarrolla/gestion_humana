@@ -19,28 +19,69 @@ import html2canvas from "html2canvas"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ComentariosPermisos } from "@/components/permisos/comentarios-permisos"
 
+// Tipos para los datos principales
+interface Empresa {
+  nombre: string
+  razon_social?: string
+  nit?: string
+}
+
+// Interfaz para datos de empresa en relaciones
+interface EmpresaData {
+  nombre?: string
+}
+
+interface Usuario {
+  auth_user_id: string
+  colaborador?: string
+  cedula?: string
+  cargo?: string
+  fecha_ingreso?: string
+  empresa_id?: string
+  empresas?: Empresa
+}
+
+interface SolicitudPermiso {
+  id: string
+  tipo_permiso: string
+  fecha_inicio: string
+  fecha_fin: string
+  hora_inicio?: string
+  hora_fin?: string
+  motivo?: string
+  compensacion?: string
+  estado: string
+  fecha_solicitud: string
+  fecha_resolucion?: string
+  motivo_rechazo?: string
+  pdf_url?: string
+  usuario_id: string
+  admin_id?: string
+  usuario?: Usuario | null
+}
+
 export default function AdminSolicitudesPermisos() {
   const router = useRouter()
-  const [loading, setLoading] = useState(false)
-  const [searchLoading, setSearchLoading] = useState(false)
-  const [solicitudes, setSolicitudes] = useState<any[]>([])
-  const [filteredSolicitudes, setFilteredSolicitudes] = useState<any[]>([])
-  const [error, setError] = useState("")
-  const [success, setSuccess] = useState("")
-  const [showModal, setShowModal] = useState(false)
-  const [solicitudSeleccionada, setSolicitudSeleccionada] = useState<{id: string, usuario: any} | null>(null)
-  const [motivoRechazo, setMotivoRechazo] = useState("")
-  const [showComentariosModal, setShowComentariosModal] = useState(false)
+  const [loading, setLoading] = useState<boolean>(false)
+  const [searchLoading, setSearchLoading] = useState<boolean>(false)
+  const [solicitudes, setSolicitudes] = useState<SolicitudPermiso[]>([])
+  const [filteredSolicitudes, setFilteredSolicitudes] = useState<SolicitudPermiso[]>([])
+  const [error, setError] = useState<string>("")
+  const [success, setSuccess] = useState<string>("")
+  const [showModal, setShowModal] = useState<boolean>(false)
+  const [solicitudSeleccionada, setSolicitudSeleccionada] = useState<{id: string, usuario: Usuario | null} | null>(null)
+  const [motivoRechazo, setMotivoRechazo] = useState<string>("")
+  const [showComentariosModal, setShowComentariosModal] = useState<boolean>(false)
   const [solicitudComentariosId, setSolicitudComentariosId] = useState<string | undefined>(undefined)
   const [unseenCounts, setUnseenCounts] = useState<Record<string, number>>({})
   const [adminId, setAdminId] = useState<string | null>(null)
   
   // Estados para filtros
-  const [searchTerm, setSearchTerm] = useState("")
+  const [searchTerm, setSearchTerm] = useState<string>("")
   const [selectedEstado, setSelectedEstado] = useState<string>("all") 
   const [selectedEmpresa, setSelectedEmpresa] = useState<string>("all") 
   const [selectedTipoPermiso, setSelectedTipoPermiso] = useState<string>("all") 
-  const [empresas, setEmpresas] = useState<string[]>([])
+  const [empresas, setEmpresas] = useState<any[]>([]); // Cambiar 'any' por el tipo correcto una vez que se resuelva el problema de tipado
   const [sortConfig, setSortConfig] = useState<{
     key: string
     direction: "asc" | "desc"
@@ -153,14 +194,18 @@ export default function AdminSolicitudesPermisos() {
           const { data: usuariosData, error: usuariosError } = await supabase
             .from('usuario_nomina')
             .select(`
-              auth_user_id, colaborador, cedula, cargo, fecha_ingreso, empresa_id,
-              empresas:empresa_id(nombre, razon_social, nit)
+              auth_user_id,
+              colaborador,
+              cedula,
+              cargo,
+              fecha_ingreso,
+              empresa_id,
+              empresas:empresas(nombre)
             `)
-            .in('auth_user_id', userIds)
-          
+            .in('auth_user_id', userIds);
           if (usuariosError) {
-            console.error("Error al obtener datos de usuarios:", usuariosError)
-            setError("Error al cargar datos de usuarios: " + usuariosError.message)
+            console.error('Error al obtener datos de usuarios:', usuariosError);
+            setError('Error al cargar datos de usuarios: ' + usuariosError.message);
           }
           
           // Combinar los datos
@@ -173,17 +218,33 @@ export default function AdminSolicitudesPermisos() {
           })
           
           // Guardar todas las solicitudes
-          setSolicitudes(solicitudesCompletas || [])
-          setFilteredSolicitudes(solicitudesCompletas || [])
+          setSolicitudes(solicitudesCompletas as SolicitudPermiso[] || [])
+          setFilteredSolicitudes(solicitudesCompletas as SolicitudPermiso[] || [])
           
           // Extraer empresas únicas para el filtro
           const uniqueEmpresas = Array.from(
-            new Set(usuariosData?.map((usuario) => usuario.empresas?.nombre).filter(Boolean))
+            new Set(
+              usuariosData
+?.filter(usuario => {
+  if (!usuario.empresas) return false;
+  const empresas = usuario.empresas as EmpresaData;
+  return !!empresas.nombre;
+})
+                .map(usuario => {
+                  const empresas = usuario.empresas as { nombre?: string };
+                  return empresas.nombre;
+                })
+                .filter((nombre): nombre is string => typeof nombre === 'string')
+            )
           )
           setEmpresas(uniqueEmpresas)
           
           // Obtener conteos de mensajes no leídos para cada solicitud
-          solicitudesCompletas.forEach(s => fetchUnseenCount(s.id))
+          solicitudesCompletas.forEach(s => {
+            if (typeof s.id === 'string') {
+              fetchUnseenCount(s.id);
+            }
+          });
         } else {
           // Si no hay datos, inicializar con arrays vacíos
           setSolicitudes([])
@@ -192,7 +253,7 @@ export default function AdminSolicitudesPermisos() {
         }
       } catch (err) {
         console.error("Error al obtener solicitudes:", err)
-        setError("Error al cargar las solicitudes: " + (err.message || JSON.stringify(err)))
+        setError("Error al cargar las solicitudes: " + (err instanceof Error ? err.message : JSON.stringify(err)))
       } finally {
         setLoading(false)
       }
@@ -288,8 +349,8 @@ export default function AdminSolicitudesPermisos() {
           aValue = new Date(a[sort.key] || "").getTime()
           bValue = new Date(b[sort.key] || "").getTime()
         } else {
-          aValue = a[sort.key] || ""
-          bValue = b[sort.key] || ""
+          aValue = a[sort.key as keyof SolicitudPermiso] || ""
+          bValue = b[sort.key as keyof SolicitudPermiso] || ""
         }
 
         if (aValue < bValue) {
@@ -368,8 +429,8 @@ export default function AdminSolicitudesPermisos() {
       const fechaActual = formatDate(new Date())
       
       // Formatear las fechas para el PDF
-      const fechaInicio = new Date(solicitudData.fecha_inicio)
-      const fechaFin = new Date(solicitudData.fecha_fin)
+      const fechaInicio = new Date(solicitudData.fecha_inicio as string)
+      const fechaFin = new Date(solicitudData.fecha_fin as string)
       const diaInicio = fechaInicio.getDate()
       const mesInicio = fechaInicio.getMonth() + 1
       const anioInicio = fechaInicio.getFullYear()
@@ -475,10 +536,9 @@ export default function AdminSolicitudesPermisos() {
               </div>
               
               <div style="margin-bottom: 20px;">
-                             
-              <div style="margin-bottom: 20px;">             <p>Este permiso/actividad interna será tomado a partir del día ${diaInicio} mes ${mesInicio} del año ${anioInicio} hasta el día ${diaFin} mes ${mesFin} del año ${anioFin}</p>
+                <p>Este permiso/actividad interna será tomado a partir del día ${diaInicio} mes ${mesInicio} del año ${anioInicio} hasta el día ${diaFin} mes ${mesFin} del año ${anioFin}</p>
                 <p style="font-weight: bold;">Motivo del Permiso/Actividad Interna: </p>
-                <p style="border-bottom: 1px solid #000; padding-bottom: 5px;">${solicitudData.motivo || ''}</p>
+                <p style="border-bottom: 1px solid #000; padding-bottom: 5px;">${solicitudData.motivo || 'No especificado'}</p>
               </div>
               
               <div style="margin-bottom: 20px;">
@@ -575,8 +635,20 @@ export default function AdminSolicitudesPermisos() {
         if (error) throw error;
 
         setSuccess("Solicitud aprobada y permiso generado correctamente.");
-        setSolicitudes(solicitudes.map(s => s.id === solicitudId ? {...s, estado: 'aprobado', admin_id: session.user.id, fecha_resolucion: new Date(), pdf_url: urlData.publicUrl} : s));
-        setFilteredSolicitudes(filteredSolicitudes.map(s => s.id === solicitudId ? {...s, estado: 'aprobado', admin_id: session.user.id, fecha_resolucion: new Date(), pdf_url: urlData.publicUrl} : s));
+        setSolicitudes(solicitudes.map(s => s.id === solicitudId ? {
+          ...s,
+          estado: 'aprobado',
+          admin_id: session.user.id,
+          fecha_resolucion: new Date().toISOString(),
+          pdf_url: urlData.publicUrl
+        } : s));
+        setFilteredSolicitudes(filteredSolicitudes.map(s => s.id === solicitudId ? {
+          ...s,
+          estado: 'aprobado',
+          admin_id: session.user.id,
+          fecha_resolucion: new Date().toISOString(),
+          pdf_url: urlData.publicUrl
+        } : s));
       } catch (err: any) {
         throw err;
       }
@@ -614,8 +686,20 @@ export default function AdminSolicitudesPermisos() {
       if (error) throw error;
 
       setSuccess("Solicitud rechazada correctamente.");
-      setSolicitudes(solicitudes.map(s => s.id === solicitudId ? {...s, estado: 'rechazado', admin_id: session.user.id, fecha_resolucion: new Date(), motivo_rechazo: motivo} : s));
-      setFilteredSolicitudes(filteredSolicitudes.map(s => s.id === solicitudId ? {...s, estado: 'rechazado', admin_id: session.user.id, fecha_resolucion: new Date(), motivo_rechazo: motivo} : s));
+      setSolicitudes(solicitudes.map(s => s.id === solicitudId ? {
+        ...s, 
+        estado: 'rechazado', 
+        admin_id: session.user.id, 
+        fecha_resolucion: new Date().toISOString(), 
+        motivo_rechazo: motivo
+      } : s));
+      setFilteredSolicitudes(filteredSolicitudes.map(s => s.id === solicitudId ? {
+        ...s, 
+        estado: 'rechazado', 
+        admin_id: session.user.id, 
+        fecha_resolucion: new Date().toISOString(), 
+        motivo_rechazo: motivo
+      } : s));
     } catch (err) {
       console.error("Error al rechazar solicitud:", err);
       setError("Error al procesar la solicitud");
@@ -894,3 +978,6 @@ export default function AdminSolicitudesPermisos() {
     </div>
   )
 }
+
+// La obtención de empresas ya se realiza en el useEffect principal
+// que carga las solicitudes

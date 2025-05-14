@@ -87,20 +87,23 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
         .or(`auth_user_id.eq.${authUser.id},user_id.eq.${authUser.id}`)
         .single()
         .then(({ data: perfil }) => {
-          const nombre = perfil?.colaborador ?? "Usuario"
+          const nombre: string = String(perfil?.colaborador || "Usuario")
           const path = perfil?.avatar_path
           const gender = perfil?.genero
           let avatarUrl: string
 
-          if (path) {
-            avatarUrl = supabase.storage.from("avatar").getPublicUrl(path).data.publicUrl
+          if (path && typeof path === 'string') {
+            const { data } = supabase.storage.from("avatar").getPublicUrl(path)
+            avatarUrl = data.publicUrl
           } else if (gender === "F") {
-            avatarUrl = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-f.webp").data.publicUrl
+            const { data } = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-f.webp")
+            avatarUrl = data.publicUrl
           } else {
-            avatarUrl = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-m.webp").data.publicUrl
+            const { data } = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-m.webp")
+            avatarUrl = data.publicUrl
           }
 
-          setUser({ id: authUser.id, nombre, avatarUrl })
+          setUser({ id: authUser.id, nombre: nombre, avatarUrl: avatarUrl })
         })
     })
   }, [])
@@ -135,17 +138,20 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
     // 2) Armo un map de nodos preservando EL ORDEN de data (que ya es del más nuevo al más viejo)
     const nodoMap = new Map<number, Comentario>()
     data.forEach((c: any) => {
-      const nombre = c.usuario_nomina?.colaborador ?? "Usuario"
+      const nombre: string = c.usuario_nomina?.colaborador ?? "Usuario"
       const path = c.usuario_nomina?.avatar_path
       const gender = c.usuario_nomina?.genero
       let avatarUrl: string
-      if (path) {
-        avatarUrl = supabase.storage.from("avatar").getPublicUrl(path).data.publicUrl
-      } else if (gender === "F") {
-        avatarUrl = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-f.webp").data.publicUrl
-      } else {
-        avatarUrl = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-m.webp").data.publicUrl
-      }
+      if (path && typeof path === 'string') {
+             const { data } = supabase.storage.from("avatar").getPublicUrl(path)
+             avatarUrl = data.publicUrl
+           } else if (gender === "F") {
+             const { data } = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-f.webp")
+             avatarUrl = data.publicUrl
+           } else {
+             const { data } = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-m.webp")
+             avatarUrl = data.publicUrl
+           }
 
       nodoMap.set(c.id, {
         id: c.id,

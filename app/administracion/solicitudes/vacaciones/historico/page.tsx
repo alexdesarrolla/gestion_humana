@@ -109,10 +109,19 @@ export default function AdminSolicitudesVacaciones() {
         setSolicitudes(completas)
         setFilteredSolicitudes(completas)
 
+        // Definir el tipo para empresas y extraer nombres únicos
+        interface EmpresaData {
+          nombre?: string;
+        }
+        
         const uniqueEmpresas = Array.from(
           new Set(
             usuariosData
-              .map((u) => u.empresas?.nombre)
+              .filter(u => u.empresas && typeof u.empresas === 'object')
+              .map((u) => {
+                const empresas = u.empresas as EmpresaData;
+                return empresas.nombre;
+              })
               .filter((n): n is string => Boolean(n))
           )
         )

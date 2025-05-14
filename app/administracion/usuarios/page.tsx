@@ -77,15 +77,7 @@ export default function Usuarios() {
       // Obtener lista de usuarios con rol 'usuario'
       const { data: usuarios, error: usuariosError } = await supabase
         .from("usuario_nomina")
-        .select(`
-          *,
-          empresas:empresa_id(nombre),
-          sedes:sede_id(nombre),
-          eps:eps_id(nombre),
-          afp:afp_id(nombre),
-          cesantias:cesantias_id(nombre),
-          caja_de_compensacion:caja_de_compensacion_id(nombre)
-        `)
+        .select("*, empresa_id")
         .eq("rol", "usuario")
 
       if (usuariosError) {
@@ -94,11 +86,24 @@ export default function Usuarios() {
         return
       }
 
-      setUsers(usuarios || [])
-      setFilteredUsers(usuarios || [])
+      // Obtener datos de empresas
+      const empresaIds = Array.from(new Set(usuarios?.map(user => user.empresa_id).filter(Boolean)))
+      const { data: empresasData } = await supabase
+        .from("empresa")
+        .select("id, nombre")
+        .in("id", empresaIds)
+
+      // Combinar usuarios con datos de empresa
+      const usuariosConEmpresa = usuarios?.map(user => ({
+        ...user,
+        empresa: empresasData?.find(emp => emp.id === user.empresa_id)
+      })) || []
+
+      setUsers(usuariosConEmpresa)
+      setFilteredUsers(usuariosConEmpresa)
 
       // Extraer empresas únicas
-      const uniqueEmpresas = Array.from(new Set(usuarios?.map((user) => user.empresas?.nombre).filter(Boolean)))
+      const uniqueEmpresas = Array.from(new Set(empresasData?.map(emp => emp.nombre).filter(Boolean)))
       setEmpresas(uniqueEmpresas)
 
       // Extraer cargos únicos
@@ -158,13 +163,13 @@ export default function Usuarios() {
           user.colaborador?.toLowerCase().includes(lowerCaseSearchTerm) ||
           user.correo_electronico?.toLowerCase().includes(lowerCaseSearchTerm) ||
           user.cargo?.toLowerCase().includes(lowerCaseSearchTerm) ||
-          user.empresas?.nombre?.toLowerCase().includes(lowerCaseSearchTerm),
+          user.empresa?.nombre?.toLowerCase().includes(lowerCaseSearchTerm),
       )
     }
 
     // Aplicar filtro de empresa
     if (empresa && empresa !== "all") {
-      result = result.filter((user) => user.empresas?.nombre === empresa)
+      result = result.filter((user) => user.empresa?.nombre === empresa)
     }
 
     // Aplicar filtro de cargo
@@ -178,9 +183,16 @@ export default function Usuarios() {
         // Manejar propiedades anidadas como 'empresas.nombre'
         let aValue, bValue
 
+        // Definir interfaz para empresas
+        interface EmpresaData {
+          nombre?: string
+        }
+
         if (sort.key === "empresas") {
-          aValue = a.empresas?.nombre || ""
-          bValue = b.empresas?.nombre || ""
+          const aEmpresa = a.empresa as EmpresaData | undefined
+          const bEmpresa = b.empresa as EmpresaData | undefined
+          aValue = aEmpresa?.nombre || ""
+          bValue = bEmpresa?.nombre || ""
         } else {
           aValue = a[sort.key] || ""
           bValue = b[sort.key] || ""
@@ -488,9 +500,9 @@ export default function Usuarios() {
                                 <TableCell className="font-medium">{user.colaborador}</TableCell>
                                 <TableCell>{user.cargo || "N/A"}</TableCell>
                                 <TableCell>
-                                  {user.empresas?.nombre ? (
+                                  {user.empresa?.nombre ? (
                                     <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                                      {user.empresas.nombre}
+                                      {user.empresa.nombre}
                                     </Badge>
                                   ) : (
                                     "N/A"

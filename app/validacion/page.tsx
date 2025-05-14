@@ -60,7 +60,15 @@ const [userData, setUserData] = useState<UserData | null>(null);
       }
 
       // Si el usuario existe en nomina pero no tiene cuenta, pasar al siguiente paso
-      setUserData(data);
+      // Asegurarse de que data tenga las propiedades requeridas por UserData
+      if (data && typeof data.correo_electronico === 'string' && typeof data.cedula === 'string') {
+        setUserData({
+          correo_electronico: data.correo_electronico,
+          cedula: data.cedula
+        });
+      } else {
+        throw new Error('Datos de usuario incompletos');
+      }
       setStep(2);
     } catch (err) {
       setError('Error al validar la cédula. Por favor intente nuevamente.');

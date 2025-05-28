@@ -93,11 +93,7 @@ function StatisticCard({
   )
 }
 
-export default function AdminVacacionesCalendar({
-  empresaId,
-}: {
-  empresaId: number
-}) {
+export default function AdminVacacionesCalendar() {
   const supabase = createSupabaseClient()
 
   const [disponibilidad, setDisponibilidad] = useState<Disponibilidad[]>([])
@@ -115,34 +111,19 @@ export default function AdminVacacionesCalendar({
     setLoading(true)
     setError(null)
     try {
+      // Cargar disponibilidad global (sin filtro de empresa)
       const { data: dispData, error: dispErr } = await supabase
         .from("vacaciones_disponibilidad")
         .select("*")
-        .eq("empresa_id", empresaId)
         .order("fecha_inicio", { ascending: true })
       if (dispErr) throw dispErr
 
+      // Cargar todas las vacaciones aprobadas
       const { data: vacData, error: vacErr } = await supabase
         .from("solicitudes_vacaciones")
         .select("id, fecha_inicio, fecha_fin, usuario_id")
         .eq("estado", "aprobado")
       if (vacErr) throw vacErr
-
-      const uids = Array.from(new Set(vacData.map((v) => v.usuario_id)))
-      let usuarios: { auth_user_id: string; empresa_id: number }[] = []
-      if (uids.length) {
-        const { data: uData, error: uErr } = await supabase
-          .from("usuario_nomina")
-          .select("auth_user_id, empresa_id")
-          .in("auth_user_id", uids)
-        if (uErr) throw uErr
-        usuarios = uData as { auth_user_id: string; empresa_id: number }[]
-      }
-
-      const vacFiltered = vacData.filter((v) => {
-        const u = usuarios.find((u) => u.auth_user_id === v.usuario_id)
-        return u?.empresa_id === empresaId
-      })
 
       setDisponibilidad(
         (dispData as unknown as Disponibilidad[])?.map((item) => ({
@@ -152,7 +133,7 @@ export default function AdminVacacionesCalendar({
           disponible: item.disponible,
         })) || []
       )
-      setVacaciones((vacFiltered || []).map(v => ({
+      setVacaciones((vacData || []).map(v => ({
         id: String(v.id),
         fecha_inicio: String(v.fecha_inicio),
         fecha_fin: String(v.fecha_fin), 
@@ -168,7 +149,7 @@ export default function AdminVacacionesCalendar({
 
   useEffect(() => {
     fetchData()
-  }, [empresaId])
+  }, [])
 
   const onSelect: SelectRangeEventHandler = (range) => {
     setSelectedRange(range ? { from: range.from, to: range.to ?? undefined } : { from: undefined, to: undefined })
@@ -180,19 +161,25 @@ export default function AdminVacacionesCalendar({
     setActionLoading(true)
     setError(null)
     try {
-      await supabase.from("vacaciones_disponibilidad").insert([
+      const { data, error } = await supabase.from("vacaciones_disponibilidad").insert([
         {
-          empresa_id: empresaId,
+          empresa_id: 1, // Default empresa_id since we're now using a global calendar
           fecha_inicio: selectedRange.from.toISOString().slice(0, 10),
           fecha_fin: selectedRange.to.toISOString().slice(0, 10),
           disponible: false,
         },
       ])
+      
+      if (error) {
+        console.error("Supabase error:", error)
+        throw error
+      }
+      
       await fetchData()
       setSelectedRange({ from: undefined, to: undefined })
       setSuccessMessage("Días deshabilitados correctamente")
     } catch (err: any) {
-      console.error(err)
+      console.error("Error in handleDisable:", err)
       setError(err.message || "Error al deshabilitar días")
     } finally {
       setActionLoading(false)
@@ -204,53 +191,117 @@ export default function AdminVacacionesCalendar({
     setActionLoading(true)
     setError(null)
     try {
-      await supabase.from("vacaciones_disponibilidad").insert([
-        {
-          empresa_id: empresaId,
-          fecha_inicio: selectedRange.from.toISOString().slice(0, 10),
-          fecha_fin: selectedRange.to.toISOString().slice(0, 10),
-          disponible: true,
-        },
-      ])
+      // Encontrar los registros de disponibilidad que se superponen con el rango seleccionado
+      const startDate = selectedRange.from.toISOString().slice(0, 10)
+      const endDate = selectedRange.to.toISOString().slice(0, 10)
+      
+      const { data: overlappingRecords, error: fetchError } = await supabase
+        .from("vacaciones_disponibilidad")
+        .select("*")
+        .eq("disponible", false)
+        .lte("fecha_inicio", endDate)
+        .gte("fecha_fin", startDate)
+      
+      if (fetchError) {
+        console.error("Error fetching overlapping records:", fetchError)
+        throw fetchError
+      }
+      
+      if (overlappingRecords && overlappingRecords.length > 0) {
+        // Eliminar todos los registros que se superponen
+        const idsToDelete = overlappingRecords.map(record => record.id)
+        const { error: deleteError } = await supabase
+          .from("vacaciones_disponibilidad")
+          .delete()
+          .in("id", idsToDelete)
+        
+        if (deleteError) {
+          console.error("Error deleting records:", deleteError)
+          throw deleteError
+        }
+        
+        // Crear nuevos registros para las partes que quedan deshabilitadas
+        const newRecords = []
+        
+        for (const record of overlappingRecords) {
+          const recordStart = new Date(record.fecha_inicio)
+          const recordEnd = new Date(record.fecha_fin)
+          const selectedStart = new Date(startDate)
+          const selectedEnd = new Date(endDate)
+          
+          // Si hay una parte antes del rango seleccionado
+          if (recordStart < selectedStart) {
+            const beforeEnd = new Date(selectedStart)
+            beforeEnd.setDate(beforeEnd.getDate() - 1)
+            newRecords.push({
+              empresa_id: record.empresa_id,
+              fecha_inicio: record.fecha_inicio,
+              fecha_fin: beforeEnd.toISOString().slice(0, 10),
+              disponible: false
+            })
+          }
+          
+          // Si hay una parte después del rango seleccionado
+          if (recordEnd > selectedEnd) {
+            const afterStart = new Date(selectedEnd)
+            afterStart.setDate(afterStart.getDate() + 1)
+            newRecords.push({
+              empresa_id: record.empresa_id,
+              fecha_inicio: afterStart.toISOString().slice(0, 10),
+              fecha_fin: record.fecha_fin,
+              disponible: false
+            })
+          }
+        }
+        
+        // Insertar los nuevos registros si existen
+        if (newRecords.length > 0) {
+          const { error: insertError } = await supabase
+            .from("vacaciones_disponibilidad")
+            .insert(newRecords)
+          
+          if (insertError) {
+            console.error("Error inserting new records:", insertError)
+            throw insertError
+          }
+        }
+      }
+      
       await fetchData()
       setSelectedRange({ from: undefined, to: undefined })
       setSuccessMessage("Días habilitados correctamente")
     } catch (err: any) {
-      console.error(err)
+      console.error("Error in handleEnable:", err)
       setError(err.message || "Error al habilitar días")
     } finally {
       setActionLoading(false)
     }
   }
 
+
+
   // Construcción de modificadores
   const blockedDays = disponibilidad
     .filter((d) => !d.disponible)
-    .flatMap((d) =>
-      eachDayOfInterval({
-        start: new Date(d.fecha_inicio),
-        end: new Date(d.fecha_fin),
+    .flatMap((d) => {
+      // Crear fechas locales para evitar problemas de zona horaria
+      const [startYear, startMonth, startDay] = d.fecha_inicio.split('-').map(Number)
+      const [endYear, endMonth, endDay] = d.fecha_fin.split('-').map(Number)
+      return eachDayOfInterval({
+        start: new Date(startYear, startMonth - 1, startDay),
+        end: new Date(endYear, endMonth - 1, endDay),
       })
-    )
-
-  let availableDays = disponibilidad
-    .filter((d) => d.disponible)
-    .flatMap((d) =>
-      eachDayOfInterval({
-        start: new Date(d.fecha_inicio),
-        end: new Date(d.fecha_fin),
-      })
-    )
-  availableDays = availableDays.filter((day) =>
-    !blockedDays.some((b) => isSameDay(b, day))
-  )
-
-  const bookedDays = vacaciones.flatMap((v) =>
-    eachDayOfInterval({
-      start: new Date(v.fecha_inicio),
-      end: new Date(v.fecha_fin),
     })
-  )
+
+  const bookedDays = vacaciones.flatMap((v) => {
+    // Crear fechas locales para evitar problemas de zona horaria
+    const [startYear, startMonth, startDay] = v.fecha_inicio.split('-').map(Number)
+    const [endYear, endMonth, endDay] = v.fecha_fin.split('-').map(Number)
+    return eachDayOfInterval({
+      start: new Date(startYear, startMonth - 1, startDay),
+      end: new Date(endYear, endMonth - 1, endDay),
+    })
+  })
 
   if (loading) {
     return (
@@ -299,12 +350,10 @@ export default function AdminVacacionesCalendar({
                   modifiers={{
                     booked: bookedDays,
                     blocked: blockedDays,
-                    available: availableDays,
                   }}
                   modifiersClassNames={{
                     booked: "bg-red-500 text-white",
                     blocked: "bg-gray-200 text-gray-500",
-                    available: "bg-green-500 text-white",
                     selected: "bg-blue-500 text-white",
                     range_start: "rounded-l-full",
                     range_end: "rounded-r-full",
@@ -340,15 +389,15 @@ export default function AdminVacacionesCalendar({
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="h-4 w-4 bg-gray-200 rounded-full" />
-                  <span className="text-sm">Días bloqueados</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 bg-green-500 rounded-full" />
-                  <span className="text-sm">Días disponibles</span>
+                  <span className="text-sm">Días deshabilitados</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="h-4 w-4 bg-blue-500 rounded-full" />
                   <span className="text-sm">Días seleccionados</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 bg-white border border-gray-300 rounded-full" />
+                  <span className="text-sm">Días disponibles</span>
                 </div>
               </div>
             </CardContent>
@@ -361,61 +410,83 @@ export default function AdminVacacionesCalendar({
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <StatisticCard
-                  title="Días disponibles"
-                  value={availableDays.length}
-                  icon={<CheckCircle2 className="h-5 w-5 text-green-600" />}
-                  colorClass="bg-green-50"
-                />
-                <StatisticCard
-                  title="Días bloqueados"
+                  title="Días deshabilitados"
                   value={blockedDays.length}
                   icon={<XCircle className="h-5 w-5 text-gray-600" />}
                   colorClass="bg-gray-50"
+                />
+                <StatisticCard
+                  title="Vacaciones aprobadas"
+                  value={bookedDays.length}
+                  icon={<CheckCircle2 className="h-5 w-5 text-red-600" />}
+                  colorClass="bg-red-50"
                 />
               </div>
             </CardContent>
           </Card>
 
-          {selectedRange.from && selectedRange.to && (
-            <Card className="shadow-md border-0 bg-blue-50 w-max">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg text-blue-800">Rango seleccionado</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="mb-4 font-medium text-blue-700">
-                  {format(selectedRange.from, "d 'de' MMMM", { locale: es })} al{" "}
-                  {format(selectedRange.to, "d 'de' MMMM", { locale: es })}
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    onClick={handleEnable}
-                    disabled={actionLoading}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    {actionLoading ? (
-                      <Loader2 className="animate-spin mr-2 h-4 w-4" />
+          {selectedRange.from && selectedRange.to && (() => {
+            // Verificar si el rango seleccionado contiene días bloqueados
+            const selectedDays = eachDayOfInterval({
+              start: selectedRange.from,
+              end: selectedRange.to,
+            })
+            
+            const hasBlockedDays = selectedDays.some(day => 
+              blockedDays.some(blockedDay => 
+                day.getTime() === blockedDay.getTime()
+              )
+            )
+            
+            const allDaysBlocked = selectedDays.every(day => 
+              blockedDays.some(blockedDay => 
+                day.getTime() === blockedDay.getTime()
+              )
+            )
+            
+            return (
+              <Card className="shadow-md border-0 bg-blue-50 w-max">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg text-blue-800">Rango seleccionado</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="mb-4 font-medium text-blue-700">
+                    {format(selectedRange.from, "d 'de' MMMM", { locale: es })} al{" "}
+                    {format(selectedRange.to, "d 'de' MMMM", { locale: es })}
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    {hasBlockedDays ? (
+                      <Button
+                        onClick={handleEnable}
+                        disabled={actionLoading}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        {actionLoading ? (
+                          <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                        ) : (
+                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                        )}
+                        Habilitar días
+                      </Button>
                     ) : (
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      <Button
+                        onClick={handleDisable}
+                        disabled={actionLoading}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        {actionLoading ? (
+                          <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                        ) : (
+                          <XCircle className="mr-2 h-4 w-4" />
+                        )}
+                        Deshabilitar días
+                      </Button>
                     )}
-                    Habilitar días
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={handleDisable}
-                    disabled={actionLoading}
-                    className="border-red-300 text-red-600 hover:bg-red-50"
-                  >
-                    {actionLoading ? (
-                      <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                    ) : (
-                      <XCircle className="mr-2 h-4 w-4" />
-                    )}
-                    Deshabilitar días
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })()}
 
           <div className="text-sm text-muted-foreground bg-white p-3 rounded-lg border shadow-sm">
             Última actualización: {new Date().toLocaleString("es-ES")}

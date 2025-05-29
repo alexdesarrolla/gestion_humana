@@ -209,7 +209,7 @@ export default function AdminVacacionesCalendar() {
       
       if (overlappingRecords && overlappingRecords.length > 0) {
         // Eliminar todos los registros que se superponen
-        const idsToDelete = overlappingRecords.map(record => record.id)
+        const idsToDelete = overlappingRecords.map(record => record.id as string)
         const { error: deleteError } = await supabase
           .from("vacaciones_disponibilidad")
           .delete()
@@ -224,8 +224,8 @@ export default function AdminVacacionesCalendar() {
         const newRecords = []
         
         for (const record of overlappingRecords) {
-          const recordStart = new Date(record.fecha_inicio)
-          const recordEnd = new Date(record.fecha_fin)
+          const recordStart = new Date(record.fecha_inicio as string)
+          const recordEnd = new Date(record.fecha_fin as string)
           const selectedStart = new Date(startDate)
           const selectedEnd = new Date(endDate)
           
@@ -234,8 +234,8 @@ export default function AdminVacacionesCalendar() {
             const beforeEnd = new Date(selectedStart)
             beforeEnd.setDate(beforeEnd.getDate() - 1)
             newRecords.push({
-              empresa_id: record.empresa_id,
-              fecha_inicio: record.fecha_inicio,
+              empresa_id: record.empresa_id as string,
+              fecha_inicio: record.fecha_inicio as string,
               fecha_fin: beforeEnd.toISOString().slice(0, 10),
               disponible: false
             })
@@ -246,9 +246,9 @@ export default function AdminVacacionesCalendar() {
             const afterStart = new Date(selectedEnd)
             afterStart.setDate(afterStart.getDate() + 1)
             newRecords.push({
-              empresa_id: record.empresa_id,
+              empresa_id: record.empresa_id as string,
               fecha_inicio: afterStart.toISOString().slice(0, 10),
-              fecha_fin: record.fecha_fin,
+              fecha_fin: record.fecha_fin as string,
               disponible: false
             })
           }

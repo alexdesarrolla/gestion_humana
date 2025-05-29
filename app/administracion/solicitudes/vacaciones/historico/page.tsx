@@ -178,6 +178,17 @@ export default function AdminSolicitudesVacaciones() {
 
   const formatDate = (fecha?: string | null) => {
     if (!fecha) return ""
+    
+    // If it's a string in YYYY-MM-DD format, parse it manually to avoid timezone issues
+    if (fecha.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = fecha.split('-').map(Number)
+      return new Date(year, month - 1, day).toLocaleDateString("es-CO", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    }
+    
     return new Date(fecha).toLocaleDateString("es-CO", {
       year: "numeric",
       month: "long",

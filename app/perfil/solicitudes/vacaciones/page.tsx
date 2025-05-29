@@ -13,6 +13,7 @@ import { AlertCircle, CheckCircle2, Calendar } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import UserVacacionesCalendar from "@/components/vacaciones/UserVacacionesCalendar"
 
 export default function SolicitudVacaciones() {
   const [showReasonModal, setShowReasonModal] = useState(false)
@@ -28,9 +29,9 @@ export default function SolicitudVacaciones() {
   const [userData, setUserData] = useState<any>(null)
   const [solicitudes, setSolicitudes] = useState<any[]>([])
   const [showModal, setShowModal] = useState(false)
-  const [formData, setFormData] = useState({
-    fechaInicio: "",
-    fechaFin: "",
+  const [selectedRange, setSelectedRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: undefined,
+    to: undefined,
   })
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -126,20 +127,24 @@ export default function SolicitudVacaciones() {
 
   const formatDate = (date: string | Date) => {
     const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' }
+    
+    // If it's a string in YYYY-MM-DD format, parse it manually to avoid timezone issues
+    if (typeof date === 'string' && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = date.split('-').map(Number)
+      return new Date(year, month - 1, day).toLocaleDateString('es-CO', options)
+    }
+    
     return new Date(date).toLocaleDateString('es-CO', options)
   }
 
   const enviarSolicitud = async () => {
-    if (!formData.fechaInicio || !formData.fechaFin) {
-      setError("Por favor complete todos los campos requeridos.")
+    if (!selectedRange.from || !selectedRange.to) {
+      setError("Por favor seleccione un rango de fechas válido.")
       return
     }
 
     // Validar que la fecha de fin sea posterior a la fecha de inicio
-    const fechaInicio = new Date(formData.fechaInicio)
-    const fechaFin = new Date(formData.fechaFin)
-    
-    if (fechaFin < fechaInicio) {
+    if (selectedRange.to < selectedRange.from) {
       setError("La fecha de fin debe ser posterior a la fecha de inicio.")
       return
     }
@@ -161,8 +166,8 @@ export default function SolicitudVacaciones() {
         .from('solicitudes_vacaciones')
         .insert([{
           usuario_id: session.user.id,
-          fecha_inicio: formData.fechaInicio,
-          fecha_fin: formData.fechaFin,
+          fecha_inicio: selectedRange.from.toISOString().slice(0, 10),
+          fecha_fin: selectedRange.to.toISOString().slice(0, 10),
           estado: 'pendiente'
         }])
         .select()
@@ -179,7 +184,7 @@ export default function SolicitudVacaciones() {
       setSolicitudes(solicitudesData || [])
       setSuccess("Solicitud de vacaciones enviada correctamente. Espera la aprobación del administrador.")
       setShowModal(false)
-      setFormData({ fechaInicio: "", fechaFin: "" })
+      setSelectedRange({ from: undefined, to: undefined })
     } catch (err: any) {
       console.error("Error al enviar la solicitud:", err)
       setError("Error al enviar la solicitud. Por favor intente nuevamente.")
@@ -188,11 +193,16 @@ export default function SolicitudVacaciones() {
     }
   }
 
-  const calcularDiasVacaciones = (fechaInicio: string, fechaFin: string) => {
-    const inicio = new Date(fechaInicio)
-    const fin = new Date(fechaFin)
+  const calcularDiasVacaciones = (fechaInicio: string | Date, fechaFin: string | Date) => {
+    const inicio = typeof fechaInicio === 'string' ? new Date(fechaInicio) : fechaInicio
+    const fin = typeof fechaFin === 'string' ? new Date(fechaFin) : fechaFin
     const diferencia = fin.getTime() - inicio.getTime()
     return Math.ceil(diferencia / (1000 * 3600 * 24)) + 1 // +1 para incluir el día de inicio
+  }
+
+  const handleDateRangeSelect = (range: { from: Date | undefined; to: Date | undefined }) => {
+    setSelectedRange(range)
+    setError("") // Limpiar errores cuando se selecciona un nuevo rango
   }
 
   return (
@@ -207,57 +217,57 @@ export default function SolicitudVacaciones() {
       </Dialog>
 
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Solicitar Vacaciones</DialogTitle>
             <DialogDescription>
-              Completa el formulario para solicitar tus vacaciones.
+              Selecciona las fechas de tus vacaciones en el calendario. Las fechas en gris no están disponibles y las fechas en rojo ya están ocupadas.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="fechaInicio" className="text-right">
-                Fecha de inicio
-              </Label>
-              <Input
-                id="fechaInicio"
-                type="date"
-                className="col-span-3"
-                value={formData.fechaInicio}
-                onChange={(e) => setFormData({ ...formData, fechaInicio: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="fechaFin" className="text-right">
-                Fecha de fin
-              </Label>
-              <Input
-                id="fechaFin"
-                type="date"
-                className="col-span-3"
-                value={formData.fechaFin}
-                onChange={(e) => setFormData({ ...formData, fechaFin: e.target.value })}
-              />
-            </div>
-            {formData.fechaInicio && formData.fechaFin && (
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Días solicitados</Label>
-                <div className="col-span-3">
-                  <Badge variant="secondary">
-                    {calcularDiasVacaciones(formData.fechaInicio, formData.fechaFin)} días
-                  </Badge>
+          <div className="space-y-4">
+            <UserVacacionesCalendar 
+              onDateRangeSelect={handleDateRangeSelect}
+              selectedRange={selectedRange}
+            />
+            
+            {selectedRange.from && selectedRange.to && (
+              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+                <div>
+                  <p className="font-medium">Rango seleccionado:</p>
+                  <p className="text-sm text-gray-600">
+                    {selectedRange.from.toLocaleDateString('es-CO', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })} - {selectedRange.to.toLocaleDateString('es-CO', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </p>
                 </div>
+                <Badge variant="secondary" className="text-lg px-3 py-1">
+                  {calcularDiasVacaciones(selectedRange.from, selectedRange.to)} días
+                </Badge>
               </div>
             )}
           </div>
+          
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          <div className="flex justify-end">
-            <Button onClick={enviarSolicitud} disabled={loading}>
+          
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowModal(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={enviarSolicitud} 
+              disabled={loading || !selectedRange.from || !selectedRange.to}
+            >
               {loading ? "Enviando..." : "Enviar solicitud"}
             </Button>
           </div>

@@ -85,7 +85,22 @@ export default function AdminVacacionesPage() {
         // Combinar datos
         const solicitudesCompletas = data.map(s => {
           const usuario = usuariosData?.find(u => u.auth_user_id === s.usuario_id)
-          return { ...s, usuario }
+          return {
+            id: s.id as string,
+            usuario_id: s.usuario_id as string,
+            estado: s.estado as string,
+            fecha_inicio: s.fecha_inicio as string,
+            fecha_fin: s.fecha_fin as string,
+            fecha_solicitud: s.fecha_solicitud as string,
+            usuario: usuario ? {
+              colaborador: usuario.colaborador as string,
+              cedula: usuario.cedula as string,
+              cargo: usuario.cargo as string,
+              empresas: usuario.empresas ? {
+                nombre: (usuario.empresas as any).nombre as string
+              } : undefined
+            } : undefined
+          } as SolicitudVacacion
         })
 
         setSolicitudesPendientes(solicitudesCompletas)
@@ -154,6 +169,16 @@ export default function AdminVacacionesPage() {
   }
 
   const formatDate = (fecha: string) => {
+    // If it's a string in YYYY-MM-DD format, parse it manually to avoid timezone issues
+    if (fecha.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = fecha.split('-').map(Number)
+      return new Date(year, month - 1, day).toLocaleDateString("es-CO", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    }
+    
     return new Date(fecha).toLocaleDateString("es-CO", {
       year: "numeric",
       month: "long",

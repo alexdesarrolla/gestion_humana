@@ -167,7 +167,7 @@ export function ProfileCard({ userData }: ProfileCardProps) {
                 className="h-20 w-20 rounded-full overflow-hidden cursor-pointer border-2 border-white shadow-md"
                 onClick={() => setIsModalOpen(true)}
               >
-                <img src={avatarUrl || ""} alt="User avatar" className="h-full w-full object-cover" />
+                <img src={avatarUrl || undefined} alt="User avatar" className="h-full w-full object-cover" />
               </div>
               <div
                 className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
@@ -193,7 +193,7 @@ export function ProfileCard({ userData }: ProfileCardProps) {
                   <div className="p-6 flex flex-col items-center">
                     <div className="relative mb-6">
                       <div className="h-40 w-40 rounded-full overflow-hidden border-4 border-white shadow-lg">
-                        <img src={avatarUrl || ""} alt="User avatar" className="h-full w-full object-cover" />
+                        <img src={avatarUrl || undefined} alt="User avatar" className="h-full w-full object-cover" />
                       </div>
                     </div>
 

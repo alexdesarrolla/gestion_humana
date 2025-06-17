@@ -115,10 +115,18 @@ export default function Usuarios() {
         return
       }
 
-      // Obtener lista de usuarios con rol 'usuario'
+      // Obtener lista de usuarios con rol 'usuario' incluyendo todas las relaciones
       const { data: usuarios, error: usuariosError } = await supabase
         .from("usuario_nomina")
-        .select("*, empresa_id")
+        .select(`
+          *,
+          empresas:empresa_id(id, nombre),
+          sedes:sede_id(id, nombre),
+          eps:eps_id(id, nombre),
+          afp:afp_id(id, nombre),
+          cesantias:cesantias_id(id, nombre),
+          caja_de_compensacion:caja_de_compensacion_id(id, nombre)
+        `)
         .eq("rol", "usuario")
 
       if (usuariosError) {
@@ -127,20 +135,13 @@ export default function Usuarios() {
         return
       }
 
-      // Obtener datos de empresas
-      const empresaIds = Array.from(new Set(usuarios?.map(user => user.empresa_id).filter(Boolean)))
-      const { data: empresasData } = await supabase
-        .from("empresas")
-        .select("id, nombre")
-        .in("id", empresaIds)
-
       // Obtener todas las empresas para el formulario de agregar usuario
       const { data: todasEmpresas } = await supabase
         .from("empresas")
         .select("id, nombre")
         .order("nombre")
 
-      // Obtener sedes, EPS, AFP y cajas de compensación
+      // Obtener sedes, EPS, AFP y cajas de compensación para formularios
       const { data: sedesData } = await supabase
         .from("sedes")
         .select("id, nombre")
@@ -166,17 +167,12 @@ export default function Usuarios() {
       setAfps(afpsData || [])
       setCajaDeCompensacionOptions(cajasData || [])
 
-      // Combinar usuarios con datos de empresa
-      const usuariosConEmpresa = usuarios?.map(user => ({
-        ...user,
-        empresa: empresasData?.find(emp => emp.id === user.empresa_id)
-      })) || []
-
-      setUsers(usuariosConEmpresa)
-      setFilteredUsers(usuariosConEmpresa)
+      // Los usuarios ya vienen con todas las relaciones incluidas
+      setUsers(usuarios || [])
+      setFilteredUsers(usuarios || [])
 
       // Extraer empresas únicas para filtros
-      const uniqueEmpresas = Array.from(new Set(empresasData?.map(emp => emp.nombre).filter(Boolean)))
+      const uniqueEmpresas = Array.from(new Set(usuarios?.map(user => user.empresas?.nombre).filter(Boolean)))
       setEmpresas(todasEmpresas || [])
       setEmpresasFilter(uniqueEmpresas)
 
@@ -237,13 +233,13 @@ export default function Usuarios() {
           user.colaborador?.toLowerCase().includes(lowerCaseSearchTerm) ||
           user.correo_electronico?.toLowerCase().includes(lowerCaseSearchTerm) ||
           user.cargo?.toLowerCase().includes(lowerCaseSearchTerm) ||
-          user.empresa?.nombre?.toLowerCase().includes(lowerCaseSearchTerm),
+          user.empresas?.nombre?.toLowerCase().includes(lowerCaseSearchTerm),
       )
     }
 
     // Aplicar filtro de empresa
     if (empresa && empresa !== "all") {
-      result = result.filter((user) => user.empresa?.nombre === empresa)
+      result = result.filter((user) => user.empresas?.nombre === empresa)
     }
 
     // Aplicar filtro de cargo
@@ -363,10 +359,18 @@ export default function Usuarios() {
   const fetchUsers = async () => {
     const supabase = createSupabaseClient()
     
-    // Obtener lista de usuarios con rol 'usuario'
+    // Obtener lista de usuarios con rol 'usuario' incluyendo todas las relaciones
     const { data: usuarios, error: usuariosError } = await supabase
       .from("usuario_nomina")
-      .select("*, empresa_id")
+      .select(`
+        *,
+        empresas:empresa_id(id, nombre),
+        sedes:sede_id(id, nombre),
+        eps:eps_id(id, nombre),
+        afp:afp_id(id, nombre),
+        cesantias:cesantias_id(id, nombre),
+        caja_de_compensacion:caja_de_compensacion_id(id, nombre)
+      `)
       .eq("rol", "usuario")
 
     if (usuariosError) {
@@ -374,21 +378,9 @@ export default function Usuarios() {
       return
     }
 
-    // Obtener datos de empresas
-    const empresaIds = Array.from(new Set(usuarios?.map(user => user.empresa_id).filter(Boolean)))
-    const { data: empresasData } = await supabase
-      .from("empresas")
-      .select("id, nombre")
-      .in("id", empresaIds)
-
-    // Combinar usuarios con datos de empresa
-    const usuariosConEmpresa = usuarios?.map(user => ({
-      ...user,
-      empresa: empresasData?.find(emp => emp.id === user.empresa_id)
-    })) || []
-
-    setUsers(usuariosConEmpresa)
-    setFilteredUsers(usuariosConEmpresa)
+    // Los usuarios ya vienen con todas las relaciones incluidas
+    setUsers(usuarios || [])
+    setFilteredUsers(usuarios || [])
   }
 
   const handleAddUserSubmit = async (e: React.FormEvent) => {
@@ -799,13 +791,13 @@ export default function Usuarios() {
                                 <TableCell className="font-medium">{user.colaborador}</TableCell>
                                 <TableCell>{user.cargo || "N/A"}</TableCell>
                                 <TableCell>
-                                  {user.empresa?.nombre ? (
-                                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                                      {user.empresa.nombre}
-                                    </Badge>
-                                  ) : (
-                                    "N/A"
-                                  )}
+                                  {user.empresas?.nombre ? (
+                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                      {user.empresas.nombre}
+                    </Badge>
+                  ) : (
+                    "N/A"
+                  )}
                                 </TableCell>
                                 <TableCell>{user.correo_electronico}</TableCell>
                                 <TableCell>

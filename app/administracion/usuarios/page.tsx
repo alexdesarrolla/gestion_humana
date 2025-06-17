@@ -33,7 +33,7 @@ export default function Usuarios() {
   const [empresasFilter, setEmpresasFilter] = useState<string[]>([])
   const [cargos, setCargos] = useState<any[]>([])
   const [selectedEmpresa, setSelectedEmpresa] = useState<string>("")
-  const [selectedCargo, setSelectedCargo] = useState<string>("")
+  const [selectedCargo, setSelectedCargo] = useState<string>("all")
   const [selectedUser, setSelectedUser] = useState<any>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false)
@@ -326,12 +326,12 @@ export default function Usuarios() {
   const clearFilters = () => {
     setSearchTerm("")
     setSelectedEmpresa("")
-    setSelectedCargo("")
+    setSelectedCargo("all")
     setSortConfig(null)
     setCurrentPage(1)
 
     // Aplicar filtros inmediatamente sin esperar
-    applyFilters("", "", "", null)
+    applyFilters("", "", "all", null)
   }
 
   const handleViewDetails = (user: any) => {
@@ -684,7 +684,7 @@ export default function Usuarios() {
                           <SelectTrigger>
                             <SelectValue placeholder="Todos los cargos" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-h-60 overflow-y-auto">
                             <SelectItem value="all">Todos los cargos</SelectItem>
                             {cargos.map((cargo) => (
                               <SelectItem key={cargo.id} value={cargo.nombre}>

@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ChevronDown, ChevronUp, Search, X, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Loader2, Plus, EyeIcon, EyeOff } from "lucide-react"
+import { ChevronDown, ChevronUp, Search, X, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Loader2, Plus, EyeIcon, EyeOff, Edit } from "lucide-react"
 import { ProfileCard } from "@/components/ui/profile-card"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
@@ -37,6 +37,8 @@ export default function Usuarios() {
   const [selectedUser, setSelectedUser] = useState<any>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false)
+  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false)
+  const [editUserData, setEditUserData] = useState<any>(null)
   const [newUserData, setNewUserData] = useState({
     nombre: '',
     correo: '',
@@ -68,6 +70,9 @@ export default function Usuarios() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [addUserLoading, setAddUserLoading] = useState(false)
+  const [editUserError, setEditUserError] = useState('')
+  const [editUserSuccess, setEditUserSuccess] = useState(false)
+  const [editUserLoading, setEditUserLoading] = useState(false)
 
   // Paginación
   const [currentPage, setCurrentPage] = useState(1)
@@ -326,6 +331,66 @@ export default function Usuarios() {
     setAddUserSuccess(false)
   }
 
+  const handleEditUser = (user: any) => {
+    console.log('Usuario seleccionado:', user);
+    console.log('Género del usuario:', user.genero);
+    setEditUserData({
+      id: user.id,
+      nombre: user.colaborador || '',
+      correo: user.correo_electronico || '',
+      telefono: user.telefono || '',
+      rol: user.rol || 'usuario',
+      genero: user.genero ? user.genero.toLowerCase() : '',
+      cedula: user.cedula || '',
+      fecha_ingreso: user.fecha_ingreso || '',
+      empresa_id: user.empresa_id ? user.empresa_id.toString() : '',
+      cargo: user.cargo || '',
+      sede_id: user.sede_id ? user.sede_id.toString() : '',
+      fecha_nacimiento: user.fecha_nacimiento || '',
+      edad: user.edad ? user.edad.toString() : '',
+      rh: user.rh || '',
+      eps_id: user.eps_id ? user.eps_id.toString() : '',
+      afp_id: user.afp_id ? user.afp_id.toString() : '',
+      cesantias_id: user.cesantias_id ? user.cesantias_id.toString() : '',
+      caja_de_compensacion_id: user.caja_de_compensacion_id ? user.caja_de_compensacion_id.toString() : '',
+      direccion_residencia: user.direccion_residencia || ''
+    })
+    setIsEditUserModalOpen(true)
+    setEditUserError('')
+    setEditUserSuccess(false)
+  }
+
+  const fetchUsers = async () => {
+    const supabase = createSupabaseClient()
+    
+    // Obtener lista de usuarios con rol 'usuario'
+    const { data: usuarios, error: usuariosError } = await supabase
+      .from("usuario_nomina")
+      .select("*, empresa_id")
+      .eq("rol", "usuario")
+
+    if (usuariosError) {
+      console.error("Error al obtener usuarios:", usuariosError)
+      return
+    }
+
+    // Obtener datos de empresas
+    const empresaIds = Array.from(new Set(usuarios?.map(user => user.empresa_id).filter(Boolean)))
+    const { data: empresasData } = await supabase
+      .from("empresas")
+      .select("id, nombre")
+      .in("id", empresaIds)
+
+    // Combinar usuarios con datos de empresa
+    const usuariosConEmpresa = usuarios?.map(user => ({
+      ...user,
+      empresa: empresasData?.find(emp => emp.id === user.empresa_id)
+    })) || []
+
+    setUsers(usuariosConEmpresa)
+    setFilteredUsers(usuariosConEmpresa)
+  }
+
   const handleAddUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setAddUserError('')
@@ -422,6 +487,60 @@ export default function Usuarios() {
       setAddUserError(err.message)
     } finally {
       setAddUserLoading(false)
+    }
+  }
+
+  const handleEditUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setEditUserError('')
+    setEditUserSuccess(false)
+    setEditUserLoading(true)
+
+    try {
+      const supabase = createSupabaseClient()
+
+      const { error: dbError } = await supabase
+        .from('usuario_nomina')
+        .update({
+          colaborador: editUserData.nombre,
+          correo_electronico: editUserData.correo,
+          telefono: editUserData.telefono,
+          rol: editUserData.rol,
+          genero: editUserData.genero || null,
+          cedula: editUserData.cedula || null,
+          fecha_ingreso: editUserData.fecha_ingreso || null,
+          empresa_id: editUserData.empresa_id ? parseInt(editUserData.empresa_id) : null,
+          cargo: editUserData.cargo || null,
+          sede_id: editUserData.sede_id ? parseInt(editUserData.sede_id) : null,
+          fecha_nacimiento: editUserData.fecha_nacimiento || null,
+          edad: editUserData.edad ? parseInt(editUserData.edad) : null,
+          rh: editUserData.rh || null,
+          eps_id: editUserData.eps_id || null,
+          afp_id: editUserData.afp_id || null,
+          cesantias_id: editUserData.cesantias_id ? parseInt(editUserData.cesantias_id) : null,
+          caja_de_compensacion_id: editUserData.caja_de_compensacion_id ? parseInt(editUserData.caja_de_compensacion_id) : null,
+          direccion_residencia: editUserData.direccion_residencia || null
+        })
+        .eq('id', editUserData.id)
+
+      if (dbError) throw dbError
+      
+      setEditUserSuccess(true)
+      setEditUserData(null)
+      
+      // Recargar la lista de usuarios
+      await fetchUsers()
+      
+      // Cerrar el modal después de un breve delay
+      setTimeout(() => {
+        setIsEditUserModalOpen(false)
+        setEditUserSuccess(false)
+      }, 1500)
+      
+    } catch (err: any) {
+      setEditUserError(err.message)
+    } finally {
+      setEditUserLoading(false)
     }
   }
 
@@ -690,15 +809,26 @@ export default function Usuarios() {
                                 </TableCell>
                                 <TableCell>{user.correo_electronico}</TableCell>
                                 <TableCell>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="flex items-center gap-1"
-                                    onClick={() => handleViewDetails(user)}
-                                  >
-                                    <Eye className="h-4 w-4" />
-                                    Ver detalles
-                                  </Button>
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="p-2"
+                                      onClick={() => handleViewDetails(user)}
+                                      title="Ver detalles"
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="p-2"
+                                      onClick={() => handleEditUser(user)}
+                                      title="Editar usuario"
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                  </div>
                                 </TableCell>
                               </TableRow>
                             ))
@@ -1128,6 +1258,294 @@ export default function Usuarios() {
                 </Button>
               </div>
             </form>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Editar Usuario */}
+      <Dialog open={isEditUserModalOpen} onOpenChange={setIsEditUserModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Usuario</DialogTitle>
+          </DialogHeader>
+          <div className="mt-4">
+            {editUserError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+                {editUserError}
+              </div>
+            )}
+            {editUserSuccess && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-4">
+                Usuario actualizado exitosamente
+              </div>
+            )}
+            {editUserData && (
+              <form className="space-y-6 px-2" onSubmit={handleEditUserSubmit}>
+                {/* Campos obligatorios */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit-nombre">Nombre completo *</Label>
+                    <Input
+                      id="edit-nombre"
+                      type="text"
+                      required
+                      value={editUserData.nombre}
+                      onChange={(e) => setEditUserData({ ...editUserData, nombre: e.target.value })}
+                      className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="edit-email">Correo electrónico *</Label>
+                    <Input
+                      id="edit-email"
+                      type="email"
+                      required
+                      value={editUserData.correo}
+                      onChange={(e) => setEditUserData({ ...editUserData, correo: e.target.value })}
+                      className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="edit-telefono">Teléfono *</Label>
+                    <Input
+                      id="edit-telefono"
+                      type="tel"
+                      required
+                      value={editUserData.telefono}
+                      onChange={(e) => setEditUserData({ ...editUserData, telefono: e.target.value })}
+                      className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="edit-rol">Rol *</Label>
+                    <Select value={editUserData.rol} onValueChange={(value) => setEditUserData({ ...editUserData, rol: value })}>
+                      <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                        <SelectValue placeholder="Seleccionar rol" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="usuario">Usuario</SelectItem>
+                        <SelectItem value="administrador">Administrador</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Información adicional */}
+                <div className="border-t pt-6">
+                  <h3 className="text-lg font-medium mb-4">Información adicional</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="edit-genero">Género</Label>
+                      <Input
+                        id="edit-genero"
+                        value={editUserData.genero ? editUserData.genero.charAt(0).toUpperCase() + editUserData.genero.slice(1) : ''}
+                        readOnly
+                        className="mt-1 border-2 bg-gray-50 cursor-not-allowed"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="edit-cedula">Cédula</Label>
+                      <Input
+                        id="edit-cedula"
+                        type="text"
+                        value={editUserData.cedula}
+                        onChange={(e) => setEditUserData({ ...editUserData, cedula: e.target.value })}
+                        className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="edit-fecha_ingreso">Fecha de Ingreso</Label>
+                      <Input
+                        id="edit-fecha_ingreso"
+                        type="date"
+                        value={editUserData.fecha_ingreso}
+                        onChange={(e) => setEditUserData({ ...editUserData, fecha_ingreso: e.target.value })}
+                        className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="edit-empresa_id">Empresa</Label>
+                      <Select value={editUserData.empresa_id} onValueChange={(value) => setEditUserData({ ...editUserData, empresa_id: value })}>
+                        <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                          <SelectValue placeholder="Seleccionar empresa" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {empresas
+                            .filter(empresa => empresa && empresa.id && empresa.nombre)
+                            .filter((empresa, index, self) => self.findIndex(e => e.id === empresa.id) === index)
+                            .map((empresa) => (
+                              <SelectItem key={`edit-empresa-${empresa.id}`} value={empresa.id.toString()}>
+                                {empresa.nombre}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="edit-cargo">Cargo</Label>
+                      <Input
+                        id="edit-cargo"
+                        type="text"
+                        value={editUserData.cargo}
+                        onChange={(e) => setEditUserData({ ...editUserData, cargo: e.target.value })}
+                        className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="edit-sede">Sede</Label>
+                      <Select value={editUserData.sede_id} onValueChange={(value) => setEditUserData({ ...editUserData, sede_id: value })}>
+                        <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                          <SelectValue placeholder="Seleccionar sede" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {sedes
+                            .filter(sede => sede && sede.id && sede.nombre)
+                            .filter((sede, index, self) => self.findIndex(s => s.id === sede.id) === index)
+                            .map((sede) => (
+                              <SelectItem key={`edit-sede-${sede.id}`} value={sede.id.toString()}>
+                                {sede.nombre}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="edit-fecha_nacimiento">Fecha de Nacimiento</Label>
+                      <Input
+                        id="edit-fecha_nacimiento"
+                        type="date"
+                        value={editUserData.fecha_nacimiento}
+                        onChange={(e) => setEditUserData({ ...editUserData, fecha_nacimiento: e.target.value })}
+                        className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="edit-edad">Edad</Label>
+                      <Input
+                        id="edit-edad"
+                        type="number"
+                        value={editUserData.edad}
+                        onChange={(e) => setEditUserData({ ...editUserData, edad: e.target.value })}
+                        className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="edit-rh">RH</Label>
+                      <Select value={editUserData.rh} onValueChange={(value) => setEditUserData({ ...editUserData, rh: value })}>
+                        <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                          <SelectValue placeholder="Seleccionar RH" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="O+">O+</SelectItem>
+                          <SelectItem value="O-">O-</SelectItem>
+                          <SelectItem value="A+">A+</SelectItem>
+                          <SelectItem value="A-">A-</SelectItem>
+                          <SelectItem value="B+">B+</SelectItem>
+                          <SelectItem value="B-">B-</SelectItem>
+                          <SelectItem value="AB+">AB+</SelectItem>
+                          <SelectItem value="AB-">AB-</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="edit-eps">EPS</Label>
+                      <Select value={editUserData.eps_id} onValueChange={(value) => setEditUserData({ ...editUserData, eps_id: value })}>
+                        <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                          <SelectValue placeholder="Seleccionar EPS" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {eps
+                            .filter(epsItem => epsItem && epsItem.id && epsItem.nombre)
+                            .filter((epsItem, index, self) => self.findIndex(e => e.id === epsItem.id) === index)
+                            .map((epsItem) => (
+                              <SelectItem key={`edit-eps-${epsItem.id}`} value={epsItem.id.toString()}>
+                                {epsItem.nombre}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="edit-afp">AFP</Label>
+                      <Select value={editUserData.afp_id} onValueChange={(value) => setEditUserData({ ...editUserData, afp_id: value })}>
+                        <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                          <SelectValue placeholder="Seleccionar AFP" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {afps
+                            .filter(afp => afp && afp.id && afp.nombre)
+                            .filter((afp, index, self) => self.findIndex(a => a.id === afp.id) === index)
+                            .map((afp) => (
+                              <SelectItem key={`edit-afp-${afp.id}`} value={afp.id.toString()}>
+                                {afp.nombre}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="edit-caja_compensacion">Caja de Compensación</Label>
+                      <Select value={editUserData.caja_de_compensacion_id} onValueChange={(value) => setEditUserData({ ...editUserData, caja_de_compensacion_id: value })}>
+                        <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                          <SelectValue placeholder="Seleccionar caja" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {cajaDeCompensacionOptions
+                            .filter(caja => caja && caja.id && caja.nombre)
+                            .filter((caja, index, self) => self.findIndex(c => c.id === caja.id) === index)
+                            .map((caja) => (
+                              <SelectItem key={`edit-caja-${caja.id}`} value={caja.id.toString()}>
+                                {caja.nombre}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <Label htmlFor="edit-direccion_residencia">Dirección de Residencia</Label>
+                    <Textarea
+                      id="edit-direccion_residencia"
+                      value={editUserData.direccion_residencia}
+                      onChange={(e) => setEditUserData({ ...editUserData, direccion_residencia: e.target.value })}
+                      className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <Button type="button" variant="outline" onClick={() => setIsEditUserModalOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={editUserLoading}>
+                    {editUserLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Actualizando...
+                      </>
+                    ) : (
+                      'Actualizar Usuario'
+                    )}
+                  </Button>
+                </div>
+              </form>
+            )}
           </div>
         </DialogContent>
       </Dialog>

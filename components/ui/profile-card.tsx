@@ -79,6 +79,21 @@ export function ProfileCard({ userData }: ProfileCardProps) {
       setIsUploading(true)
       setUploadError(null)
 
+      // Obtener la ruta actual del avatar desde la base de datos ANTES de hacer cambios
+      const { data: currentUser, error: fetchError } = await supabase
+        .from("usuario_nomina")
+        .select("avatar_path")
+        .eq("auth_user_id", userData.auth_user_id)
+        .single()
+
+      if (fetchError) {
+        console.error("Error al obtener datos del usuario:", fetchError)
+        setUploadError("Error al obtener información del usuario.")
+        return
+      }
+
+      const oldAvatarPath = currentUser?.avatar_path
+
       // Crear un canvas para redimensionar la imagen a exactamente 600px de ancho manteniendo relación de aspecto
       const img = document.createElement('img')
       img.src = URL.createObjectURL(file)
@@ -130,6 +145,19 @@ export function ProfileCard({ userData }: ProfileCardProps) {
         .eq("auth_user_id", userData.auth_user_id)
 
       if (updateError) throw updateError
+
+      // AHORA eliminar la imagen anterior del storage (después de que todo sea exitoso)
+      if (oldAvatarPath && oldAvatarPath !== filePath) {
+        const { error: deleteError } = await supabase.storage
+          .from("avatar")
+          .remove([oldAvatarPath])
+        
+        if (deleteError) {
+          console.warn("Error al eliminar avatar anterior:", deleteError, "Ruta:", oldAvatarPath)
+        } else {
+          console.log("Avatar anterior eliminado exitosamente:", oldAvatarPath)
+        }
+      }
 
       // Obtener la URL pública del nuevo avatar
       const { data } = supabase.storage.from("avatar").getPublicUrl(filePath)
@@ -272,7 +300,7 @@ export function ProfileCard({ userData }: ProfileCardProps) {
 
             <div>
               <CardTitle className="text-2xl md:text-2xl font-bold text-sm">{userData?.colaborador}</CardTitle>
-              <p className="text-muted-foreground text-sm">{userData?.cargo || "Sin cargo asignado"}</p>
+              <p className="text-muted-foreground text-sm">{userData?.cargos?.nombre || "Sin cargo asignado"}</p>
               <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-3 py-1 mt-2 text-sm">
                 {userData?.empresas?.nombre || "Empresa no asignada"}
               </Badge>
@@ -362,7 +390,7 @@ export function ProfileCard({ userData }: ProfileCardProps) {
                 <Briefcase className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Cargo</p>
-                  <p className="text-sm font-medium">{userData?.cargo || "No disponible"}</p>
+                  <p className="text-sm font-medium">{userData?.cargos?.nombre || "No disponible"}</p>
                 </div>
               </div>
 

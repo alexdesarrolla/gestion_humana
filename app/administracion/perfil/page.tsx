@@ -35,7 +35,8 @@ export default function Perfil() {
           eps:eps_id(nombre),
           afp:afp_id(nombre),
           cesantias:cesantias_id(nombre),
-          caja_de_compensacion:caja_de_compensacion_id(nombre)
+          caja_de_compensacion:caja_de_compensacion_id(nombre),
+          cargos:cargo_id(id, nombre)
         `)
         .eq("auth_user_id", session.user.id)
         .single()

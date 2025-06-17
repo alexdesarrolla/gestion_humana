@@ -50,7 +50,7 @@ export default function Usuarios() {
     cedula: '',
     fecha_ingreso: '',
     empresa_id: '',
-    cargo: '',
+    cargo_id: '',
     sede_id: '',
     fecha_nacimiento: '',
     edad: '',
@@ -125,7 +125,8 @@ export default function Usuarios() {
           eps:eps_id(id, nombre),
           afp:afp_id(id, nombre),
           cesantias:cesantias_id(id, nombre),
-          caja_de_compensacion:caja_de_compensacion_id(id, nombre)
+          caja_de_compensacion:caja_de_compensacion_id(id, nombre),
+          cargos:cargo_id(id, nombre)
         `)
         .eq("rol", "usuario")
 
@@ -176,9 +177,17 @@ export default function Usuarios() {
       setEmpresas(todasEmpresas || [])
       setEmpresasFilter(uniqueEmpresas)
 
-      // Extraer cargos únicos
-      const uniqueCargos = Array.from(new Set(usuarios?.map((user) => user.cargo).filter(Boolean)))
-      setCargos(uniqueCargos)
+      // Cargar cargos desde la tabla cargos
+      const { data: cargosData, error: cargosError } = await supabase
+        .from("cargos")
+        .select("id, nombre")
+        .order("nombre")
+      
+      if (cargosError) {
+        console.error("Error al cargar cargos:", cargosError)
+      } else {
+        setCargos(cargosData || [])
+      }
 
       setLoading(false)
     }
@@ -232,7 +241,7 @@ export default function Usuarios() {
         (user) =>
           user.colaborador?.toLowerCase().includes(lowerCaseSearchTerm) ||
           user.correo_electronico?.toLowerCase().includes(lowerCaseSearchTerm) ||
-          user.cargo?.toLowerCase().includes(lowerCaseSearchTerm) ||
+          user.cargos?.nombre?.toLowerCase().includes(lowerCaseSearchTerm) ||
           user.empresas?.nombre?.toLowerCase().includes(lowerCaseSearchTerm),
       )
     }
@@ -244,25 +253,34 @@ export default function Usuarios() {
 
     // Aplicar filtro de cargo
     if (cargo && cargo !== "all") {
-      result = result.filter((user) => user.cargo === cargo)
+      result = result.filter((user) => user.cargos?.nombre === cargo)
     }
 
     // Aplicar ordenamiento
     if (sort !== null) {
       result.sort((a, b) => {
-        // Manejar propiedades anidadas como 'empresas.nombre'
+        // Manejar propiedades anidadas como 'empresas.nombre' y 'cargos.nombre'
         let aValue, bValue
 
-        // Definir interfaz para empresas
+        // Definir interfaces para relaciones
         interface EmpresaData {
+          nombre?: string
+        }
+        
+        interface CargoData {
           nombre?: string
         }
 
         if (sort.key === "empresas") {
-          const aEmpresa = a.empresa as EmpresaData | undefined
-          const bEmpresa = b.empresa as EmpresaData | undefined
+          const aEmpresa = a.empresas as EmpresaData | undefined
+          const bEmpresa = b.empresas as EmpresaData | undefined
           aValue = aEmpresa?.nombre || ""
           bValue = bEmpresa?.nombre || ""
+        } else if (sort.key === "cargos") {
+          const aCargo = a.cargos as CargoData | undefined
+          const bCargo = b.cargos as CargoData | undefined
+          aValue = aCargo?.nombre || ""
+          bValue = bCargo?.nombre || ""
         } else {
           aValue = a[sort.key] || ""
           bValue = b[sort.key] || ""
@@ -340,7 +358,7 @@ export default function Usuarios() {
       cedula: user.cedula || '',
       fecha_ingreso: user.fecha_ingreso || '',
       empresa_id: user.empresa_id ? user.empresa_id.toString() : '',
-      cargo: user.cargo || '',
+      cargo_id: user.cargo_id ? user.cargo_id.toString() : (user.cargos?.id ? user.cargos.id.toString() : ''),
       sede_id: user.sede_id ? user.sede_id.toString() : '',
       fecha_nacimiento: user.fecha_nacimiento || '',
       edad: user.edad ? user.edad.toString() : '',
@@ -369,7 +387,8 @@ export default function Usuarios() {
         eps:eps_id(id, nombre),
         afp:afp_id(id, nombre),
         cesantias:cesantias_id(id, nombre),
-        caja_de_compensacion:caja_de_compensacion_id(id, nombre)
+        caja_de_compensacion:caja_de_compensacion_id(id, nombre),
+        cargos:cargo_id(id, nombre)
       `)
       .eq("rol", "usuario")
 
@@ -425,7 +444,7 @@ export default function Usuarios() {
               cedula: newUserData.cedula || null,
               fecha_ingreso: newUserData.fecha_ingreso || null,
               empresa_id: newUserData.empresa_id ? parseInt(newUserData.empresa_id) : null,
-              cargo: newUserData.cargo || null,
+              cargo_id: newUserData.cargo_id ? parseInt(newUserData.cargo_id) : null,
               sede_id: newUserData.sede_id ? parseInt(newUserData.sede_id) : null,
               fecha_nacimiento: newUserData.fecha_nacimiento || null,
               edad: newUserData.edad ? parseInt(newUserData.edad) : null,
@@ -491,28 +510,30 @@ export default function Usuarios() {
     try {
       const supabase = createSupabaseClient()
 
+      const updateData = {
+        colaborador: editUserData.nombre,
+        correo_electronico: editUserData.correo,
+        telefono: editUserData.telefono,
+        rol: editUserData.rol,
+        genero: editUserData.genero || null,
+        cedula: editUserData.cedula || null,
+        fecha_ingreso: editUserData.fecha_ingreso || null,
+        empresa_id: editUserData.empresa_id ? parseInt(editUserData.empresa_id) : null,
+        cargo_id: editUserData.cargo_id || null,
+        sede_id: editUserData.sede_id ? parseInt(editUserData.sede_id) : null,
+        fecha_nacimiento: editUserData.fecha_nacimiento || null,
+        edad: editUserData.edad ? parseInt(editUserData.edad) : null,
+        rh: editUserData.rh || null,
+        eps_id: editUserData.eps_id || null,
+        afp_id: editUserData.afp_id || null,
+        cesantias_id: editUserData.cesantias_id ? parseInt(editUserData.cesantias_id) : null,
+        caja_de_compensacion_id: editUserData.caja_de_compensacion_id ? parseInt(editUserData.caja_de_compensacion_id) : null,
+        direccion_residencia: editUserData.direccion_residencia || null
+      }
+
       const { error: dbError } = await supabase
         .from('usuario_nomina')
-        .update({
-          colaborador: editUserData.nombre,
-          correo_electronico: editUserData.correo,
-          telefono: editUserData.telefono,
-          rol: editUserData.rol,
-          genero: editUserData.genero || null,
-          cedula: editUserData.cedula || null,
-          fecha_ingreso: editUserData.fecha_ingreso || null,
-          empresa_id: editUserData.empresa_id ? parseInt(editUserData.empresa_id) : null,
-          cargo: editUserData.cargo || null,
-          sede_id: editUserData.sede_id ? parseInt(editUserData.sede_id) : null,
-          fecha_nacimiento: editUserData.fecha_nacimiento || null,
-          edad: editUserData.edad ? parseInt(editUserData.edad) : null,
-          rh: editUserData.rh || null,
-          eps_id: editUserData.eps_id || null,
-          afp_id: editUserData.afp_id || null,
-          cesantias_id: editUserData.cesantias_id ? parseInt(editUserData.cesantias_id) : null,
-          caja_de_compensacion_id: editUserData.caja_de_compensacion_id ? parseInt(editUserData.caja_de_compensacion_id) : null,
-          direccion_residencia: editUserData.direccion_residencia || null
-        })
+        .update(updateData)
         .eq('id', editUserData.id)
 
       if (dbError) throw dbError
@@ -666,8 +687,8 @@ export default function Usuarios() {
                           <SelectContent>
                             <SelectItem value="all">Todos los cargos</SelectItem>
                             {cargos.map((cargo) => (
-                              <SelectItem key={cargo} value={cargo}>
-                                {cargo}
+                              <SelectItem key={cargo.id} value={cargo.nombre}>
+                                {cargo.nombre}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -737,11 +758,11 @@ export default function Usuarios() {
                             </TableHead>
                             <TableHead
                               className="cursor-pointer hover:bg-muted/50"
-                              onClick={() => requestSort("cargo")}
+                              onClick={() => requestSort("cargos")}
                             >
                               <div className="flex items-center">
                                 Cargo
-                                {getSortIcon("cargo")}
+                                {getSortIcon("cargos")}
                               </div>
                             </TableHead>
                             <TableHead
@@ -789,7 +810,7 @@ export default function Usuarios() {
                                   )}
                                 </TableCell>
                                 <TableCell className="font-medium">{user.colaborador}</TableCell>
-                                <TableCell>{user.cargo || "N/A"}</TableCell>
+                                <TableCell>{user.cargos?.nombre || "N/A"}</TableCell>
                                 <TableCell>
                                   {user.empresas?.nombre ? (
                     <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
@@ -1095,13 +1116,23 @@ export default function Usuarios() {
 
                   <div>
                     <Label htmlFor="cargo">Cargo</Label>
-                    <Input
-                      id="cargo"
-                      type="text"
-                      value={newUserData.cargo}
-                      onChange={(e) => setNewUserData({ ...newUserData, cargo: e.target.value })}
-                      className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
-                    />
+                    <Select
+                      value={newUserData.cargo_id}
+                      onValueChange={(value) => setNewUserData({ ...newUserData, cargo_id: value })}
+                    >
+                      <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                        <SelectValue placeholder="Seleccionar cargo" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[200px] overflow-y-auto">
+                        {cargos
+                          .filter(cargo => cargo && cargo.id && cargo.nombre)
+                          .map((cargo) => (
+                            <SelectItem key={`cargo-${cargo.id}`} value={cargo.id.toString()}>
+                              {cargo.nombre}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div>
@@ -1382,13 +1413,23 @@ export default function Usuarios() {
 
                     <div>
                       <Label htmlFor="edit-cargo">Cargo</Label>
-                      <Input
-                        id="edit-cargo"
-                        type="text"
-                        value={editUserData.cargo}
-                        onChange={(e) => setEditUserData({ ...editUserData, cargo: e.target.value })}
-                        className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
-                      />
+                      <Select
+                        value={editUserData.cargo_id}
+                        onValueChange={(value) => setEditUserData({ ...editUserData, cargo_id: value })}
+                      >
+                        <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                          <SelectValue placeholder="Seleccionar cargo" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[200px] overflow-y-auto">
+                          {cargos
+                            .filter(cargo => cargo && cargo.id && cargo.nombre)
+                            .map((cargo) => (
+                              <SelectItem key={`edit-cargo-${cargo.id}`} value={cargo.id.toString()}>
+                                {cargo.nombre}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div>

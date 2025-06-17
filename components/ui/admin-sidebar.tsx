@@ -49,7 +49,25 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
 
   const menuItems = [
     { name: "Escritorio", href: "/administracion", icon: Home, current: currentPath === "/administracion" },
-    { name: "Usuarios", href: "/administracion/usuarios", icon: User, current: currentPath === "/administracion/usuarios" },
+    { 
+      name: "Usuarios", 
+      icon: User, 
+      current: currentPath.includes("/administracion/usuarios"),
+      subItems: [
+        { 
+          name: "Todos", 
+          href: "/administracion/usuarios", 
+          icon: User, 
+          current: currentPath === "/administracion/usuarios" 
+        },
+        { 
+          name: "Cargos", 
+          href: "/administracion/usuarios/cargos", 
+          icon: FileText, 
+          current: currentPath === "/administracion/usuarios/cargos" 
+        },
+      ],
+    },
     { 
       name: "Solicitudes", 
       icon: FileText, 

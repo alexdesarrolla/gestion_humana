@@ -18,7 +18,9 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { CheckCircle2, XCircle, AlertCircle, Loader2 } from "lucide-react"
+import { CheckCircle2, XCircle, AlertCircle, Loader2, MessageSquare } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { ComentariosVacaciones } from "@/components/vacaciones/comentarios-vacaciones"
 
 interface SolicitudVacacion {
   id: string
@@ -46,6 +48,8 @@ export default function AdminVacacionesPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [showCommentsModal, setShowCommentsModal] = useState(false)
+  const [selectedSolicitudId, setSelectedSolicitudId] = useState<string | null>(null)
 
   // Carga solicitudes pendientes
   const fetchSolicitudesPendientes = async () => {
@@ -193,6 +197,11 @@ export default function AdminVacacionesPage() {
     return Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1
   }
 
+  const handleShowComments = (solicitudId: string) => {
+    setSelectedSolicitudId(solicitudId)
+    setShowCommentsModal(true)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -264,6 +273,7 @@ export default function AdminVacacionesPage() {
                         <TableHead>Días</TableHead>
                         <TableHead>Fecha Solicitud</TableHead>
                         <TableHead>Estado</TableHead>
+                        <TableHead>Comentarios</TableHead>
                         <TableHead>Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -290,6 +300,15 @@ export default function AdminVacacionesPage() {
                             <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
                               {solicitud.estado}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleShowComments(solicitud.id)}
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                            </Button>
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-2">
@@ -329,6 +348,18 @@ export default function AdminVacacionesPage() {
           </Card>
         </div>
       </div>
+
+      {/* Modal de Comentarios */}
+      <Dialog open={showCommentsModal} onOpenChange={setShowCommentsModal}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Comentarios de la solicitud</DialogTitle>
+          </DialogHeader>
+          {selectedSolicitudId && (
+            <ComentariosVacaciones solicitudId={selectedSolicitudId} />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

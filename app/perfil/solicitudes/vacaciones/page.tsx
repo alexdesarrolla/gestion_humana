@@ -14,14 +14,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import UserVacacionesCalendar from "@/components/vacaciones/UserVacacionesCalendar"
+import { ComentariosVacaciones } from "@/components/vacaciones/comentarios-vacaciones"
 
 export default function SolicitudVacaciones() {
   const [showReasonModal, setShowReasonModal] = useState(false)
   const [rejectionReason, setRejectionReason] = useState('')
+  const [showCommentsModal, setShowCommentsModal] = useState(false)
+  const [selectedSolicitudId, setSelectedSolicitudId] = useState<string | null>(null)
 
   const handleShowReason = (reason: string) => {
     setRejectionReason(reason)
     setShowReasonModal(true)
+  }
+
+  const handleShowComments = (solicitudId: string) => {
+    setSelectedSolicitudId(solicitudId)
+    setShowCommentsModal(true)
   }
 
   const router = useRouter()
@@ -216,6 +224,25 @@ export default function SolicitudVacaciones() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={showCommentsModal} onOpenChange={setShowCommentsModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>Comentarios de la solicitud</DialogTitle>
+            <DialogDescription>
+              Comunícate con el administrador sobre tu solicitud de vacaciones.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="overflow-y-auto max-h-[70vh]">
+            {selectedSolicitudId && (
+              <ComentariosVacaciones 
+                solicitudId={selectedSolicitudId} 
+                isAdmin={false}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-fit max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -355,13 +382,14 @@ export default function SolicitudVacaciones() {
                               <TableHead>Fecha de fin</TableHead>
                               <TableHead>Días</TableHead>
                               <TableHead>Estado</TableHead>
+                              <TableHead>Comentarios</TableHead>
                               <TableHead>Acciones</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {solicitudes.length === 0 ? (
                               <TableRow>
-                                <TableCell colSpan={6} className="text-center">
+                                <TableCell colSpan={7} className="text-center">
                                   No has realizado ninguna solicitud de vacaciones.
                                 </TableCell>
                               </TableRow>
@@ -393,6 +421,15 @@ export default function SolicitudVacaciones() {
                                     >
                                       {solicitud.estado.charAt(0).toUpperCase() + solicitud.estado.slice(1)}
                                     </Badge>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleShowComments(solicitud.id.toString())}
+                                    >
+                                      Ver comentarios
+                                    </Button>
                                   </TableCell>
                                   <TableCell>
                                     {solicitud.estado === "rechazado" && solicitud.motivo_rechazo && (

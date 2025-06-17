@@ -24,7 +24,9 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Search, X } from "lucide-react"
+import { Search, X, MessageSquare } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { ComentariosVacaciones } from "@/components/vacaciones/comentarios-vacaciones"
 
 export default function AdminSolicitudesVacaciones() {
   const router = useRouter()
@@ -38,6 +40,8 @@ export default function AdminSolicitudesVacaciones() {
   const [searchTerm, setSearchTerm] = useState<string>("")
   const [selectedEstado, setSelectedEstado] = useState<string>("all")
   const [selectedEmpresa, setSelectedEmpresa] = useState<string>("all")
+  const [showCommentsModal, setShowCommentsModal] = useState(false)
+  const [selectedSolicitudId, setSelectedSolicitudId] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchSolicitudes = async () => {
@@ -203,6 +207,11 @@ export default function AdminSolicitudesVacaciones() {
     return Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1
   }
 
+  const handleShowComments = (solicitudId: string) => {
+    setSelectedSolicitudId(solicitudId)
+    setShowCommentsModal(true)
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       <AdminSidebar userName="Administrador" />
@@ -307,18 +316,19 @@ export default function AdminSolicitudesVacaciones() {
                       <TableHead>Solicitud</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead>Empresa</TableHead>
+                      <TableHead>Comentarios</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {loading ? (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-4">
+                        <TableCell colSpan={10} className="text-center py-4">
                           Cargando...
                         </TableCell>
                       </TableRow>
                     ) : filteredSolicitudes.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-4">
+                        <TableCell colSpan={10} className="text-center py-4">
                           No hay solicitudes.
                         </TableCell>
                       </TableRow>
@@ -379,6 +389,15 @@ export default function AdminSolicitudesVacaciones() {
                               {sol.usuario?.empresas?.nombre}
                             </Badge>
                           </TableCell>
+                          <TableCell>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleShowComments(sol.id)}
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       ))
                     )}
@@ -389,6 +408,18 @@ export default function AdminSolicitudesVacaciones() {
           </div>
         </main>
       </div>
+
+      {/* Modal de Comentarios */}
+      <Dialog open={showCommentsModal} onOpenChange={setShowCommentsModal}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Comentarios de la solicitud</DialogTitle>
+          </DialogHeader>
+          {selectedSolicitudId && (
+            <ComentariosVacaciones solicitudId={selectedSolicitudId} />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

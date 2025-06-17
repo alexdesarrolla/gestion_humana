@@ -217,59 +217,83 @@ export default function SolicitudVacaciones() {
       </Dialog>
 
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-fit max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Solicitar Vacaciones</DialogTitle>
             <DialogDescription>
               Selecciona las fechas de tus vacaciones en el calendario. Las fechas en gris no están disponibles y las fechas en rojo ya están ocupadas.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <UserVacacionesCalendar 
-              onDateRangeSelect={handleDateRangeSelect}
-              selectedRange={selectedRange}
-            />
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Columna del calendario */}
+            <div className="flex justify-center">
+              <UserVacacionesCalendar 
+                onDateRangeSelect={handleDateRangeSelect}
+                selectedRange={selectedRange}
+              />
+            </div>
             
-            {selectedRange.from && selectedRange.to && (
-              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
-                <div>
-                  <p className="font-medium">Rango seleccionado:</p>
-                  <p className="text-sm text-gray-600">
-                    {selectedRange.from.toLocaleDateString('es-CO', { 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
-                    })} - {selectedRange.to.toLocaleDateString('es-CO', { 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
-                    })}
+            {/* Columna de información y acciones */}
+            <div className="space-y-4 min-w-[300px]">
+              {selectedRange.from && selectedRange.to && (
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="space-y-3">
+                    <div>
+                      <p className="font-semibold text-blue-900">Rango seleccionado:</p>
+                      <p className="text-sm text-blue-700 mt-1">
+                        <span className="font-medium">Inicio:</span> {selectedRange.from.toLocaleDateString('es-CO', { 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        })}
+                      </p>
+                      <p className="text-sm text-blue-700">
+                        <span className="font-medium">Fin:</span> {selectedRange.to.toLocaleDateString('es-CO', { 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        })}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-blue-200">
+                      <span className="text-sm font-medium text-blue-900">Total de días:</span>
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-lg px-3 py-1">
+                        {calcularDiasVacaciones(selectedRange.from, selectedRange.to)} días
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {!selectedRange.from && (
+                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <p className="text-sm text-gray-600 text-center">
+                    Selecciona las fechas en el calendario para ver el resumen de tu solicitud
                   </p>
                 </div>
-                <Badge variant="secondary" className="text-lg px-3 py-1">
-                  {calcularDiasVacaciones(selectedRange.from, selectedRange.to)} días
-                </Badge>
+              )}
+              
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              
+              <div className="flex flex-col gap-2 pt-4">
+                <Button 
+                  onClick={enviarSolicitud} 
+                  disabled={loading || !selectedRange.from || !selectedRange.to}
+                  className="w-full"
+                >
+                  {loading ? "Enviando..." : "Enviar solicitud"}
+                </Button>
+                <Button variant="outline" onClick={() => setShowModal(false)} className="w-full">
+                  Cancelar
+                </Button>
               </div>
-            )}
-          </div>
-          
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowModal(false)}>
-              Cancelar
-            </Button>
-            <Button 
-              onClick={enviarSolicitud} 
-              disabled={loading || !selectedRange.from || !selectedRange.to}
-            >
-              {loading ? "Enviando..." : "Enviar solicitud"}
-            </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

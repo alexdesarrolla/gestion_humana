@@ -229,9 +229,10 @@ export default function SolicitudVacaciones() {
             {/* Columna del calendario */}
             <div className="flex justify-center">
               <UserVacacionesCalendar 
-                onDateRangeSelect={handleDateRangeSelect}
-                selectedRange={selectedRange}
-              />
+              onDateRangeSelect={handleDateRangeSelect}
+              selectedRange={selectedRange}
+              userCompanyId={userData?.empresa_id ? userData.empresa_id.toString() : undefined}
+            />
             </div>
             
             {/* Columna de información y acciones */}

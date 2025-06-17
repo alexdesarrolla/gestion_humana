@@ -35,6 +35,7 @@ interface Vacacion {
 interface UserVacacionesCalendarProps {
   onDateRangeSelect: (range: { from: Date | undefined; to: Date | undefined }) => void
   selectedRange: { from: Date | undefined; to: Date | undefined }
+  userCompanyId?: string
 }
 
 // Navegación de meses personalizada
@@ -73,7 +74,7 @@ function MonthNavigation({
   )
 }
 
-export default function UserVacacionesCalendar({ onDateRangeSelect, selectedRange }: UserVacacionesCalendarProps) {
+export default function UserVacacionesCalendar({ onDateRangeSelect, selectedRange, userCompanyId }: UserVacacionesCalendarProps) {
   const [disponibilidad, setDisponibilidad] = useState<Disponibilidad[]>([])
   const [vacaciones, setVacaciones] = useState<Vacacion[]>([])
   const [loading, setLoading] = useState(true)
@@ -91,12 +92,77 @@ export default function UserVacacionesCalendar({ onDateRangeSelect, selectedRang
         .select("*")
       if (dispErr) throw dispErr
 
-      // Cargar todas las vacaciones aprobadas
-      const { data: vacData, error: vacErr } = await supabase
-        .from("solicitudes_vacaciones")
-        .select("id, fecha_inicio, fecha_fin, usuario_id")
-        .eq("estado", "aprobado")
-      if (vacErr) throw vacErr
+      // Cargar vacaciones aprobadas - nueva implementación más robusta
+      let vacData = []
+      
+      // Validar que userCompanyId sea un valor válido (no null, undefined, o string vacío)
+      const isValidCompanyId = userCompanyId && userCompanyId.trim() !== '' && userCompanyId !== 'null' && userCompanyId !== 'undefined'
+      
+      if (isValidCompanyId) {
+        console.log('Filtrando vacaciones por empresa ID:', userCompanyId)
+        
+        // Convertir a número para la consulta
+        const companyIdNumber = parseInt(userCompanyId, 10)
+        
+        if (isNaN(companyIdNumber)) {
+          console.warn('ID de empresa no es un número válido:', userCompanyId)
+          // Fallback: cargar todas las vacaciones
+          const { data, error: vacErr } = await supabase
+            .from("solicitudes_vacaciones")
+            .select("id, fecha_inicio, fecha_fin, usuario_id")
+            .eq("estado", "aprobado")
+          if (vacErr) throw vacErr
+          vacData = data
+        } else {
+          // Obtener usuarios de la misma empresa usando el ID numérico
+          const { data: usuarios, error: usuariosErr } = await supabase
+            .from("usuario_nomina")
+            .select("auth_user_id")
+            .eq("empresa_id", companyIdNumber)
+          
+          if (usuariosErr) {
+            console.error('Error obteniendo usuarios de la empresa:', usuariosErr)
+            // Fallback: cargar todas las vacaciones
+            const { data, error: vacErr } = await supabase
+              .from("solicitudes_vacaciones")
+              .select("id, fecha_inicio, fecha_fin, usuario_id")
+              .eq("estado", "aprobado")
+            if (vacErr) throw vacErr
+            vacData = data
+          } else if (usuarios && usuarios.length > 0) {
+            const userIds = usuarios.map(u => u.auth_user_id).filter(id => id) // Filtrar IDs válidos
+            
+            if (userIds.length > 0) {
+              const { data, error: vacErr } = await supabase
+                .from("solicitudes_vacaciones")
+                .select("id, fecha_inicio, fecha_fin, usuario_id")
+                .eq("estado", "aprobado")
+                .in("usuario_id", userIds)
+              
+              if (vacErr) {
+                console.error('Error obteniendo vacaciones:', vacErr)
+                throw vacErr
+              }
+              vacData = data
+            } else {
+              console.log('No se encontraron usuarios válidos para la empresa')
+              vacData = []
+            }
+          } else {
+            console.log('No se encontraron usuarios para la empresa ID:', companyIdNumber)
+            vacData = []
+          }
+        }
+      } else {
+        console.log('ID de empresa no válido, cargando todas las vacaciones')
+        // Si no hay empresa válida, cargar todas las vacaciones
+        const { data, error: vacErr } = await supabase
+          .from("solicitudes_vacaciones")
+          .select("id, fecha_inicio, fecha_fin, usuario_id")
+          .eq("estado", "aprobado")
+        if (vacErr) throw vacErr
+        vacData = data
+      }
 
       setDisponibilidad(
         (dispData as unknown as Disponibilidad[])?.map((item) => ({
@@ -113,8 +179,9 @@ export default function UserVacacionesCalendar({ onDateRangeSelect, selectedRang
         usuario_id: String(v.usuario_id)
       })))
     } catch (err: any) {
-      console.error(err)
-      setError(err.message || "Error al cargar datos")
+      console.error('Error en fetchData:', err)
+      const errorMessage = err?.message || err?.error_description || err?.details || JSON.stringify(err) || "Error al cargar datos"
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -131,22 +198,34 @@ export default function UserVacacionesCalendar({ onDateRangeSelect, selectedRang
 
   // Construcción de modificadores
   const blockedDays = disponibilidad
-    .filter((d) => !d.disponible)
+    .filter((d) => !d.disponible && d.fecha_inicio && d.fecha_fin)
     .flatMap((d) => {
-      const [startYear, startMonth, startDay] = d.fecha_inicio.split('-').map(Number)
-      const [endYear, endMonth, endDay] = d.fecha_fin.split('-').map(Number)
-      const start = new Date(startYear, startMonth - 1, startDay)
-      const end = new Date(endYear, endMonth - 1, endDay)
-      return eachDayOfInterval({ start, end })
+      try {
+        const [startYear, startMonth, startDay] = d.fecha_inicio.split('-').map(Number)
+        const [endYear, endMonth, endDay] = d.fecha_fin.split('-').map(Number)
+        const start = new Date(startYear, startMonth - 1, startDay)
+        const end = new Date(endYear, endMonth - 1, endDay)
+        return eachDayOfInterval({ start, end })
+      } catch (error) {
+        console.error('Error procesando fecha de disponibilidad:', d, error)
+        return []
+      }
     })
 
-  const bookedDays = vacaciones.flatMap((v) => {
-    const [startYear, startMonth, startDay] = v.fecha_inicio.split('-').map(Number)
-    const [endYear, endMonth, endDay] = v.fecha_fin.split('-').map(Number)
-    const start = new Date(startYear, startMonth - 1, startDay)
-    const end = new Date(endYear, endMonth - 1, endDay)
-    return eachDayOfInterval({ start, end })
-  })
+  const bookedDays = vacaciones
+    .filter((v) => v.fecha_inicio && v.fecha_fin)
+    .flatMap((v) => {
+      try {
+        const [startYear, startMonth, startDay] = v.fecha_inicio.split('-').map(Number)
+        const [endYear, endMonth, endDay] = v.fecha_fin.split('-').map(Number)
+        const start = new Date(startYear, startMonth - 1, startDay)
+        const end = new Date(endYear, endMonth - 1, endDay)
+        return eachDayOfInterval({ start, end })
+      } catch (error) {
+        console.error('Error procesando fecha de vacación:', v, error)
+        return []
+      }
+    })
 
   const modifiers = {
     booked: bookedDays,

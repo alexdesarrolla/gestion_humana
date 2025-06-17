@@ -10,10 +10,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ChevronDown, ChevronUp, Search, X, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
+import { ChevronDown, ChevronUp, Search, X, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Loader2, Plus, EyeIcon, EyeOff } from "lucide-react"
 import { ProfileCard } from "@/components/ui/profile-card"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 
 export default function Usuarios() {
   const router = useRouter()
@@ -27,11 +30,44 @@ export default function Usuarios() {
     direction: "asc" | "desc"
   } | null>(null)
   const [empresas, setEmpresas] = useState<any[]>([])
+  const [empresasFilter, setEmpresasFilter] = useState<string[]>([])
   const [cargos, setCargos] = useState<any[]>([])
   const [selectedEmpresa, setSelectedEmpresa] = useState<string>("")
   const [selectedCargo, setSelectedCargo] = useState<string>("")
   const [selectedUser, setSelectedUser] = useState<any>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false)
+  const [newUserData, setNewUserData] = useState({
+    nombre: '',
+    correo: '',
+    telefono: '',
+    password: '',
+    confirmPassword: '',
+    rol: 'usuario',
+    genero: '',
+    cedula: '',
+    fecha_ingreso: '',
+    empresa_id: '',
+    cargo: '',
+    sede_id: '',
+    fecha_nacimiento: '',
+    edad: '',
+    rh: '',
+    eps_id: '',
+    afp_id: '',
+    cesantias_id: '',
+    caja_de_compensacion_id: '',
+    direccion_residencia: ''
+  })
+  const [sedes, setSedes] = useState<any[]>([])
+  const [eps, setEps] = useState<any[]>([])
+  const [afps, setAfps] = useState<any[]>([])
+  const [cajaDeCompensacionOptions, setCajaDeCompensacionOptions] = useState<any[]>([])
+  const [addUserError, setAddUserError] = useState('')
+  const [addUserSuccess, setAddUserSuccess] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [addUserLoading, setAddUserLoading] = useState(false)
 
   // Paginación
   const [currentPage, setCurrentPage] = useState(1)
@@ -89,9 +125,41 @@ export default function Usuarios() {
       // Obtener datos de empresas
       const empresaIds = Array.from(new Set(usuarios?.map(user => user.empresa_id).filter(Boolean)))
       const { data: empresasData } = await supabase
-        .from("empresa")
+        .from("empresas")
         .select("id, nombre")
         .in("id", empresaIds)
+
+      // Obtener todas las empresas para el formulario de agregar usuario
+      const { data: todasEmpresas } = await supabase
+        .from("empresas")
+        .select("id, nombre")
+        .order("nombre")
+
+      // Obtener sedes, EPS, AFP y cajas de compensación
+      const { data: sedesData } = await supabase
+        .from("sedes")
+        .select("id, nombre")
+        .order("nombre")
+
+      const { data: epsData } = await supabase
+        .from("eps")
+        .select("id, nombre")
+        .order("nombre")
+
+      const { data: afpsData } = await supabase
+        .from("afp")
+        .select("id, nombre")
+        .order("nombre")
+
+      const { data: cajasData } = await supabase
+        .from("caja_de_compensacion")
+        .select("id, nombre")
+        .order("nombre")
+
+      setSedes(sedesData || [])
+      setEps(epsData || [])
+      setAfps(afpsData || [])
+      setCajaDeCompensacionOptions(cajasData || [])
 
       // Combinar usuarios con datos de empresa
       const usuariosConEmpresa = usuarios?.map(user => ({
@@ -102,9 +170,10 @@ export default function Usuarios() {
       setUsers(usuariosConEmpresa)
       setFilteredUsers(usuariosConEmpresa)
 
-      // Extraer empresas únicas
+      // Extraer empresas únicas para filtros
       const uniqueEmpresas = Array.from(new Set(empresasData?.map(emp => emp.nombre).filter(Boolean)))
-      setEmpresas(uniqueEmpresas)
+      setEmpresas(todasEmpresas || [])
+      setEmpresasFilter(uniqueEmpresas)
 
       // Extraer cargos únicos
       const uniqueCargos = Array.from(new Set(usuarios?.map((user) => user.cargo).filter(Boolean)))
@@ -251,6 +320,111 @@ export default function Usuarios() {
     setIsModalOpen(true)
   }
 
+  const handleAddUser = () => {
+    setIsAddUserModalOpen(true)
+    setAddUserError('')
+    setAddUserSuccess(false)
+  }
+
+  const handleAddUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setAddUserError('')
+    setAddUserSuccess(false)
+    setAddUserLoading(true)
+
+    if (newUserData.password !== newUserData.confirmPassword) {
+      setAddUserError('Las contraseñas no coinciden')
+      setAddUserLoading(false)
+      return
+    }
+
+    try {
+      const supabase = createSupabaseClient()
+
+      // Obtener la sesión actual del administrador antes de crear el nuevo usuario
+      const { data: { session: currentSession } } = await supabase.auth.getSession()
+
+      // Crear el usuario usando la función admin de Supabase
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: newUserData.correo,
+        password: newUserData.password,
+        email_confirm: true
+      })
+
+      if (authError) throw authError
+
+      if (authData.user) {
+        const { error: dbError } = await supabase
+          .from('usuario_nomina')
+          .insert([
+            {
+              colaborador: newUserData.nombre,
+              correo_electronico: newUserData.correo,
+              telefono: newUserData.telefono,
+              auth_user_id: authData.user.id,
+              user_id: authData.user.id,
+              rol: newUserData.rol,
+              genero: newUserData.genero || null,
+              cedula: newUserData.cedula || null,
+              fecha_ingreso: newUserData.fecha_ingreso || null,
+              empresa_id: newUserData.empresa_id ? parseInt(newUserData.empresa_id) : null,
+              cargo: newUserData.cargo || null,
+              sede_id: newUserData.sede_id ? parseInt(newUserData.sede_id) : null,
+              fecha_nacimiento: newUserData.fecha_nacimiento || null,
+              edad: newUserData.edad ? parseInt(newUserData.edad) : null,
+              rh: newUserData.rh || null,
+              eps_id: newUserData.eps_id || null,
+              afp_id: newUserData.afp_id || null,
+              cesantias_id: newUserData.cesantias_id ? parseInt(newUserData.cesantias_id) : null,
+              caja_de_compensacion_id: newUserData.caja_de_compensacion_id ? parseInt(newUserData.caja_de_compensacion_id) : null,
+              direccion_residencia: newUserData.direccion_residencia || null
+            }
+          ])
+
+        if (dbError) throw dbError
+        
+        // Restaurar la sesión del administrador si es necesario
+        if (currentSession) {
+          await supabase.auth.setSession({
+            access_token: currentSession.access_token,
+            refresh_token: currentSession.refresh_token
+          })
+        }
+        
+        setAddUserSuccess(true)
+        setNewUserData({
+          nombre: '',
+          correo: '',
+          telefono: '',
+          password: '',
+          confirmPassword: '',
+          rol: 'usuario',
+          genero: '',
+          cedula: '',
+          fecha_ingreso: '',
+          empresa_id: '',
+          cargo: '',
+          sede_id: '',
+          fecha_nacimiento: '',
+          edad: '',
+          rh: '',
+          eps_id: '',
+          afp_id: '',
+          cesantias_id: '',
+          caja_de_compensacion_id: '',
+          direccion_residencia: ''
+        })
+        
+        // Recargar la lista de usuarios
+        await fetchUsers()
+      }
+    } catch (err: any) {
+      setAddUserError(err.message)
+    } finally {
+      setAddUserLoading(false)
+    }
+  }
+
   const getSortIcon = (key: string) => {
     if (!sortConfig || sortConfig.key !== key) {
       return <ArrowUpDown className="ml-1 h-4 w-4" />
@@ -327,9 +501,15 @@ export default function Usuarios() {
           <div className="py-6">
             <div className="max-w-[90%] mx-auto px-4 sm:px-6 md:px-8">
               <div className="space-y-6">
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight">Listado de Usuarios</h1>
-                  <p className="text-muted-foreground">Gestiona los usuarios del sistema.</p>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h1 className="text-2xl font-bold tracking-tight">Listado de Usuarios</h1>
+                    <p className="text-muted-foreground">Gestiona los usuarios del sistema.</p>
+                  </div>
+                  <Button onClick={handleAddUser} className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    Añadir Usuario
+                  </Button>
                 </div>
 
                 {/* Filtros */}
@@ -357,7 +537,7 @@ export default function Usuarios() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">Todas las empresas</SelectItem>
-                            {empresas.map((empresa) => (
+                            {empresasFilter.map((empresa) => (
                               <SelectItem key={empresa} value={empresa}>
                                 {empresa}
                               </SelectItem>
@@ -615,6 +795,342 @@ export default function Usuarios() {
           </div>
         </div>
       )}
+
+      {/* Modal de añadir usuario */}
+      <Dialog open={isAddUserModalOpen} onOpenChange={setIsAddUserModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>Añadir Nuevo Usuario</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto max-h-[calc(90vh-120px)] px-4 py-2">
+            {addUserError && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                <span className="block sm:inline">{addUserError}</span>
+              </div>
+            )}
+            {addUserSuccess && (
+              <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
+                <span className="block sm:inline">Usuario registrado exitosamente</span>
+              </div>
+            )}
+            <form className="space-y-6 px-2" onSubmit={handleAddUserSubmit}>
+              {/* Campos obligatorios */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="nombre">Nombre completo *</Label>
+                  <Input
+                    id="nombre"
+                    type="text"
+                    required
+                    value={newUserData.nombre}
+                    onChange={(e) => setNewUserData({ ...newUserData, nombre: e.target.value })}
+                    className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="email">Correo electrónico *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    required
+                    value={newUserData.correo}
+                    onChange={(e) => setNewUserData({ ...newUserData, correo: e.target.value })}
+                    className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="telefono">Teléfono *</Label>
+                  <Input
+                    id="telefono"
+                    type="tel"
+                    required
+                    value={newUserData.telefono}
+                    onChange={(e) => setNewUserData({ ...newUserData, telefono: e.target.value })}
+                    className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="rol">Rol *</Label>
+                  <Select value={newUserData.rol} onValueChange={(value) => setNewUserData({ ...newUserData, rol: value })}>
+                    <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                      <SelectValue placeholder="Seleccionar rol" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="usuario">Usuario</SelectItem>
+                      <SelectItem value="administrador">Administrador</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="password">Contraseña *</Label>
+                  <div className="relative mt-1">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={newUserData.password}
+                      onChange={(e) => setNewUserData({ ...newUserData, password: e.target.value })}
+                      className="border-2 focus:border-blue-500 transition-colors px-3 py-2"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full px-3"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="confirmPassword">Confirmar Contraseña *</Label>
+                  <div className="relative mt-1">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      required
+                      value={newUserData.confirmPassword}
+                      onChange={(e) => setNewUserData({ ...newUserData, confirmPassword: e.target.value })}
+                      className="border-2 focus:border-blue-500 transition-colors px-3 py-2"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full px-3"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Información adicional */}
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-medium mb-4">Información adicional</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="genero">Género</Label>
+                    <Select value={newUserData.genero} onValueChange={(value) => setNewUserData({ ...newUserData, genero: value })}>
+                      <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                        <SelectValue placeholder="Seleccionar género" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="masculino">Masculino</SelectItem>
+                        <SelectItem value="femenino">Femenino</SelectItem>
+                        <SelectItem value="otro">Otro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="cedula">Cédula</Label>
+                    <Input
+                      id="cedula"
+                      type="text"
+                      value={newUserData.cedula}
+                      onChange={(e) => setNewUserData({ ...newUserData, cedula: e.target.value })}
+                      className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="fecha_ingreso">Fecha de Ingreso</Label>
+                    <Input
+                      id="fecha_ingreso"
+                      type="date"
+                      value={newUserData.fecha_ingreso}
+                      onChange={(e) => setNewUserData({ ...newUserData, fecha_ingreso: e.target.value })}
+                      className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="empresa_id">Empresa</Label>
+                    <Select value={newUserData.empresa_id} onValueChange={(value) => setNewUserData({ ...newUserData, empresa_id: value })}>
+                      <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                        <SelectValue placeholder="Seleccionar empresa" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {empresas
+                          .filter(empresa => empresa && empresa.id && empresa.nombre)
+                          .filter((empresa, index, self) => self.findIndex(e => e.id === empresa.id) === index)
+                          .map((empresa) => (
+                            <SelectItem key={`empresa-${empresa.id}`} value={empresa.id.toString()}>
+                              {empresa.nombre}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="cargo">Cargo</Label>
+                    <Input
+                      id="cargo"
+                      type="text"
+                      value={newUserData.cargo}
+                      onChange={(e) => setNewUserData({ ...newUserData, cargo: e.target.value })}
+                      className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="sede">Sede</Label>
+                    <Select value={newUserData.sede_id} onValueChange={(value) => setNewUserData({ ...newUserData, sede_id: value })}>
+                      <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                        <SelectValue placeholder="Seleccionar sede" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sedes
+                          .filter(sede => sede && sede.id && sede.nombre)
+                          .filter((sede, index, self) => self.findIndex(s => s.id === sede.id) === index)
+                          .map((sede) => (
+                            <SelectItem key={`sede-${sede.id}`} value={sede.id.toString()}>
+                              {sede.nombre}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="fecha_nacimiento">Fecha de Nacimiento</Label>
+                    <Input
+                      id="fecha_nacimiento"
+                      type="date"
+                      value={newUserData.fecha_nacimiento}
+                      onChange={(e) => setNewUserData({ ...newUserData, fecha_nacimiento: e.target.value })}
+                      className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="edad">Edad</Label>
+                    <Input
+                      id="edad"
+                      type="number"
+                      value={newUserData.edad}
+                      onChange={(e) => setNewUserData({ ...newUserData, edad: e.target.value })}
+                      className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="rh">RH</Label>
+                    <Select value={newUserData.rh} onValueChange={(value) => setNewUserData({ ...newUserData, rh: value })}>
+                      <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                        <SelectValue placeholder="Seleccionar RH" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="O+">O+</SelectItem>
+                        <SelectItem value="O-">O-</SelectItem>
+                        <SelectItem value="A+">A+</SelectItem>
+                        <SelectItem value="A-">A-</SelectItem>
+                        <SelectItem value="B+">B+</SelectItem>
+                        <SelectItem value="B-">B-</SelectItem>
+                        <SelectItem value="AB+">AB+</SelectItem>
+                        <SelectItem value="AB-">AB-</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="eps">EPS</Label>
+                    <Select value={newUserData.eps_id} onValueChange={(value) => setNewUserData({ ...newUserData, eps_id: value })}>
+                      <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                        <SelectValue placeholder="Seleccionar EPS" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {eps
+                          .filter(epsItem => epsItem && epsItem.id && epsItem.nombre)
+                          .filter((epsItem, index, self) => self.findIndex(e => e.id === epsItem.id) === index)
+                          .map((epsItem) => (
+                            <SelectItem key={`eps-${epsItem.id}`} value={epsItem.id.toString()}>
+                              {epsItem.nombre}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="afp">AFP</Label>
+                    <Select value={newUserData.afp_id} onValueChange={(value) => setNewUserData({ ...newUserData, afp_id: value })}>
+                      <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                        <SelectValue placeholder="Seleccionar AFP" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {afps
+                          .filter(afp => afp && afp.id && afp.nombre)
+                          .filter((afp, index, self) => self.findIndex(a => a.id === afp.id) === index)
+                          .map((afp) => (
+                            <SelectItem key={`afp-${afp.id}`} value={afp.id.toString()}>
+                              {afp.nombre}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="caja_compensacion">Caja de Compensación</Label>
+                    <Select value={newUserData.caja_de_compensacion_id} onValueChange={(value) => setNewUserData({ ...newUserData, caja_de_compensacion_id: value })}>
+                      <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                        <SelectValue placeholder="Seleccionar caja" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cajaDeCompensacionOptions
+                          .filter(caja => caja && caja.id && caja.nombre)
+                          .filter((caja, index, self) => self.findIndex(c => c.id === caja.id) === index)
+                          .map((caja) => (
+                            <SelectItem key={`caja-${caja.id}`} value={caja.id.toString()}>
+                              {caja.nombre}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <Label htmlFor="direccion_residencia">Dirección de Residencia</Label>
+                  <Textarea
+                    id="direccion_residencia"
+                    value={newUserData.direccion_residencia}
+                    onChange={(e) => setNewUserData({ ...newUserData, direccion_residencia: e.target.value })}
+                    className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button type="button" variant="outline" onClick={() => setIsAddUserModalOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={addUserLoading}>
+                  {addUserLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creando...
+                    </>
+                  ) : (
+                    'Crear Usuario'
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

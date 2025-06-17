@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CheckCircle2, XCircle, AlertCircle, Loader2, MessageSquare } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
 import { ComentariosVacaciones } from "@/components/vacaciones/comentarios-vacaciones"
 
 interface SolicitudVacacion {
@@ -50,6 +51,9 @@ export default function AdminVacacionesPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [showCommentsModal, setShowCommentsModal] = useState(false)
   const [selectedSolicitudId, setSelectedSolicitudId] = useState<string | null>(null)
+  const [showRejectModal, setShowRejectModal] = useState(false)
+  const [rejectReason, setRejectReason] = useState("")
+  const [solicitudToReject, setSolicitudToReject] = useState<string | null>(null)
 
   // Carga solicitudes pendientes
   const fetchSolicitudesPendientes = async () => {
@@ -147,8 +151,19 @@ export default function AdminVacacionesPage() {
     }
   }
 
-  const handleReject = async (solicitudId: string) => {
-    setActionLoading(solicitudId)
+  const handleRejectClick = (solicitudId: string) => {
+    setSolicitudToReject(solicitudId)
+    setRejectReason("")
+    setShowRejectModal(true)
+  }
+
+  const handleRejectConfirm = async () => {
+    if (!solicitudToReject || !rejectReason.trim()) {
+      setError("Debe proporcionar una razón para el rechazo")
+      return
+    }
+
+    setActionLoading(solicitudToReject)
     setError(null)
     try {
       const { error } = await supabase
@@ -156,14 +171,17 @@ export default function AdminVacacionesPage() {
         .update({
           estado: "rechazado",
           fecha_resolucion: new Date().toISOString(),
-          motivo_rechazo: "Rechazado por el administrador"
+          motivo_rechazo: rejectReason.trim()
         })
-        .eq("id", solicitudId)
+        .eq("id", solicitudToReject)
 
       if (error) throw error
 
       setSuccessMessage("Solicitud rechazada correctamente")
       await fetchSolicitudesPendientes()
+      setShowRejectModal(false)
+      setSolicitudToReject(null)
+      setRejectReason("")
     } catch (err: any) {
       console.error(err)
       setError(err.message || "Error al rechazar la solicitud")
@@ -327,7 +345,7 @@ export default function AdminVacacionesPage() {
                               <Button
                                 size="sm"
                                 variant="destructive"
-                                onClick={() => handleReject(solicitud.id)}
+                                onClick={() => handleRejectClick(solicitud.id)}
                                 disabled={actionLoading === solicitud.id}
                               >
                                 {actionLoading === solicitud.id ? (
@@ -358,6 +376,50 @@ export default function AdminVacacionesPage() {
           {selectedSolicitudId && (
             <ComentariosVacaciones solicitudId={selectedSolicitudId} />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Rechazo */}
+      <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Rechazar Solicitud</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Motivo del rechazo *</label>
+              <Textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Ingrese la razón del rechazo..."
+                className="mt-1"
+                rows={4}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowRejectModal(false)
+                  setSolicitudToReject(null)
+                  setRejectReason("")
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleRejectConfirm}
+                disabled={!rejectReason.trim() || actionLoading === solicitudToReject}
+              >
+                {actionLoading === solicitudToReject ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Rechazar"
+                )}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

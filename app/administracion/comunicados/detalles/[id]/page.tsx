@@ -67,41 +67,30 @@ export default function DetallesComunicadoPage() {
       if (comErr) throw comErr
       const titulo = comData?.titulo as string
 
-      // 2) IDs de usuarios explícitos
-      const { data: usuariosData, error: cuErr } = await supabase
-        .from("comunicados_usuarios")
-        .select("usuario_id")
+      // 2) Obtener cargos destinatarios del comunicado
+      const { data: cargosData, error: cargosErr } = await supabase
+        .from("comunicados_cargos")
+        .select("cargo_id")
         .eq("comunicado_id", comunicadoId)
-      if (cuErr) throw cuErr
-      const cuData = usuariosData || []
-      const usuarioIds = cuData.map((r) => r.usuario_id)
+      if (cargosErr) throw cargosErr
+      const cargoIds = (cargosData || []).map((r) => r.cargo_id)
 
-      // 3) IDs de empresas
-      const { data: empresasData, error: ceErr } = await supabase
-        .from("comunicados_empresas")
-        .select("empresa_id")
-        .eq("comunicado_id", comunicadoId)
-      if (ceErr) throw ceErr
-      const ceData = empresasData || []
-      const empresaIds = ceData.map((r) => r.empresa_id)
-
-      // 4) Calcular total destinatarios
+      // 3) Calcular total destinatarios basado en los cargos
       let totalDest = 0
-      if (usuarioIds.length > 0) {
-        totalDest = usuarioIds.length
-      } else if (empresaIds.length > 0) {
+      if (cargoIds.length > 0) {
         const { count } = await supabase
           .from("usuario_nomina")
           .select("*", { head: true, count: "exact" })
-          .in("empresa_id", empresaIds)
+          .in("cargo_id", cargoIds)
         totalDest = count || 0
       }
+      
       setComunicadoInfo({
         titulo: titulo,
         total_destinatarios: totalDest,
       })
 
-      // 5) Obtener lecturas
+      // 4) Obtener lecturas
       const { data: lecturasData, error: leErr } = await supabase
         .from("comunicados_leidos")
         .select(`
@@ -123,37 +112,25 @@ export default function DetallesComunicadoPage() {
         }))
       setUsuariosLeidos(lecturas)
 
-      // 6) Obtener todos los destinatarios (usuarios explícitos + empresas)
-      let query = supabase
-        .from("usuario_nomina")
-        .select("auth_user_id, colaborador")
+      // 5) Obtener todos los destinatarios basados en los cargos
+      if (cargoIds.length > 0) {
+        const { data: recData = [], error: recErr } = await supabase
+          .from("usuario_nomina")
+          .select("auth_user_id, colaborador")
+          .in("cargo_id", cargoIds)
+        
+        if (recErr) throw recErr
 
-      if (usuarioIds.length > 0 && empresaIds.length > 0) {
-        query = query.or(
-          `auth_user_id.in.(${usuarioIds.join(
-            ","
-          )}),empresa_id.in.(${empresaIds.join(",")})`
-        )
-      } else if (usuarioIds.length > 0) {
-        query = query.in("auth_user_id", usuarioIds)
-      } else if (empresaIds.length > 0) {
-        query = query.in("empresa_id", empresaIds)
+        // Asegurarse de que recData sea un array antes de mapearlo
+        const destinatariosData = Array.isArray(recData) ? recData.map((u) => ({
+          usuario_id: u.auth_user_id as string,
+          colaborador: u.colaborador as string | undefined,
+        })) : []
+        
+        setDestinatarios(destinatariosData)
       } else {
         setDestinatarios([])
-        setLoading(false)
-        return
       }
-
-      const { data: recData = [], error: recErr } = await query
-      if (recErr) throw recErr
-
-      // Asegurarse de que recData sea un array antes de mapearlo
-      const destinatariosData = Array.isArray(recData) ? recData.map((u) => ({
-        usuario_id: u.auth_user_id as string,
-        colaborador: u.colaborador as string | undefined,
-      })) : []
-      
-      setDestinatarios(destinatariosData)
     } catch (err: any) {
       console.error("Error en fetchData:", err)
     } finally {

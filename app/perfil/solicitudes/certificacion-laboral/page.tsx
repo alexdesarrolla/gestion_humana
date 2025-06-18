@@ -174,6 +174,7 @@ export default function CertificacionLaboral() {
       setSolicitudes(solData || [])
       setSuccess("Solicitud enviada correctamente.")
       setFormData({ dirigidoA: "", incluirSalario: false })
+      setShowNewModal(false)
     } catch (e) {
       console.error(e)
       setError("Error al enviar solicitud.")

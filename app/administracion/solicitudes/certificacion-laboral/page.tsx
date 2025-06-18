@@ -551,11 +551,11 @@ export default function AdminCertificacionLaboral() {
                             <Button
                               size="sm"
                               onClick={() => {
-                                setSolicitudSeleccionada({ id: sol.id, usuario: sol.usuario })
+                                setSolicitudSeleccionada({ id: sol.id, usuario: sol.usuario_nomina })
                                 if (sol.salario_contrato === "Si") {
                                   setShowSalarioModal(true)
                                 } else {
-                                  aprobarSolicitud(sol.id, sol.usuario)
+                                  aprobarSolicitud(sol.id, sol.usuario_nomina)
                                 }
                               }}
                             >

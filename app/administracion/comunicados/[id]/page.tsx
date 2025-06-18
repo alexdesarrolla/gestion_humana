@@ -154,7 +154,7 @@ export default function DetalleComunicadoPage() {
             <AdminSidebar />
             <div className="md:pl-64 flex flex-col flex-1">
                 <main className="flex-1 py-8 px-6">
-                    <div className="max-w-[90%] mx-auto">
+                    <div className="max-w-[90%]  mx-auto">
                         <div className="mb-8">
                             <Button 
                                 variant="outline" 

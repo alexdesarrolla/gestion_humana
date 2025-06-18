@@ -87,9 +87,10 @@ export default function AdminSolicitudesVacaciones() {
               auth_user_id,
               colaborador,
               cedula,
-              cargo,
+              cargo_id,
               empresa_id,
-              empresas:empresa_id(nombre)
+              empresas:empresa_id(nombre),
+              cargos:cargo_id(nombre)
             `
           )
           .in("auth_user_id", userIds)
@@ -153,7 +154,7 @@ export default function AdminSolicitudesVacaciones() {
         return (
           u?.colaborador.toLowerCase().includes(term) ||
           u?.cedula.toLowerCase().includes(term) ||
-          u?.cargo.toLowerCase().includes(term) ||
+          u?.cargos?.nombre?.toLowerCase().includes(term) ||
           u?.empresas?.nombre.toLowerCase().includes(term)
         )
       })
@@ -337,7 +338,7 @@ export default function AdminSolicitudesVacaciones() {
                         <TableRow key={sol.id}>
                           <TableCell>{sol.usuario?.colaborador}</TableCell>
                           <TableCell>{sol.usuario?.cedula}</TableCell>
-                          <TableCell>{sol.usuario?.cargo}</TableCell>
+                          <TableCell>{sol.usuario?.cargos?.nombre || 'N/A'}</TableCell>
                           <TableCell>{formatDate(sol.fecha_inicio)}</TableCell>
                           <TableCell>{formatDate(sol.fecha_fin)}</TableCell>
                           <TableCell>

@@ -82,9 +82,10 @@ export default function AdminVacacionesPage() {
             auth_user_id,
             colaborador,
             cedula,
-            cargo,
+            cargo_id,
             empresa_id,
-            empresas:empresa_id(nombre)
+            empresas:empresa_id(nombre),
+            cargos:cargo_id(nombre)
           `)
           .in("auth_user_id", userIds)
 
@@ -103,7 +104,7 @@ export default function AdminVacacionesPage() {
             usuario: usuario ? {
               colaborador: usuario.colaborador as string,
               cedula: usuario.cedula as string,
-              cargo: usuario.cargo as string,
+              cargo: usuario.cargos ? (usuario.cargos as any).nombre as string : 'N/A',
               empresas: usuario.empresas ? {
                 nombre: (usuario.empresas as any).nombre as string
               } : undefined

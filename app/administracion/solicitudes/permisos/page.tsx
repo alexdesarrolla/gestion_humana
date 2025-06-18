@@ -197,10 +197,11 @@ export default function AdminSolicitudesPermisos() {
               auth_user_id,
               colaborador,
               cedula,
-              cargo,
+              cargo_id,
               fecha_ingreso,
               empresa_id,
-              empresas:empresas(nombre)
+              empresas:empresas(nombre),
+              cargos:cargo_id(nombre)
             `)
             .in('auth_user_id', userIds);
           if (usuariosError) {
@@ -314,7 +315,7 @@ export default function AdminSolicitudesPermisos() {
         (solicitud) =>
           solicitud.usuario?.colaborador?.toLowerCase().includes(lowerCaseSearchTerm) ||
           solicitud.usuario?.cedula?.toLowerCase().includes(lowerCaseSearchTerm) ||
-          solicitud.usuario?.cargo?.toLowerCase().includes(lowerCaseSearchTerm) ||
+          solicitud.usuario?.cargos?.nombre?.toLowerCase().includes(lowerCaseSearchTerm) ||
           solicitud.usuario?.empresas?.nombre?.toLowerCase().includes(lowerCaseSearchTerm)
       )
     }
@@ -489,7 +490,7 @@ export default function AdminSolicitudesPermisos() {
               <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
                 <div>
                   <span style="font-weight: bold;">Ciudad: </span>
-                  <span>${usuarioData.empresas?.ciudad || ''}</span>
+                  <span>${solicitudData.ciudad || usuarioData.empresas?.ciudad || ''}</span>
                 </div>
                 <div>
                   <span style="font-weight: bold;">Fecha: </span>
@@ -504,7 +505,7 @@ export default function AdminSolicitudesPermisos() {
                 </div>
                 <div>
                   <span style="font-weight: bold;">Cargo: </span>
-                  <span>${usuarioData.cargo || ''}</span>
+                  <span>${usuarioData.cargos?.nombre || ''}</span>
                 </div>
               </div>
               

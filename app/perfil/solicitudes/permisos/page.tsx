@@ -43,6 +43,7 @@ export default function SolicitudPermisos() {
     horaFin: "",
     motivo: "",
     compensacion: "",
+    ciudad: "",
   })
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -246,6 +247,7 @@ export default function SolicitudPermisos() {
           hora_fin: formData.horaFin || null,
           motivo: formData.motivo,
           compensacion: formData.compensacion || null,
+          ciudad: formData.ciudad || null,
           estado: 'pendiente'
         }])
         .select()
@@ -270,6 +272,7 @@ export default function SolicitudPermisos() {
         horaFin: "",
         motivo: "",
         compensacion: "",
+        ciudad: "",
       })
     } catch (err: any) {
       console.error("Error al enviar la solicitud:", err)
@@ -414,6 +417,19 @@ export default function SolicitudPermisos() {
                           className="col-span-3"
                           value={formData.horaFin}
                           onChange={(e) => setFormData({ ...formData, horaFin: e.target.value })}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="ciudad" className="text-right">
+                          Ciudad
+                        </Label>
+                        <Input
+                          id="ciudad"
+                          className="col-span-3"
+                          placeholder="Ingrese la ciudad"
+                          value={formData.ciudad}
+                          onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })}
                         />
                       </div>
 

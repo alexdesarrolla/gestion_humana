@@ -82,7 +82,7 @@ export default function AdminSolicitudesCertificacion() {
           .from("usuario_nomina")
           .select(`
             auth_user_id,
-            colaborador,
+            nombre,
             cedula,
             cargo,
             empresa_id,
@@ -94,7 +94,7 @@ export default function AdminSolicitudesCertificacion() {
 
         const { data: adminsData, error: adminsError } = await supabase
           .from("usuario_nomina")
-          .select("auth_user_id, colaborador")
+          .select("auth_user_id, nombre")
           .in("auth_user_id", adminIds)
 
         if (adminsError) throw adminsError
@@ -118,8 +118,8 @@ export default function AdminSolicitudesCertificacion() {
         )
         setCargos(uniqueCargos)
       } catch (err: any) {
-        console.error(err)
-        setError(err.message || "Error al cargar las solicitudes")
+        console.error("Error al cargar solicitudes históricas:", err)
+        setError(err?.message || "Error al cargar las solicitudes")
       } finally {
         setLoading(false)
       }
@@ -140,7 +140,7 @@ export default function AdminSolicitudesCertificacion() {
         result = result.filter((s) => {
           const u = s.usuario
           return (
-            u?.colaborador.toLowerCase().includes(term) ||
+            u?.nombre.toLowerCase().includes(term) ||
             u?.cedula.toLowerCase().includes(term) ||
             u?.cargo.toLowerCase().includes(term) ||
             u?.empresas?.nombre.toLowerCase().includes(term)
@@ -215,8 +215,8 @@ export default function AdminSolicitudesCertificacion() {
         )
       )
     } catch (err: any) {
-      console.error(err)
-      setError(err.message || "No se pudo rechazar la solicitud")
+      console.error("Error al rechazar solicitud:", err)
+      setError(err?.message || "No se pudo rechazar la solicitud")
     } finally {
       setLoading(false)
     }
@@ -342,7 +342,7 @@ export default function AdminSolicitudesCertificacion() {
                     ) : (
                       filteredSolicitudes.map((sol) => (
                         <TableRow key={sol.id}>
-                          <TableCell>{sol.usuario?.colaborador}</TableCell>
+                          <TableCell>{sol.usuario?.nombre}</TableCell>
                           <TableCell>{sol.usuario?.cedula}</TableCell>
                           <TableCell>{sol.usuario?.cargo}</TableCell>
                           <TableCell>{sol.dirigido_a}</TableCell>

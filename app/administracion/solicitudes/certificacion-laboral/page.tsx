@@ -116,13 +116,13 @@ export default function AdminCertificacionLaboral() {
         .from("solicitudes_certificacion")
         .select(`
           *,
-          usuario:usuario_id(
+          usuario_nomina:usuario_id(
             colaborador,
             cedula,
-            cargo,
             fecha_ingreso,
             empresa_id,
-            empresas(nombre, razon_social, nit)
+            empresas:empresa_id(nombre, razon_social, nit),
+            cargos:cargo_id(nombre)
           )
         `)
         .eq("estado", "pendiente")
@@ -131,8 +131,8 @@ export default function AdminCertificacionLaboral() {
       if (error) throw error
       setSolicitudes(data || [])
     } catch (err: any) {
-      console.error(err)
-      setError("Error al cargar las solicitudes")
+      console.error("Error en fetchSolicitudes:", err)
+      setError(err?.message || "Error al cargar las solicitudes")
     } finally {
       setLoading(false)
     }
@@ -284,7 +284,7 @@ export default function AdminCertificacionLaboral() {
               está vinculado(a) desde el
               <strong>${usuarioData.fecha_ingreso}</strong>,
               donde se desempeña como
-              <strong>${usuarioData.cargo}</strong>`
+              <strong>${usuarioData.cargos?.nombre || 'N/A'}</strong>`
 
       if (incluirDatosSalariales) {
         const salFmt = new Intl.NumberFormat("es-CO", {
@@ -360,8 +360,8 @@ export default function AdminCertificacionLaboral() {
       setSuccess("Certificado generado y solicitud aprobada.")
       setSolicitudes((prev) => prev.filter((s) => s.id !== solicitudId))
     } catch (err: any) {
-      console.error(err)
-      setError(err.message || "Error al generar el PDF")
+      console.error("Error al generar certificado:", err)
+      setError(err?.message || "Error al generar el PDF")
     } finally {
       setLoading(false)
     }
@@ -411,7 +411,7 @@ export default function AdminCertificacionLaboral() {
     try {
       const { data, error } = await supabase
         .from("usuario_nomina")
-        .select("*, empresas:empresa_id(nombre, razon_social, nit)")
+        .select("*, empresas:empresa_id(nombre, razon_social, nit), cargos:cargo_id(nombre)")
         .eq("cedula", formData.cedula)
         .single()
       if (error) throw error
@@ -524,9 +524,9 @@ export default function AdminCertificacionLaboral() {
                     ) : (
                       solicitudes.map((sol) => (
                         <TableRow key={sol.id}>
-                          <TableCell>{sol.usuario.colaborador}</TableCell>
-                          <TableCell>{sol.usuario.cedula}</TableCell>
-                          <TableCell>{sol.usuario.cargo}</TableCell>
+                          <TableCell>{sol.usuario_nomina.colaborador}</TableCell>
+                <TableCell>{sol.usuario_nomina.cedula}</TableCell>
+                <TableCell>{sol.usuario_nomina.cargos?.nombre || 'N/A'}</TableCell>
                           <TableCell>{sol.dirigido_a}</TableCell>
                           <TableCell>{sol.ciudad}</TableCell>
                           <TableCell>
@@ -609,7 +609,7 @@ export default function AdminCertificacionLaboral() {
             {usuarioEncontrado && (
               <div className="p-4 bg-slate-50 rounded">
                 <p><strong>Nombre:</strong> {usuarioEncontrado.colaborador}</p>
-                <p><strong>Cargo:</strong> {usuarioEncontrado.cargo}</p>
+                <p><strong>Cargo:</strong> {usuarioEncontrado.cargos?.nombre || 'N/A'}</p>
                 <p><strong>Empresa:</strong> {usuarioEncontrado.empresas?.razon_social}</p>
               </div>
             )}
@@ -783,7 +783,7 @@ export default function AdminCertificacionLaboral() {
           <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
             <DialogHeader>
               <DialogTitle>
-                Comentarios de {currentSolicitudComent.usuario.colaborador}
+                Comentarios de {currentSolicitudComent.usuario_nomina.colaborador}
               </DialogTitle>
             </DialogHeader>
             <ComentariosCertificacion solicitudId={currentSolicitudComent.id} />

@@ -92,7 +92,7 @@ export function ProfileCard({ userData }: ProfileCardProps) {
         return
       }
 
-      const oldAvatarPath = currentUser?.avatar_path
+      const oldAvatarPath = currentUser?.avatar_path as string | undefined
 
       // Crear un canvas para redimensionar la imagen a exactamente 600px de ancho manteniendo relación de aspecto
       const img = document.createElement('img')

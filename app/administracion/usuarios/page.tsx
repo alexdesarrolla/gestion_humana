@@ -173,7 +173,13 @@ export default function Usuarios() {
       setFilteredUsers(usuarios || [])
 
       // Extraer empresas únicas para filtros
-      const uniqueEmpresas = Array.from(new Set(usuarios?.map(user => user.empresas?.nombre).filter(Boolean)))
+      const uniqueEmpresas = Array.from(new Set(usuarios?.map(user => {
+        // Verificar si empresas existe y tiene la propiedad nombre
+        if (user.empresas && typeof user.empresas === 'object' && 'nombre' in user.empresas) {
+          return (user.empresas as any).nombre
+        }
+        return null
+      }).filter(Boolean)))
       setEmpresas(todasEmpresas || [])
       setEmpresasFilter(uniqueEmpresas)
 
@@ -479,7 +485,7 @@ export default function Usuarios() {
           cedula: '',
           fecha_ingreso: '',
           empresa_id: '',
-          cargo: '',
+          cargo_id: '',
           sede_id: '',
           fecha_nacimiento: '',
           edad: '',

@@ -93,7 +93,7 @@ export default function UserVacacionesCalendar({ onDateRangeSelect, selectedRang
       if (dispErr) throw dispErr
 
       // Cargar vacaciones aprobadas - nueva implementación más robusta
-      let vacData = []
+      let vacData: any[] = []
       
       // Validar que userCompanyId sea un valor válido (no null, undefined, o string vacío)
       const isValidCompanyId = userCompanyId && userCompanyId.trim() !== '' && userCompanyId !== 'null' && userCompanyId !== 'undefined'

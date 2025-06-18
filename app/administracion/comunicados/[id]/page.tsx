@@ -7,9 +7,9 @@ import { AdminSidebar } from "@/components/ui/admin-sidebar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { CalendarIcon, Building2Icon, Users2Icon, ArrowLeftIcon, FileTextIcon } from "lucide-react"
-import { ComentariosComunicados } from "@/components/comunicado/comentarios"
+
+import { CalendarIcon, Building2Icon, Users2Icon, ArrowLeftIcon, FileTextIcon, BriefcaseIcon, PaperclipIcon, DownloadIcon } from "lucide-react"
+
 
 interface ComunicadoDetalle {
     id: string
@@ -19,10 +19,13 @@ interface ComunicadoDetalle {
     fecha_publicacion: string | null
     area_responsable: string
     categoria_id: string | null
+    archivos_adjuntos: any[] | null
     comunicados_empresas?: any[]
     comunicados_usuarios?: any[]
+    comunicados_cargos?: any[]
     empresas_destinatarias: { nombre: string }[]
     usuarios_destinatarios: { colaborador: string }[]
+    cargos_destinatarios: { nombre: string }[]
 }
 
 export default function DetalleComunicadoPage() {
@@ -46,8 +49,10 @@ export default function DetalleComunicadoPage() {
           fecha_publicacion,
           area_responsable,
           categoria_id,
+          archivos_adjuntos,
           comunicados_empresas(empresa_id, empresas:empresa_id(nombre)),
-          comunicados_usuarios(usuario_id, usuario_nomina:usuario_id(colaborador))
+          comunicados_usuarios(usuario_id, usuario_nomina:usuario_id(colaborador)),
+          comunicados_cargos(cargo_id, cargos:cargo_id(nombre))
         `)
                 .eq("id", comunicadoId)
                 .single()
@@ -64,6 +69,11 @@ export default function DetalleComunicadoPage() {
                         .map(item => item.usuario_nomina)
                         .filter((usuario): usuario is { colaborador: string } => Boolean(usuario && usuario.colaborador))
                     : []
+                const cargos_destinatarios = Array.isArray(data.comunicados_cargos)
+                    ? data.comunicados_cargos
+                        .map(item => item.cargos)
+                        .filter((cargo): cargo is { nombre: string } => Boolean(cargo && cargo.nombre))
+                    : []
                 // Creamos un objeto con los datos necesarios para evitar problemas de tipado
                 const comunicadoData: ComunicadoDetalle = {
                     id: data.id as string,
@@ -73,8 +83,10 @@ export default function DetalleComunicadoPage() {
                     fecha_publicacion: data.fecha_publicacion as string | null,
                     area_responsable: data.area_responsable as string,
                     categoria_id: data.categoria_id as string | null,
+                    archivos_adjuntos: data.archivos_adjuntos as any[] | null,
                     empresas_destinatarias,
-                    usuarios_destinatarios
+                    usuarios_destinatarios,
+                    cargos_destinatarios
                 }
                 
                 setComunicado(comunicadoData)
@@ -91,25 +103,6 @@ export default function DetalleComunicadoPage() {
                     <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
                     <p className="text-muted-foreground">Cargando comunicado...</p>
                 </div>
-            </div>
-        )
-    }
-
-    if (!comunicado) {
-        return (
-            <div className="flex min-h-screen items-center justify-center bg-gray-100">
-                <Card className="max-w-md w-full">
-                    <div className="text-center p-6">
-                        <FileTextIcon className="mx-auto h-12 w-12 text-muted-foreground mb-2" />
-                        <h2 className="text-2xl font-bold">Comunicado no encontrado</h2>
-                    </div>
-                    <CardFooter className="flex justify-center pb-6">
-                        <Button onClick={() => router.back()} className="gap-2">
-                            <ArrowLeftIcon className="h-4 w-4" />
-                            Volver
-                        </Button>
-                    </CardFooter>
-                </Card>
             </div>
         )
     }
@@ -137,33 +130,127 @@ export default function DetalleComunicadoPage() {
             .substring(0, 2)
     }
 
+    if (!comunicado) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-gray-100">
+                <Card className="max-w-md w-full">
+                    <div className="text-center p-6">
+                        <FileTextIcon className="mx-auto h-12 w-12 text-muted-foreground mb-2" />
+                        <h2 className="text-2xl font-bold">Comunicado no encontrado</h2>
+                    </div>
+                    <CardFooter className="flex justify-center pb-6">
+                        <Button onClick={() => router.back()} className="gap-2">
+                            <ArrowLeftIcon className="h-4 w-4" />
+                            Volver
+                        </Button>
+                    </CardFooter>
+                </Card>
+            </div>
+        )
+    }
+
     return (
         <div className="min-h-screen bg-slate-50">
             <AdminSidebar />
             <div className="md:pl-64 flex flex-col flex-1">
-                <main className="flex-1 py-6 px-4 sm:px-6 lg:px-8">
+                <main className="flex-1 py-8 px-6">
                     <div className="max-w-[90%] mx-auto">
-                        <Button variant="outline" className="gap-2 mb-4" onClick={() => router.back()}>
-                            <ArrowLeftIcon className="h-4 w-4" />
-                            Volver a comunicados
-                        </Button>
+                        <div className="mb-8">
+                            <Button 
+                                variant="outline" 
+                                className="gap-3 text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-all duration-200 border border-slate-200 bg-white shadow-sm px-6 py-3" 
+                                onClick={() => router.back()}
+                            >
+                                <ArrowLeftIcon className="h-4 w-4" />
+                                Volver a comunicados
+                            </Button>
+                        </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                            {/* Columna izquierda: SOLO título y contenido */}
-                            <div className="lg:col-span-7 bg-white rounded-lg shadow-md p-6">
-                                <h1 className="text-3xl font-bold tracking-tight mb-6">{comunicado.titulo}</h1>
-                                <div
-                                    className="prose prose-slate max-w-none"
-                                    dangerouslySetInnerHTML={{ __html: comunicado.contenido }}
-                                />
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            {/* Columna principal: Título y descripción */}
+                            <div className="lg:col-span-2 space-y-8">
+
+                                {/* Título y contenido */}
+                                <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
+                                    <h1 className="text-2xl font-bold text-slate-900 mb-5 leading-tight">{comunicado.titulo}</h1>
+                                    <div className="space-y-6">
+                                        <div>
+                                            <div
+                                                className="prose prose-slate max-w-none text-black-600 leading-relaxed bg-slate-50/50 p-2 rounded-lg border border-slate-100"
+                                                dangerouslySetInnerHTML={{ __html: comunicado.contenido }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Cargos destinatarios */}
+                                {comunicado.cargos_destinatarios && comunicado.cargos_destinatarios.length > 0 && (
+                                    <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center">
+                                                <BriefcaseIcon className="h-5 w-5 text-blue-600" />
+                                            </div>
+                                            <h3 className="text-base font-medium text-slate-900">Cargos destinatarios</h3>
+                                        </div>
+                                        <div className="flex flex-wrap gap-1">
+                                            {comunicado.cargos_destinatarios.map((cargo, idx) => (
+                                                <span key={idx} className="inline-flex items-center px-2 py-1 rounded-md text-sm font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                                                    {cargo.nombre.charAt(0).toUpperCase() + cargo.nombre.slice(1).toLowerCase()}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Archivos adjuntos */}
+                                {comunicado.archivos_adjuntos && comunicado.archivos_adjuntos.length > 0 && (
+                                    <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center">
+                                                <PaperclipIcon className="h-5 w-5 text-emerald-600" />
+                                            </div>
+                                            <h3 className="text-base font-medium text-slate-900">Archivos adjuntos</h3>
+                                        </div>
+                                        <div className="space-y-4">
+                                            {comunicado.archivos_adjuntos.map((archivo, idx) => (
+                                                <div key={idx} className="group flex items-center justify-between p-2 bg-slate-50/50 rounded-lg border border-slate-100 hover:bg-slate-50 hover:shadow-sm transition-all duration-200">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center">
+                                                            <FileTextIcon className="h-6 w-6 text-red-500" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-medium text-slate-900">{archivo.nombre || `Archivo ${idx + 1}`}</p>
+                                                            {archivo.tamaño && (
+                                                                <p className="text-sm text-slate-500 mt-1">
+                                                                    {(archivo.tamaño / 1024 / 1024).toFixed(2)} MB
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    {archivo.url && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => window.open(archivo.url, '_blank')}
+                                                            className="gap-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 rounded-lg px-4 py-2"
+                                                        >
+                                                            <FileTextIcon className="h-4 w-4" />
+                                                            Ver PDF
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
-                            {/* Columna derecha: TODO lo demás */}
-                            <div className="lg:col-span-5 space-y-6">
+                            {/* Columna lateral: Imagen e información */}
+                            <div className="lg:col-span-1 space-y-8">
                                 {/* Imagen */}
-                                <Card className="overflow-hidden border-none shadow-md">
+                                <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-slate-100">
                                     {comunicado.imagen_url ? (
-                                        <div className="w-full h-[300px] overflow-hidden">
+                                        <div className="w-full h-[280px] overflow-hidden">
                                             <img
                                                 src={comunicado.imagen_url || "/placeholder.svg"}
                                                 alt={comunicado.titulo}
@@ -171,49 +258,58 @@ export default function DetalleComunicadoPage() {
                                             />
                                         </div>
                                     ) : (
-                                        <div className="h-[200px] bg-slate-100 flex items-center justify-center text-slate-400">
-                                            <FileTextIcon className="h-16 w-16" />
+                                        <div className="h-[280px] bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+                                            <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center">
+                                                <FileTextIcon className="h-8 w-8 text-slate-400" />
+                                            </div>
                                         </div>
                                     )}
-                                </Card>
+                                </div>
 
                                 {/* Información del comunicado */}
-                                <Card className="border-none shadow-md">
-                                    <CardContent className="p-6 space-y-6">
+                                <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
+                                    <div className="space-y-6">
                                         {/* Fecha y área responsable */}
                                         <div className="space-y-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-medium">
+                                            <div className="flex items-center gap-4">
+                                                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center text-sm font-medium shadow-sm">
                                                     {getInitials(comunicado.area_responsable)}
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-medium">{comunicado.area_responsable}</p>
-                                                    <p className="text-xs text-muted-foreground">Área responsable</p>
+                                                    <p className="text-sm font-medium text-slate-900">{comunicado.area_responsable}</p>
+                                                    <p className="text-sm text-slate-500">Área responsable</p>
                                                 </div>
                                             </div>
 
                                             {comunicado.fecha_publicacion && (
-                                                <div className="flex items-center text-sm text-muted-foreground">
-                                                    <CalendarIcon className="h-4 w-4 mr-2" />
-                                                    <span>Publicado: {formatDate(comunicado.fecha_publicacion)}</span>
+                                                <div className="flex items-center gap-3 p-4 bg-slate-50/50 rounded-lg border border-slate-100">
+                                                    <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center">
+                                                        <CalendarIcon className="h-4 w-4 text-slate-600" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-medium text-slate-900">Fecha de publicación</p>
+                                                        <p className="text-sm text-slate-600">{formatDate(comunicado.fecha_publicacion)}</p>
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
 
-                                        <Separator />
+                                        <div className="h-px bg-slate-100"></div>
 
                                         {/* Empresas destinatarias */}
                                         {comunicado.empresas_destinatarias && comunicado.empresas_destinatarias.length > 0 && (
-                                            <div className="space-y-3">
-                                                <div className="flex items-center gap-2 font-medium">
-                                                    <Building2Icon className="h-4 w-4 text-muted-foreground" />
-                                                    <h3>Empresas destinatarias</h3>
+                                            <div className="space-y-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 bg-orange-50 rounded-full flex items-center justify-center">
+                                                        <Building2Icon className="h-4 w-4 text-orange-600" />
+                                                    </div>
+                                                    <h3 className="text-base font-medium text-slate-900">Empresas</h3>
                                                 </div>
-                                                <div className="flex flex-wrap gap-2">
+                                                <div className="space-y-2">
                                                     {comunicado.empresas_destinatarias.map((empresa, idx) => (
-                                                        <Badge key={idx} variant="secondary" className="text-xs">
-                                                            {empresa.nombre}
-                                                        </Badge>
+                                                        <div key={idx} className="px-3 py-2 bg-orange-50/50 rounded-lg border border-orange-100">
+                                                            <span className="text-sm font-medium text-orange-700">{empresa.nombre}</span>
+                                                        </div>
                                                     ))}
                                                 </div>
                                             </div>
@@ -221,29 +317,25 @@ export default function DetalleComunicadoPage() {
 
                                         {/* Usuarios destinatarios */}
                                         {comunicado.usuarios_destinatarios && comunicado.usuarios_destinatarios.length > 0 && (
-                                            <div className="space-y-3">
-                                                <div className="flex items-center gap-2 font-medium">
-                                                    <Users2Icon className="h-4 w-4 text-muted-foreground" />
-                                                    <h3>Usuarios destinatarios</h3>
+                                            <div className="space-y-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 bg-green-50 rounded-full flex items-center justify-center">
+                                                        <Users2Icon className="h-4 w-4 text-green-600" />
+                                                    </div>
+                                                    <h3 className="text-base font-medium text-slate-900">Usuarios</h3>
                                                 </div>
-                                                <ul className="space-y-1 text-sm">
+                                                <div className="space-y-2 max-h-32 overflow-y-auto">
                                                     {comunicado.usuarios_destinatarios.map((usuario, idx) => (
-                                                        <li key={idx} className="flex items-center gap-2">
-                                                            <span className="h-1.5 w-1.5 rounded-full bg-primary/70"></span>
-                                                            {usuario.colaborador}
-                                                        </li>
+                                                        <div key={idx} className="flex items-center gap-3 px-3 py-2 bg-green-50/50 rounded-lg border border-green-100">
+                                                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                                            <span className="text-sm font-medium text-green-700">{usuario.colaborador}</span>
+                                                        </div>
                                                     ))}
-                                                </ul>
+                                                </div>
                                             </div>
                                         )}
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        </div>
-                        {/* Sección de Comentarios */}
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                            <div className="mt-4 mb-10 lg:col-span-7">
-                                <ComentariosComunicados comunicadoId={comunicado.id} />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

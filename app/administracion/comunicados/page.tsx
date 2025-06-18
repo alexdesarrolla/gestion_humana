@@ -86,10 +86,34 @@ export default function Comunicados() {
         setError("ID del comunicado no válido");
         return;
       }
+
+      // Eliminar registros relacionados primero
+      await supabase
+        .from("comunicados_cargos")
+        .delete()
+        .eq("comunicado_id", deleteComunicadoId);
+
+      await supabase
+        .from("comunicados_empresas")
+        .delete()
+        .eq("comunicado_id", deleteComunicadoId);
+
+      await supabase
+        .from("comunicados_usuarios")
+        .delete()
+        .eq("comunicado_id", deleteComunicadoId);
+
+      await supabase
+        .from("comunicados_leidos")
+        .delete()
+        .eq("comunicado_id", deleteComunicadoId);
+
+      // Ahora eliminar el comunicado principal
       const { error } = await supabase
         .from("comunicados")
         .delete()
         .eq("id", deleteComunicadoId);
+
       if (error) {
         setError(
           "Error al eliminar el comunicado. Por favor, intente nuevamente."

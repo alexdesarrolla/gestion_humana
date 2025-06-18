@@ -37,15 +37,10 @@ export default function NuevoComunicado() {
 
   // Catálogos
   const [categorias, setCategorias] = useState<any[]>([]);
-  const [empresas, setEmpresas] = useState<any[]>([]);
-
-  // Usuarios según empresas seleccionadas
-  const [usuarios, setUsuarios] = useState<any[]>([]);
-  const [loadingUsuarios, setLoadingUsuarios] = useState(false);
+  const [cargos, setCargos] = useState<any[]>([]);
 
   // Búsquedas locales
-  const [empresaSearch, setEmpresaSearch] = useState("");
-  const [usuarioSearch, setUsuarioSearch] = useState("");
+  const [cargoSearch, setCargoSearch] = useState("");
 
   // Imagen principal
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -62,13 +57,12 @@ export default function NuevoComunicado() {
   // Estado del formulario
   const [formData, setFormData] = useState({
     titulo: "",
-    contenido: "",
+    descripcion: "",
     categoria_id: "",
     area_responsable: "Recursos Humanos",
     imagen_url: "",
     estado: "borrador",
-    empresa_ids: [] as number[],
-    usuario_ids: [] as number[],
+    cargo_ids: [] as number[],
   });
 
   // Carga inicial: autenticación + catálogos
@@ -102,67 +96,25 @@ export default function NuevoComunicado() {
       if (catError) setError("Error al cargar categorías.");
       else setCategorias(catData || []);
 
-      // Cargar empresas
-      const { data: empData, error: empError } = await supabase
-        .from("empresas")
+      // Cargar cargos
+      const { data: cargoData, error: cargoError } = await supabase
+        .from("cargos")
         .select("id, nombre")
         .order("nombre", { ascending: true });
-      if (empError) setError("Error al cargar empresas.");
-      else setEmpresas(empData || []);
+      if (cargoError) setError("Error al cargar cargos.");
+      else setCargos(cargoData || []);
 
       setLoading(false);
     };
     checkAuthAndLoad();
   }, [router]);
 
-  // Recargar usuarios cuando cambian empresas seleccionadas
-  useEffect(() => {
-    if (formData.empresa_ids.length === 0) {
-      setUsuarios([]);
-      setFormData(prev => ({ ...prev, usuario_ids: [] }));
-      setUsuarioSearch("");
-      return;
-    }
-    const fetchUsuarios = async () => {
-      setLoadingUsuarios(true);
-      setError(null);
-      const supabase = createSupabaseClient();
-      const { data: usuData, error: usuError } = await supabase
-        .from("usuario_nomina")
-        .select("id, colaborador")
-        .in("empresa_id", formData.empresa_ids)
-        .order("colaborador", { ascending: true });
 
-      if (usuError) {
-        setError("Error al cargar usuarios.");
-        setUsuarios([]);
-      } else {
-        setUsuarios(usuData || []);
-        // Limpiar ids de usuarios que ya no están en la lista
-        setFormData(prev => ({
-          ...prev,
-          usuario_ids: prev.usuario_ids.filter(uid =>
-            (usuData || []).some(u => u.id === uid)
-          ),
-        }));
-      }
-      setLoadingUsuarios(false);
-    };
-    fetchUsuarios();
-  }, [formData.empresa_ids]);
 
   // Filtrado en tiempo real
-  const filteredEmpresas = empresas.filter(e =>
-    e.nombre.toLowerCase().includes(empresaSearch.trim().toLowerCase())
+  const filteredCargos = cargos.filter(c =>
+    c.nombre.toLowerCase().includes(cargoSearch.trim().toLowerCase())
   );
-  const filteredUsuarios = usuarios.filter(u =>
-    u.colaborador.toLowerCase().includes(usuarioSearch.trim().toLowerCase())
-  );
-
-  // Determinar si todos los usuarios filtrados están seleccionados
-  const allUsersSelected =
-    filteredUsuarios.length > 0 &&
-    filteredUsuarios.every(u => formData.usuario_ids.includes(u.id));
 
   // Handlers genéricos
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -298,7 +250,7 @@ export default function NuevoComunicado() {
   const handleSubmit = async (e: React.FormEvent, publicar = false) => {
     e.preventDefault();
     if (!formData.titulo.trim()) return setError("El título es obligatorio");
-    if (!formData.contenido.trim()) return setError("El contenido es obligatorio");
+    if (!formData.descripcion.trim()) return setError("La descripción es obligatoria");
     if (!formData.categoria_id) return setError("Debe seleccionar una categoría");
 
     try {
@@ -314,33 +266,25 @@ export default function NuevoComunicado() {
         .from("comunicados")
         .insert({
           titulo: formData.titulo,
-          contenido: formData.contenido,
+          contenido: formData.descripcion,
           imagen_url: formData.imagen_url,
           categoria_id: formData.categoria_id,
           autor_id: session.user.id,
           area_responsable: formData.area_responsable,
           estado: publicar ? "publicado" : "borrador",
+          archivos_adjuntos: adjuntos.length > 0 ? adjuntos : null,
         })
         .select("id");
       if (insertError || !insertData?.length) throw insertError;
       const comunicadoId = insertData[0].id;
 
-      // 2) Insertar relaciones con empresas
-      if (formData.empresa_ids.length) {
-        const rows = formData.empresa_ids.map(eid => ({
+      // 2) Insertar relaciones con cargos
+      if (formData.cargo_ids.length) {
+        const rows = formData.cargo_ids.map(cid => ({
           comunicado_id: comunicadoId,
-          empresa_id: eid,
+          cargo_id: cid,
         }));
-        await supabase.from("comunicados_empresas").insert(rows);
-      }
-
-      // 3) Insertar relaciones con usuarios
-      if (formData.usuario_ids.length) {
-        const rows = formData.usuario_ids.map(uid => ({
-          comunicado_id: comunicadoId,
-          usuario_id: uid,
-        }));
-        await supabase.from("comunicados_usuarios").insert(rows);
+        await supabase.from("comunicados_cargos").insert(rows);
       }
 
       setSuccess(publicar
@@ -401,13 +345,13 @@ export default function NuevoComunicado() {
                     />
                   </div>
                   <div className="space-y-2 flex flex-col flex-grow">
-                    <Label htmlFor="contenido">Contenido</Label>
+                    <Label htmlFor="descripcion">Descripción</Label>
                     <Textarea
-                      id="contenido"
-                      name="contenido"
-                      value={formData.contenido}
+                      id="descripcion"
+                      name="descripcion"
+                      value={formData.descripcion}
                       onChange={handleChange}
-                      placeholder="Ingrese el contenido"
+                      placeholder="Ingrese una descripción del comunicado"
                       className="min-h-[200px] flex-grow"
                       required
                     />
@@ -531,115 +475,48 @@ export default function NuevoComunicado() {
                     </Select>
                   </div>
 
-                  {/* Empresas */}
+                  {/* Cargos */}
                   <div className="space-y-2">
-                    <Label htmlFor="empresas">Empresas</Label>
+                    <Label htmlFor="cargos">Cargos</Label>
                     <div className="max-h-[250px] overflow-y-auto border rounded p-2 bg-white shadow-sm">
                       <Input
                         type="text"
-                        placeholder="Buscar empresa..."
-                        value={empresaSearch}
-                        onChange={e => setEmpresaSearch(e.target.value)}
+                        placeholder="Buscar cargo..."
+                        value={cargoSearch}
+                        onChange={e => setCargoSearch(e.target.value)}
                         className="mb-2 w-full"
                       />
-                      {filteredEmpresas.length ? (
-                        filteredEmpresas.map(emp => (
+                      {filteredCargos.length ? (
+                        filteredCargos.map(cargo => (
                           <label
-                            key={emp.id}
+                            key={cargo.id}
                             className="flex items-center gap-2 py-1 cursor-pointer select-none"
                           >
                             <input
                               type="checkbox"
-                              checked={formData.empresa_ids.includes(emp.id)}
+                              checked={formData.cargo_ids.includes(cargo.id)}
                               onChange={e => {
                                 const checked = e.target.checked;
                                 setFormData(prev => ({
                                   ...prev,
-                                  empresa_ids: checked
-                                    ? [...prev.empresa_ids, emp.id]
-                                    : prev.empresa_ids.filter(id => id !== emp.id),
+                                  cargo_ids: checked
+                                    ? [...prev.cargo_ids, cargo.id]
+                                    : prev.cargo_ids.filter(id => id !== cargo.id),
                                 }));
                               }}
                             />
-                            <span className="truncate" title={emp.nombre}>
-                              {emp.nombre}
+                            <span className="truncate" title={cargo.nombre}>
+                              {cargo.nombre}
                             </span>
                           </label>
                         ))
                       ) : (
-                        <p className="text-sm text-gray-500">No se encontraron empresas</p>
+                        <p className="text-sm text-gray-500">No se encontraron cargos</p>
                       )}
                     </div>
                   </div>
 
-                  {/* Usuarios */}
-                  <div className="space-y-2">
-                    <Label htmlFor="usuarios">Usuarios</Label>
-                    <div className="max-h-[250px] overflow-y-auto border rounded p-2 bg-white shadow-sm">
-                      <Input
-                        type="text"
-                        placeholder="Buscar usuario..."
-                        value={usuarioSearch}
-                        onChange={e => setUsuarioSearch(e.target.value)}
-                        className="mb-2 w-full"
-                        disabled={loadingUsuarios || usuarios.length === 0}
-                      />
 
-                      {/* Seleccionar todos */}
-                      <label className="flex items-center gap-2 mb-2">
-                        <input
-                          type="checkbox"
-                          checked={allUsersSelected}
-                          onChange={e => {
-                            const checked = e.target.checked;
-                            setFormData(prev => ({
-                              ...prev,
-                              usuario_ids: checked
-                                ? Array.from(new Set([
-                                    ...prev.usuario_ids,
-                                    ...filteredUsuarios.map(u => u.id),
-                                  ]))
-                                : prev.usuario_ids.filter(id =>
-                                    !filteredUsuarios.map(u => u.id).includes(id)
-                                  ),
-                            }));
-                          }}
-                          disabled={loadingUsuarios}
-                        />
-                        <span>Seleccionar todos</span>
-                      </label>
-
-                      {filteredUsuarios.length ? (
-                        filteredUsuarios.map(u => (
-                          <label
-                            key={u.id}
-                            className="flex items-center gap-2 py-1 cursor-pointer select-none"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={formData.usuario_ids.includes(u.id)}
-                              onChange={e => {
-                                const checked = e.target.checked;
-                                setFormData(prev => ({
-                                  ...prev,
-                                  usuario_ids: checked
-                                    ? [...prev.usuario_ids, u.id]
-                                    : prev.usuario_ids.filter(id => id !== u.id),
-                                }));
-                              }}
-                            />
-                            <span className="truncate" title={u.colaborador}>
-                              {u.colaborador}
-                            </span>
-                          </label>
-                        ))
-                      ) : (
-                        <p className="text-sm text-gray-500">
-                          {loadingUsuarios ? "Cargando usuarios..." : "No se encontraron usuarios"}
-                        </p>
-                      )}
-                    </div>
-                  </div>
 
                   {/* Archivos adjuntos */}
                   <div className="space-y-2">

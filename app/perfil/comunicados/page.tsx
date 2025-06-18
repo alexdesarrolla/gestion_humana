@@ -33,6 +33,12 @@ interface Comunicado {
       colaborador: string;
     };
   }[];
+  comunicados_cargos: {
+    cargo_id: string;
+    cargos: {
+      nombre: string;
+    };
+  }[];
 }
 
 export default function ComunicadosPage() {
@@ -67,15 +73,16 @@ export default function ComunicadosPage() {
         return;
       }
 
-      // 2) Obtener empresa_id e id del usuario en “usuario_nomina”
+      // 2) Obtener empresa_id, id y cargo_id del usuario en "usuario_nomina"
       interface PerfilUsuario {
         empresa_id: string;
         id: string;
+        cargo_id: string;
       }
 
       const { data: perfil, error: perfilError } = await supabase
         .from("usuario_nomina")
-        .select("empresa_id, id")
+        .select("empresa_id, id, cargo_id")
         .eq("auth_user_id", user.id)
         .single<PerfilUsuario>();
 
@@ -86,6 +93,7 @@ export default function ComunicadosPage() {
       }
       const empresaId = perfil.empresa_id;
       const usuarioId = perfil.id;
+      const cargoId = perfil.cargo_id;
 
       // 3) Obtener todos los comunicados publicados
       const { data, error } = await supabase
@@ -97,8 +105,9 @@ export default function ComunicadosPage() {
           fecha_publicacion,
           area_responsable,
           estado,
-          comunicados_empresas!inner(empresa_id, empresas!inner(nombre)),
-          comunicados_usuarios!left(usuario_id, usuario_nomina!inner(colaborador))
+          comunicados_empresas!left(empresa_id, empresas!inner(nombre)),
+          comunicados_usuarios!left(usuario_id, usuario_nomina!inner(colaborador)),
+          comunicados_cargos!left(cargo_id, cargos!inner(nombre))
         `)
         .eq("estado", "publicado")
         .order("fecha_publicacion", { ascending: false });
@@ -126,23 +135,36 @@ export default function ComunicadosPage() {
               usuario_nomina: {
                 colaborador: string;
               };
+            }[],
+            comunicados_cargos: (comunicado.comunicados_cargos as unknown) as {
+              cargo_id: string;
+              cargos: {
+                nombre: string;
+              };
             }[]
           };
         });
 
-        // Filtrado según empresa y usuario destinatario
+        // Filtrado por cargo y usuarios específicos
         const filtrados = lista.filter((comunicado) => {
-          const dirigidoAEmpresa = comunicado.comunicados_empresas?.some(
-            (item) => item.empresa_id === empresaId
-          );
-          if (!dirigidoAEmpresa) return false;
+          // 1. Verificar si está dirigido al cargo del usuario o no tiene cargo específico
+          const tieneCargosEspec = comunicado.comunicados_cargos?.length! > 0;
+          const dirigidoAlCargo = tieneCargosEspec 
+            ? comunicado.comunicados_cargos?.some((item) => item.cargo_id === cargoId)
+            : true; // Si no tiene cargos específicos, se muestra a todos
+          
+          if (!dirigidoAlCargo) return false;
 
+          // 2. Si tiene usuarios específicos, verificar que incluya al usuario actual
           const tieneUsuariosEspec = comunicado.comunicados_usuarios?.length! > 0;
-          if (!tieneUsuariosEspec) return true;
+          if (tieneUsuariosEspec) {
+            return comunicado.comunicados_usuarios?.some(
+              (item) => item.usuario_id === usuarioId
+            );
+          }
 
-          return comunicado.comunicados_usuarios?.some(
-            (item) => item.usuario_id === usuarioId
-          );
+          // 3. Si no tiene usuarios específicos, mostrar el comunicado
+          return true;
         });
 
         setComunicados(filtrados);
@@ -175,7 +197,7 @@ export default function ComunicadosPage() {
                 <div>
                   <h1 className="text-2xl font-bold tracking-tight">Comunicados</h1>
                   <p className="text-muted-foreground">
-                    Aquí encontrarás todos los comunicados publicados para tu empresa o dirigidos específicamente a ti.
+                    Aquí encontrarás todos los comunicados dirigidos a tu cargo o dirigidos específicamente a ti.
                   </p>
                 </div>
                 <div className="flex items-center gap-4">
@@ -253,7 +275,7 @@ export default function ComunicadosPage() {
                     ))
                 ) : (
                   <p className="text-gray-500 col-span-full">
-                    No hay comunicados publicados para tu empresa o dirigidos a ti.
+                    No hay comunicados dirigidos a tu cargo o dirigidos específicamente a ti.
                   </p>
                 )}
 

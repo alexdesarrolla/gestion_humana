@@ -74,25 +74,144 @@ export default function AdminNovedadesIncapacidades() {
           .from("incapacidades")
           .select(`id, fecha_inicio, fecha_fin, fecha_subida, documento_url, usuario_id`)
           .order("fecha_subida", { ascending: false })
-        if (err1) throw err1
+        if (err1) {
+          console.error("Error en consulta de incapacidades:", {
+            error: err1,
+            message: err1?.message,
+            details: err1?.details,
+            hint: err1?.hint,
+            code: err1?.code,
+            stringified: JSON.stringify(err1)
+          })
+          const errorMsg = err1?.message || err1?.details || err1?.hint || (typeof err1 === 'string' ? err1 : 'Error desconocido en consulta de incapacidades')
+          throw new Error(`Error al obtener incapacidades: ${errorMsg}`)
+        }
 
-        // 2) datos de usuarios (sin relacional)
+        // 2) datos de usuarios con relación a cargos
         const { data: usuariosData, error: err2 } = await supabase
           .from("usuario_nomina")
-          .select(`auth_user_id, colaborador, cedula, cargo, empresa_id`)
-        if (err2) throw err2
+          .select(`
+            auth_user_id, 
+            colaborador, 
+            cedula, 
+            empresa_id,
+            cargos!cargo_id (
+              nombre
+            )
+          `)
+        if (err2) {
+          console.error("Error en consulta de usuarios:", {
+            error: err2,
+            message: err2?.message,
+            details: err2?.details,
+            hint: err2?.hint,
+            code: err2?.code,
+            stringified: JSON.stringify(err2)
+          })
+          const errorMsg = err2?.message || err2?.details || err2?.hint || (typeof err2 === 'string' ? err2 : 'Error desconocido en consulta de usuarios')
+          throw new Error(`Error al obtener usuarios: ${errorMsg}`)
+        }
 
         // 3) obtener nombres de empresas por separado
         const empresaIds = Array.from(new Set(
           usuariosData.map((u) => u.empresa_id).filter((id): id is number => !!id)
         ))
+        
+        if (empresaIds.length === 0) {
+          console.warn("No se encontraron IDs de empresas válidos")
+          setEmpresas([])
+          setIncapacidades(data.map(inc => ({
+            ...inc,
+            usuario: {
+              colaborador: "—",
+              cedula: "—",
+              cargo: "—",
+              empresa_nombre: "—"
+            }
+          })))
+          setFilteredIncapacidades(data.map(inc => ({
+            ...inc,
+            usuario: {
+              colaborador: "—",
+              cedula: "—",
+              cargo: "—",
+              empresa_nombre: "—"
+            }
+          })))
+          return
+        }
+        
         const { data: empresasData, error: err3 } = await supabase
-          .from("empresa")
+          .from("empresas")
           .select(`id, nombre`)
           .in("id", empresaIds)
-        if (err3) throw err3
+        if (err3) {
+          console.error("Error en consulta de empresas:", {
+            error: err3,
+            message: err3?.message,
+            details: err3?.details,
+            hint: err3?.hint,
+            code: err3?.code,
+            stringified: JSON.stringify(err3)
+          })
+          const errorMsg = err3?.message || err3?.details || err3?.hint || (typeof err3 === 'string' ? err3 : 'Error desconocido en consulta de empresas')
+          throw new Error(`Error al obtener empresas: ${errorMsg}`)
+        }
 
-        // 4) unir usuario + nombre de empresa
+        // 4) Validar que los datos no sean null
+        if (!data) {
+          console.warn("No se obtuvieron datos de incapacidades")
+          setIncapacidades([])
+          setFilteredIncapacidades([])
+          setEmpresas([])
+          return
+        }
+        
+        if (!usuariosData) {
+          console.warn("No se obtuvieron datos de usuarios")
+          setIncapacidades(data.map(inc => ({
+            ...inc,
+            usuario: {
+              colaborador: "—",
+              cedula: "—",
+              cargo: "—",
+              empresa_nombre: "—"
+            }
+          })))
+          setFilteredIncapacidades(data.map(inc => ({
+            ...inc,
+            usuario: {
+              colaborador: "—",
+              cedula: "—",
+              cargo: "—",
+              empresa_nombre: "—"
+            }
+          })))
+          setEmpresas([])
+          return
+        }
+        
+        if (!empresasData) {
+          console.warn("No se obtuvieron datos de empresas")
+          const completosWithoutEmpresas = data.map((inc) => {
+            const usu = usuariosData.find((u) => u.auth_user_id === inc.usuario_id)
+            return {
+              ...inc,
+              usuario: {
+                colaborador: usu?.colaborador || "—",
+                cedula: usu?.cedula || "—",
+                cargo: usu?.cargos?.nombre || "—",
+                empresa_nombre: "—",
+              },
+            }
+          })
+          setIncapacidades(completosWithoutEmpresas)
+          setFilteredIncapacidades(completosWithoutEmpresas)
+          setEmpresas([])
+          return
+        }
+
+        // 5) unir usuario + nombre de empresa
         const completos = data.map((inc) => {
           // buscamos al usuario (puede ser undefined)
           const usu = usuariosData.find((u) => u.auth_user_id === inc.usuario_id)
@@ -104,7 +223,7 @@ export default function AdminNovedadesIncapacidades() {
             usuario: {
               colaborador: usu?.colaborador  || "—",
               cedula:       usu?.cedula      || "—",
-              cargo:        usu?.cargo       || "—",
+              cargo:        usu?.cargos?.nombre || "—",
               empresa_nombre: emp?.nombre    || "—",
             },
           }
@@ -114,11 +233,29 @@ export default function AdminNovedadesIncapacidades() {
         setIncapacidades(completos)
         setFilteredIncapacidades(completos)
 
-        // 5) lista de empresas para el filtro
-        setEmpresas(empresasData.map((e) => e.nombre as string))
+        // 6) lista de empresas para el filtro
+        setEmpresas(empresasData.map((e) => e.nombre as string).filter(Boolean))
       } catch (err: any) {
-        console.error(err)
-        setError("Error al cargar las incapacidades: " + (err.message || err))
+        console.error("Error al cargar las incapacidades:", {
+          error: err,
+          message: err?.message,
+          details: err?.details,
+          hint: err?.hint,
+          code: err?.code
+        })
+        
+        let errorMessage = "Error al cargar las incapacidades: "
+        if (err?.message) {
+          errorMessage += err.message
+        } else if (err?.details) {
+          errorMessage += err.details
+        } else if (typeof err === 'string') {
+          errorMessage += err
+        } else {
+          errorMessage += "Error desconocido en la consulta"
+        }
+        
+        setError(errorMessage)
       } finally {
         setLoading(false)
       }

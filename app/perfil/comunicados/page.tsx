@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import { Sidebar } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
   SelectTrigger,
@@ -12,7 +14,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { createSupabaseClient } from "@/lib/supabase";
-import { Search } from "lucide-react";
+import { Search, Eye, EyeOff, Calendar, Building } from "lucide-react";
 
 interface Comunicado {
   id: string;
@@ -21,6 +23,7 @@ interface Comunicado {
   fecha_publicacion: string | null;
   area_responsable: string;
   estado: string;
+  leido: boolean;
   comunicados_empresas: {
     empresa_id: string;
     empresas: {
@@ -58,123 +61,144 @@ export default function ComunicadosPage() {
     "6": "lg:grid-cols-6",
   };
 
-  useEffect(() => {
-    const fetchComunicados = async () => {
-      const supabase = createSupabaseClient();
+  const fetchComunicados = async () => {
+    const supabase = createSupabaseClient();
 
-      // 1) Obtener el usuario actual
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-      if (userError || !user) {
-        console.error("Error obteniendo usuario:", userError);
-        setLoading(false);
-        return;
-      }
-
-      // 2) Obtener empresa_id, id y cargo_id del usuario en "usuario_nomina"
-      interface PerfilUsuario {
-        empresa_id: string;
-        id: string;
-        cargo_id: string;
-      }
-
-      const { data: perfil, error: perfilError } = await supabase
-        .from("usuario_nomina")
-        .select("empresa_id, id, cargo_id")
-        .eq("auth_user_id", user.id)
-        .single<PerfilUsuario>();
-
-      if (perfilError || !perfil) {
-        console.error("No se pudo determinar la empresa del usuario:", perfilError);
-        setLoading(false);
-        return;
-      }
-      const empresaId = perfil.empresa_id;
-      const usuarioId = perfil.id;
-      const cargoId = perfil.cargo_id;
-
-      // 3) Obtener todos los comunicados publicados
-      const { data, error } = await supabase
-        .from("comunicados")
-        .select(`
-          id,
-          titulo,
-          imagen_url,
-          fecha_publicacion,
-          area_responsable,
-          estado,
-          comunicados_empresas!left(empresa_id, empresas!inner(nombre)),
-          comunicados_usuarios!left(usuario_id, usuario_nomina!inner(colaborador)),
-          comunicados_cargos!left(cargo_id, cargos!inner(nombre))
-        `)
-        .eq("estado", "publicado")
-        .order("fecha_publicacion", { ascending: false });
-
-      if (error) {
-        console.error("Error cargando comunicados:", error);
-        setComunicados([]);
-      } else {
-        const lista = data.map((comunicado) => {
-          return {
-            id: comunicado.id as string,
-            titulo: comunicado.titulo as string,
-            imagen_url: comunicado.imagen_url as string | null,
-            fecha_publicacion: comunicado.fecha_publicacion as string | null,
-            area_responsable: comunicado.area_responsable as string,
-            estado: comunicado.estado as string,
-            comunicados_empresas: (comunicado.comunicados_empresas as unknown) as {
-              empresa_id: string;
-              empresas: {
-                nombre: string;
-              };
-            }[],
-            comunicados_usuarios: (comunicado.comunicados_usuarios as unknown) as {
-              usuario_id: string;
-              usuario_nomina: {
-                colaborador: string;
-              };
-            }[],
-            comunicados_cargos: (comunicado.comunicados_cargos as unknown) as {
-              cargo_id: string;
-              cargos: {
-                nombre: string;
-              };
-            }[]
-          };
-        });
-
-        // Filtrado por cargo y usuarios específicos
-        const filtrados = lista.filter((comunicado) => {
-          // 1. Verificar si está dirigido al cargo del usuario o no tiene cargo específico
-          const tieneCargosEspec = comunicado.comunicados_cargos?.length! > 0;
-          const dirigidoAlCargo = tieneCargosEspec 
-            ? comunicado.comunicados_cargos?.some((item) => item.cargo_id === cargoId)
-            : true; // Si no tiene cargos específicos, se muestra a todos
-          
-          if (!dirigidoAlCargo) return false;
-
-          // 2. Si tiene usuarios específicos, verificar que incluya al usuario actual
-          const tieneUsuariosEspec = comunicado.comunicados_usuarios?.length! > 0;
-          if (tieneUsuariosEspec) {
-            return comunicado.comunicados_usuarios?.some(
-              (item) => item.usuario_id === usuarioId
-            );
-          }
-
-          // 3. Si no tiene usuarios específicos, mostrar el comunicado
-          return true;
-        });
-
-        setComunicados(filtrados);
-        setComunicadosFiltrados(filtrados);
-      }
-
+    // 1) Obtener el usuario actual
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+    if (userError || !user) {
+      console.error("Error obteniendo usuario:", userError);
       setLoading(false);
+      return;
+    }
+
+    // 2) Obtener empresa_id, id y cargo_id del usuario en "usuario_nomina"
+    interface PerfilUsuario {
+      empresa_id: string;
+      id: string;
+      cargo_id: string;
+    }
+
+    const { data: perfil, error: perfilError } = await supabase
+      .from("usuario_nomina")
+      .select("empresa_id, id, cargo_id")
+      .eq("auth_user_id", user.id)
+      .single<PerfilUsuario>();
+
+    if (perfilError || !perfil) {
+      console.error("No se pudo determinar la empresa del usuario:", perfilError);
+      setLoading(false);
+      return;
+    }
+    const empresaId = perfil.empresa_id;
+    const usuarioId = perfil.id;
+    const cargoId = perfil.cargo_id;
+
+    // 3) Obtener todos los comunicados publicados
+    const { data, error } = await supabase
+      .from("comunicados")
+      .select(`
+        id,
+        titulo,
+        imagen_url,
+        fecha_publicacion,
+        area_responsable,
+        estado,
+        comunicados_empresas!left(empresa_id, empresas!inner(nombre)),
+        comunicados_usuarios!left(usuario_id, usuario_nomina!inner(colaborador)),
+        comunicados_cargos!left(cargo_id, cargos!inner(nombre))
+      `)
+      .eq("estado", "publicado")
+      .order("fecha_publicacion", { ascending: false });
+
+    // 4) Obtener los comunicados leídos por el usuario (usando auth_user_id)
+    const { data: leidosData } = await supabase
+      .from("comunicados_leidos")
+      .select("comunicado_id")
+      .eq("usuario_id", user.id);
+
+    if (error) {
+      console.error("Error cargando comunicados:", error);
+      setComunicados([]);
+    } else {
+      const comunicadosLeidos = new Set(
+        leidosData?.map((item) => item.comunicado_id) || []
+      );
+
+      const lista = data.map((comunicado) => {
+        return {
+          id: comunicado.id as string,
+          titulo: comunicado.titulo as string,
+          imagen_url: comunicado.imagen_url as string | null,
+          fecha_publicacion: comunicado.fecha_publicacion as string | null,
+          area_responsable: comunicado.area_responsable as string,
+          estado: comunicado.estado as string,
+          leido: comunicadosLeidos.has(comunicado.id as string),
+          comunicados_empresas: (comunicado.comunicados_empresas as unknown) as {
+            empresa_id: string;
+            empresas: {
+              nombre: string;
+            };
+          }[],
+          comunicados_usuarios: (comunicado.comunicados_usuarios as unknown) as {
+            usuario_id: string;
+            usuario_nomina: {
+              colaborador: string;
+            };
+          }[],
+          comunicados_cargos: (comunicado.comunicados_cargos as unknown) as {
+            cargo_id: string;
+            cargos: {
+              nombre: string;
+            };
+          }[]
+        };
+      });
+
+      // Filtrado por cargo y usuarios específicos
+      const filtrados = lista.filter((comunicado) => {
+        // 1. Verificar si está dirigido al cargo del usuario o no tiene cargo específico
+        const tieneCargosEspec = comunicado.comunicados_cargos?.length! > 0;
+        const dirigidoAlCargo = tieneCargosEspec 
+          ? comunicado.comunicados_cargos?.some((item) => item.cargo_id === cargoId)
+          : true; // Si no tiene cargos específicos, se muestra a todos
+        
+        if (!dirigidoAlCargo) return false;
+
+        // 2. Si tiene usuarios específicos, verificar que incluya al usuario actual
+        const tieneUsuariosEspec = comunicado.comunicados_usuarios?.length! > 0;
+        if (tieneUsuariosEspec) {
+          return comunicado.comunicados_usuarios?.some(
+            (item) => item.usuario_id === usuarioId
+          );
+        }
+
+        // 3. Si no tiene usuarios específicos, mostrar el comunicado
+        return true;
+      });
+
+      setComunicados(filtrados);
+      setComunicadosFiltrados(filtrados);
+    }
+
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchComunicados();
+  }, []);
+
+  // Refrescar datos cuando se regrese a la página
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchComunicados();
     };
 
-    fetchComunicados();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
   if (loading) {
@@ -192,51 +216,75 @@ export default function ComunicadosPage() {
         <main className="flex-1">
           <div className="py-6">
             <div className="max-w-[90%] mx-auto px-4 sm:px-6 md:px-8 space-y-6">
-              {/* Cabecera y filtros */}
-              <div className="space-y-4">
+              {/* Cabecera con estilo de usuarios */}
+              <div className="flex justify-between items-center">
                 <div>
                   <h1 className="text-2xl font-bold tracking-tight">Comunicados</h1>
-                  <p className="text-muted-foreground">
-                    Aquí encontrarás todos los comunicados dirigidos a tu cargo o dirigidos específicamente a ti.
-                  </p>
+                  <p className="text-muted-foreground">Comunicados dirigidos a tu cargo y actualizaciones de la empresa.</p>
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
-                    <Input
-                      type="text"
-                      placeholder="Buscar comunicados..."
-                      className="pl-10"
-                      value={searchTerm}
-                      onChange={(e) => {
-                        const termino = e.target.value.toLowerCase();
-                        setSearchTerm(e.target.value);
-                        const filt = comunicados.filter(
-                          (c) =>
-                            c.titulo.toLowerCase().includes(termino) ||
-                            c.area_responsable.toLowerCase().includes(termino)
-                        );
-                        setComunicadosFiltrados(filt);
-                        setPaginaActual(1);
-                      }}
-                    />
-                  </div>
-                  <Select
-                    value={columnasPorFila}
-                    onValueChange={(value) => setColumnasPorFila(value)}
-                  >
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Columnas por fila" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="3">3 columnas</SelectItem>
-                      <SelectItem value="4">4 columnas</SelectItem>
-                      <SelectItem value="5">5 columnas</SelectItem>
-                      <SelectItem value="6">6 columnas</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <span>{comunicados.filter(c => c.leido).length} leídos</span>
+                  <span>•</span>
+                  <span>{comunicados.filter(c => !c.leido).length} pendientes</span>
+                  <span>•</span>
+                  <span>{comunicados.length} total</span>
                 </div>
               </div>
+
+              {/* Filtros */}
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex flex-col md:flex-row gap-4 items-end">
+                    <div className="flex-1">
+                      <label className="text-sm font-medium mb-1 block">Buscar</label>
+                      <div className="relative">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Buscar comunicados..."
+                          value={searchTerm}
+                          onChange={(e) => {
+                            const termino = e.target.value.toLowerCase();
+                            setSearchTerm(e.target.value);
+                            const filt = comunicados.filter(
+                              (c) =>
+                                c.titulo.toLowerCase().includes(termino) ||
+                                c.area_responsable.toLowerCase().includes(termino)
+                            );
+                            setComunicadosFiltrados(filt);
+                            setPaginaActual(1);
+                          }}
+                          className="pl-8"
+                        />
+                      </div>
+                    </div>
+                    
+                    <Select
+                      value={columnasPorFila}
+                      onValueChange={(value) => setColumnasPorFila(value)}
+                    >
+                      <SelectTrigger className="w-[120px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="3">3 columnas</SelectItem>
+                        <SelectItem value="4">4 columnas</SelectItem>
+                        <SelectItem value="5">5 columnas</SelectItem>
+                        <SelectItem value="6">6 columnas</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* Resultados de búsqueda */}
+              {searchTerm && (
+                <div className="text-sm text-gray-500 mb-4">
+                  {comunicadosFiltrados.length === 0 
+                    ? "No se encontraron comunicados" 
+                    : `${comunicadosFiltrados.length} resultado${comunicadosFiltrados.length !== 1 ? 's' : ''}`
+                  }
+                </div>
+              )}
 
               {/* Grid de comunicados */}
               <div
@@ -252,24 +300,62 @@ export default function ComunicadosPage() {
                       paginaActual * comunicadosPorPagina
                     )
                     .map((c) => (
-                      <div key={c.id} className="bg-white shadow rounded-lg overflow-hidden">
-                        <img
-                          src={c.imagen_url || "/placeholder.webp"}
-                          alt={c.titulo}
-                          className="w-full h-48 object-cover"
-                        />
+                      <div key={c.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:border-gray-300 transition-colors">
+                        {/* Imagen con relación de aspecto 4:3 */}
+                        <div className="relative aspect-[4/3] overflow-hidden">
+                          <img
+                            src={c.imagen_url || "/placeholder.webp"}
+                            alt={c.titulo}
+                            className="w-full h-full object-cover"
+                          />
+                          {/* Badge de estado de lectura */}
+                           <div className="absolute top-3 right-3">
+                             <Badge 
+                               variant={c.leido ? "secondary" : "destructive"}
+                               className={`flex items-center gap-1 text-xs font-medium ${
+                                 c.leido 
+                                   ? "bg-green-100 text-green-800 border-green-200" 
+                                   : "bg-red-100 text-red-800 border-red-200"
+                               }`}
+                             >
+                               {c.leido ? (
+                                 <>
+                                   <Eye className="w-3 h-3" />
+                                   Leído
+                                 </>
+                               ) : (
+                                 <>
+                                   <EyeOff className="w-3 h-3" />
+                                   No leído
+                                 </>
+                               )}
+                             </Badge>
+                           </div>
+                        </div>
+                        
+                        {/* Contenido de la tarjeta */}
                         <div className="p-4">
-                          <h2 className="text-lg font-semibold mb-2">{c.titulo}</h2>
-                          <p className="text-gray-600 mb-1">
-                            <span className="font-medium">Área:</span> {c.area_responsable}
-                          </p>
-                          <p className="text-gray-600 mb-1">
-                            <span className="font-medium">Fecha:</span>{" "}
-                            {c.fecha_publicacion
-                              ? new Date(c.fecha_publicacion).toLocaleDateString()
-                              : "-"}
-                          </p>
-                          <Button variant="outline" onClick={() => window.location.href = `/perfil/comunicados/${c.id}`}>Ver comunicado</Button>
+                          <h2 className="text-base font-medium mb-2 text-gray-900 line-clamp-2">
+                            {c.titulo}
+                          </h2>
+                          
+                          <div className="space-y-1 mb-3 text-sm text-gray-600">
+                            <div>{c.area_responsable}</div>
+                            <div>
+                              {c.fecha_publicacion
+                                ? new Date(c.fecha_publicacion).toLocaleDateString('es-ES')
+                                : "-"}
+                            </div>
+                          </div>
+                          
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="w-full"
+                            onClick={() => window.location.href = `/perfil/comunicados/${c.id}`}
+                          >
+                            Ver comunicado
+                          </Button>
                         </div>
                       </div>
                     ))

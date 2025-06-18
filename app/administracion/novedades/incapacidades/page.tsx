@@ -95,7 +95,7 @@ export default function AdminNovedadesIncapacidades() {
             colaborador, 
             cedula, 
             empresa_id,
-            cargos!cargo_id (
+            cargos:cargo_id (
               nombre
             )
           `)
@@ -200,7 +200,7 @@ export default function AdminNovedadesIncapacidades() {
               usuario: {
                 colaborador: usu?.colaborador || "—",
                 cedula: usu?.cedula || "—",
-                cargo: usu?.cargos?.nombre || "—",
+                cargo: usu?.cargos ? (usu.cargos as any).nombre || "—" : "—",
                 empresa_nombre: "—",
               },
             }
@@ -223,7 +223,7 @@ export default function AdminNovedadesIncapacidades() {
             usuario: {
               colaborador: usu?.colaborador  || "—",
               cedula:       usu?.cedula      || "—",
-              cargo:        usu?.cargos?.nombre || "—",
+              cargo: usu?.cargos ? (usu.cargos as any).nombre || "—" : "—",
               empresa_nombre: emp?.nombre    || "—",
             },
           }

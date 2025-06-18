@@ -315,7 +315,6 @@ export default function AdminSolicitudesPermisos() {
         (solicitud) =>
           solicitud.usuario?.colaborador?.toLowerCase().includes(lowerCaseSearchTerm) ||
           solicitud.usuario?.cedula?.toLowerCase().includes(lowerCaseSearchTerm) ||
-          solicitud.usuario?.cargos?.nombre?.toLowerCase().includes(lowerCaseSearchTerm) ||
           solicitud.usuario?.empresas?.nombre?.toLowerCase().includes(lowerCaseSearchTerm)
       )
     }

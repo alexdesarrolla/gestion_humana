@@ -783,7 +783,7 @@ export default function AdminCertificacionLaboral() {
           <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
             <DialogHeader>
               <DialogTitle>
-                Comentarios de {currentSolicitudComent.usuario_nomina.colaborador}
+                Comentarios de {currentSolicitudComent.usuario.colaborador}
               </DialogTitle>
             </DialogHeader>
             <ComentariosCertificacion solicitudId={currentSolicitudComent.id} />

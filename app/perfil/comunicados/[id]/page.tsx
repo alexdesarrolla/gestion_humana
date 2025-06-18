@@ -214,7 +214,7 @@ export default function DetalleComunicadoPage() {
             <div className="md:pl-64 flex flex-col flex-1">
                 <main className="flex-1 py-8 px-6">
                     <div className="max-w-[90%] mx-auto">
-                        <div className="mb-8">
+                        <div className="mb-8 flex justify-between items-center">
                             <Button 
                                 variant="outline" 
                                 className="gap-3 text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-all duration-200 border border-slate-200 bg-white shadow-sm px-6 py-3" 
@@ -223,44 +223,27 @@ export default function DetalleComunicadoPage() {
                                 <ArrowLeftIcon className="h-4 w-4" />
                                 Volver a comunicados
                             </Button>
-                        </div>
 
-                        {/* Header mejorado */}
-                        <div className="mb-8">
-                            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
-                                <div className="flex-1">
-                                    <h1 className="text-3xl font-bold text-slate-900 mb-3 leading-tight">{comunicado.titulo}</h1>
-                                    <div className="flex items-center gap-4">
-                                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center text-sm font-medium shadow-sm">
-                                            {getInitials(comunicado.area_responsable)}
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-slate-900">{comunicado.area_responsable}</p>
-                                            <p className="text-sm text-slate-500">Área responsable</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                                    {leido ? (
-                                        <Badge variant="secondary" className="px-4 py-2 text-sm font-medium bg-green-50 text-green-700 border border-green-200">
-                                            <CheckIcon className="h-4 w-4 mr-2" /> Leído
-                                        </Badge>
-                                    ) : (
-                                        <Button
-                                            variant="outline"
-                                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium border-green-200 text-green-700 hover:bg-green-50"
-                                            onClick={() => setConfirmDialogOpen(true)}
-                                        >
-                                            <CheckIcon className="h-4 w-4" /> Marcar como leído
-                                        </Button>
-                                    )}
-                                    {comunicado.fecha_publicacion && (
-                                        <Badge variant="outline" className="px-4 py-2 text-sm font-medium bg-slate-50 text-slate-700 border border-slate-200">
-                                            <CalendarIcon className="h-4 w-4 mr-2" />
-                                            {formatDate(comunicado.fecha_publicacion)}
-                                        </Badge>
-                                    )}
-                                </div>
+                            <div className="flex items-center gap-3">
+                                {leido ? (
+                                    <Badge variant="secondary" className="px-4 py-2 text-sm font-medium bg-green-50 text-green-700 border border-green-200">
+                                        <CheckIcon className="h-4 w-4 mr-2" /> Leído
+                                    </Badge>
+                                ) : (
+                                    <Button
+                                        variant="outline"
+                                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium border-green-200 text-green-700 hover:bg-green-50"
+                                        onClick={() => setConfirmDialogOpen(true)}
+                                    >
+                                        <CheckIcon className="h-4 w-4" /> Marcar como leído
+                                    </Button>
+                                )}
+                                {comunicado.fecha_publicacion && (
+                                    <Badge variant="outline" className="px-4 py-2 text-sm font-medium bg-slate-50 text-slate-700 border border-slate-200">
+                                        <CalendarIcon className="h-4 w-4 mr-2" />
+                                        {formatDate(comunicado.fecha_publicacion)}
+                                    </Badge>
+                                )}
                             </div>
                         </div>
 
@@ -288,6 +271,7 @@ export default function DetalleComunicadoPage() {
 
                                 {/* Título y contenido */}
                                 <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
+                                <h1 className="text-3xl font-bold text-slate-900 mb-3 leading-tight">{comunicado.titulo}</h1>
                                     <div className="space-y-6">
                                         <div>
                                             <div

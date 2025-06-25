@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from "react"
 import { DayPicker, SelectRangeEventHandler } from "react-day-picker"
 import "react-day-picker/dist/style.css"
-import { eachDayOfInterval, isSameDay, format } from "date-fns"
+import { eachDayOfInterval, isSameDay, format, startOfMonth, endOfMonth, addMonths, subMonths } from "date-fns"
 import { es } from "date-fns/locale"
 import { createSupabaseClient } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
@@ -18,13 +18,31 @@ import {
   ChevronRight,
   CheckCircle2,
   XCircle,
+  Users,
 } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 interface Disponibilidad {
   id: string
   fecha_inicio: string
   fecha_fin: string
   disponible: boolean
+}
+
+interface VacacionAprobada {
+  id: string
+  fecha_inicio: string
+  fecha_fin: string
+  usuario_nomina: {
+    colaborador: string
+    avatar_path: string
+    empresas: {
+      nombre: string
+    }
+    cargos: {
+      nombre: string
+    }
+  }
 }
 
 
@@ -65,6 +83,37 @@ function MonthNavigation({
   )
 }
 
+// Navegación para vacaciones aprobadas
+function VacacionesNavigation({
+  mesActual,
+  setMesActual,
+}: {
+  mesActual: Date
+  setMesActual: (d: Date) => void
+}) {
+  const prevMonth = () => {
+    setMesActual(subMonths(mesActual, 1))
+  }
+  const nextMonth = () => {
+    setMesActual(addMonths(mesActual, 1))
+  }
+  const currentMonth = () => setMesActual(new Date())
+
+  return (
+    <div className="flex items-center justify-between">
+      <Button variant="ghost" size="icon" onClick={prevMonth} className="text-blue-600 hover:bg-blue-50">
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+      <Button variant="ghost" size="sm" onClick={currentMonth} className="font-medium text-blue-700 hover:bg-blue-50">
+        {format(mesActual, "MMMM yyyy", { locale: es })}
+      </Button>
+      <Button variant="ghost" size="icon" onClick={nextMonth} className="text-blue-600 hover:bg-blue-50">
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+    </div>
+  )
+}
+
 // Tarjeta de estadísticas
 function StatisticCard({
   title,
@@ -99,6 +148,11 @@ export default function AdminVacacionesCalendar() {
   const [actionLoading, setActionLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  
+  // Estados para la sección de vacaciones aprobadas
+  const [vacacionesAprobadas, setVacacionesAprobadas] = useState<VacacionAprobada[]>([])
+  const [mesVacaciones, setMesVacaciones] = useState(new Date())
+  const [loadingVacaciones, setLoadingVacaciones] = useState(false)
 
   // Carga datos
   const fetchData = async () => {
@@ -130,9 +184,51 @@ export default function AdminVacacionesCalendar() {
     }
   }
 
+  // Función para cargar vacaciones aprobadas del mes
+  const fetchVacacionesAprobadas = async (mes: Date) => {
+    setLoadingVacaciones(true)
+    try {
+      const inicioMes = startOfMonth(mes)
+      const finMes = endOfMonth(mes)
+      
+      const { data: vacacionesData, error: vacacionesErr } = await supabase
+        .from("solicitudes_vacaciones")
+        .select(`
+          id,
+          fecha_inicio,
+          fecha_fin,
+          usuario_nomina:usuario_id (
+            colaborador,
+            avatar_path,
+            empresas:empresa_id(nombre),
+            cargos:cargo_id(nombre)
+          )
+        `)
+        .eq("estado", "aprobado")
+        .gte("fecha_inicio", inicioMes.toISOString().split('T')[0])
+        .lte("fecha_inicio", finMes.toISOString().split('T')[0])
+        .order("fecha_inicio", { ascending: true })
+      
+      if (vacacionesErr) {
+        console.error('Error al cargar vacaciones aprobadas:', vacacionesErr)
+        throw vacacionesErr
+      }
+      
+      setVacacionesAprobadas(vacacionesData as VacacionAprobada[] || [])
+    } catch (err: any) {
+      console.error('Error en fetchVacacionesAprobadas:', err)
+    } finally {
+      setLoadingVacaciones(false)
+    }
+  }
+
   useEffect(() => {
     fetchData()
   }, [])
+  
+  useEffect(() => {
+    fetchVacacionesAprobadas(mesVacaciones)
+  }, [mesVacaciones])
 
   const onSelect: SelectRangeEventHandler = (range) => {
     setSelectedRange(range ? { from: range.from, to: range.to ?? undefined } : { from: undefined, to: undefined })
@@ -309,7 +405,7 @@ export default function AdminVacacionesCalendar() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center">
                 <Calendar className="h-5 w-5 mr-2 text-primary" />
-                Calendario de Vacaciones
+                Gestión de días
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -451,6 +547,86 @@ export default function AdminVacacionesCalendar() {
           <div className="text-sm text-muted-foreground bg-white p-3 rounded-lg border shadow-sm">
             Última actualización: {new Date().toLocaleString("es-ES")}
           </div>
+          
+          {/* Sección de Vacaciones Aprobadas */}
+          <Card className="shadow-md border-0">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center text-lg">
+                  <Users className="h-5 w-5 mr-2 text-blue-600" />
+                  De vacaciones actualmente
+                </CardTitle>
+                <VacacionesNavigation 
+                  mesActual={mesVacaciones} 
+                  setMesActual={setMesVacaciones} 
+                />
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingVacaciones ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-blue-600 mr-2" />
+                  <span className="text-sm text-muted-foreground">Cargando vacaciones...</span>
+                </div>
+              ) : vacacionesAprobadas.length > 0 ? (
+                <div className="space-y-3">
+                  {vacacionesAprobadas.map((vacacion) => {
+                    // Extraer primer nombre y primer apellido
+                    const nombreCompleto = vacacion.usuario_nomina?.colaborador || "Sin nombre"
+                    const partesNombre = nombreCompleto.split(" ")
+                    const primerNombre = partesNombre[0] || ""
+                    const primerApellido = partesNombre[1] || ""
+                    const nombreMostrar = `${primerNombre} ${primerApellido}`.trim()
+                    
+                    return (
+                      <div key={vacacion.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage 
+                                src={vacacion.usuario_nomina?.avatar_path ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatar/${vacacion.usuario_nomina.avatar_path}` : undefined} 
+                                alt={nombreMostrar}
+                                className="object-cover"
+                              />
+                              <AvatarFallback className="bg-blue-600 text-white text-sm font-medium">
+                                {primerNombre.charAt(0)}{primerApellido.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium text-blue-900">{nombreMostrar}</p>
+                              <div className="flex items-center gap-2 text-xs text-blue-700">
+                                <span className="bg-blue-200 px-2 py-1 rounded">
+                                  {vacacion.usuario_nomina?.empresas?.nombre || "Sin empresa"}
+                                </span>
+                                <span className="bg-blue-200 px-2 py-1 rounded">
+                                  {vacacion.usuario_nomina?.cargos?.nombre || "Sin cargo"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-blue-800">
+                            {format(new Date(vacacion.fecha_inicio), "d MMM", { locale: es })} - {format(new Date(vacacion.fecha_fin), "d MMM", { locale: es })}
+                          </p>
+                          <p className="text-xs text-blue-600">
+                            {Math.ceil((new Date(vacacion.fecha_fin).getTime() - new Date(vacacion.fecha_inicio).getTime()) / (1000 * 60 * 60 * 24)) + 1} días
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Users className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground">
+                    No hay vacaciones aprobadas en {format(mesVacaciones, "MMMM yyyy", { locale: es })}
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

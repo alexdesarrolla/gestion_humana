@@ -27,12 +27,7 @@ interface Disponibilidad {
   disponible: boolean
 }
 
-interface Vacacion {
-  id: string
-  fecha_inicio: string
-  fecha_fin: string
-  usuario_id: string
-}
+
 
 // Navegación de meses personalizada
 function MonthNavigation({
@@ -97,7 +92,6 @@ export default function AdminVacacionesCalendar() {
   const supabase = createSupabaseClient()
 
   const [disponibilidad, setDisponibilidad] = useState<Disponibilidad[]>([])
-  const [vacaciones, setVacaciones] = useState<Vacacion[]>([])
   const [selectedRange, setSelectedRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined })
   type DateRange = { from: Date | undefined; to: Date | undefined }
   const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -118,12 +112,7 @@ export default function AdminVacacionesCalendar() {
         .order("fecha_inicio", { ascending: true })
       if (dispErr) throw dispErr
 
-      // Cargar todas las vacaciones aprobadas
-      const { data: vacData, error: vacErr } = await supabase
-        .from("solicitudes_vacaciones")
-        .select("id, fecha_inicio, fecha_fin, usuario_id")
-        .eq("estado", "aprobado")
-      if (vacErr) throw vacErr
+
 
       setDisponibilidad(
         (dispData as unknown as Disponibilidad[])?.map((item) => ({
@@ -133,12 +122,6 @@ export default function AdminVacacionesCalendar() {
           disponible: item.disponible,
         })) || []
       )
-      setVacaciones((vacData || []).map(v => ({
-        id: String(v.id),
-        fecha_inicio: String(v.fecha_inicio),
-        fecha_fin: String(v.fecha_fin), 
-        usuario_id: String(v.usuario_id)
-      })))
     } catch (err: any) {
       console.error(err)
       setError(err.message || "Error al cargar datos")
@@ -293,15 +276,7 @@ export default function AdminVacacionesCalendar() {
       })
     })
 
-  const bookedDays = vacaciones.flatMap((v) => {
-    // Crear fechas locales para evitar problemas de zona horaria
-    const [startYear, startMonth, startDay] = v.fecha_inicio.split('-').map(Number)
-    const [endYear, endMonth, endDay] = v.fecha_fin.split('-').map(Number)
-    return eachDayOfInterval({
-      start: new Date(startYear, startMonth - 1, startDay),
-      end: new Date(endYear, endMonth - 1, endDay),
-    })
-  })
+
 
   if (loading) {
     return (
@@ -346,13 +321,10 @@ export default function AdminVacacionesCalendar() {
                   onMonthChange={setCurrentMonth}
                   selected={selectedRange}
                   onSelect={onSelect}
-                  disabled={bookedDays}
                   modifiers={{
-                    booked: bookedDays,
                     blocked: blockedDays,
                   }}
                   modifiersClassNames={{
-                    booked: "bg-red-500 text-white",
                     blocked: "bg-gray-200 text-gray-500",
                     selected: "bg-blue-500 text-white",
                     range_start: "rounded-l-full",
@@ -378,49 +350,37 @@ export default function AdminVacacionesCalendar() {
         {/* Panel derecho */}
         <div className="lg:col-span-5 space-y-6">
           <Card className="shadow-md border-0">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Leyenda</CardTitle>
-            </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 bg-red-500 rounded-full" />
-                  <span className="text-sm">Vacaciones aprobadas</span>
+              <div className="flex justify-between gap-6">
+                {/* Leyenda */}
+                <div className="flex-1">
+                  <h4 className="text-lg font-medium mb-2">Leyenda</h4>
+                  <div className="grid grid-cols-1 gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 w-4 bg-gray-200 rounded-full" />
+                      <span className="text-sm">Días deshabilitados</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 w-4 bg-blue-500 rounded-full" />
+                      <span className="text-sm">Días seleccionados</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 w-4 bg-white border border-gray-300 rounded-full" />
+                      <span className="text-sm">Días disponibles</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 bg-gray-200 rounded-full" />
-                  <span className="text-sm">Días deshabilitados</span>
+                
+                {/* Estadísticas */}
+                <div className="flex-1">
+                  <h4 className="text-lg font-medium mb-2">Estadísticas</h4>
+                  <StatisticCard
+                    title="Días deshabilitados"
+                    value={blockedDays.length}
+                    icon={<XCircle className="h-5 w-5 text-gray-600" />}
+                    colorClass="bg-gray-50"
+                  />
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 bg-blue-500 rounded-full" />
-                  <span className="text-sm">Días seleccionados</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 bg-white border border-gray-300 rounded-full" />
-                  <span className="text-sm">Días disponibles</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-md border-0">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Resumen</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <StatisticCard
-                  title="Días deshabilitados"
-                  value={blockedDays.length}
-                  icon={<XCircle className="h-5 w-5 text-gray-600" />}
-                  colorClass="bg-gray-50"
-                />
-                <StatisticCard
-                  title="Vacaciones aprobadas"
-                  value={bookedDays.length}
-                  icon={<CheckCircle2 className="h-5 w-5 text-red-600" />}
-                  colorClass="bg-red-50"
-                />
               </div>
             </CardContent>
           </Card>

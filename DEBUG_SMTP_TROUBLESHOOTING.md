@@ -8,7 +8,7 @@ Este documento describe el sistema de debug detallado implementado para diagnost
 
 ```env
 SMTP_HOST=mail.orpainversiones.com
-SMTP_PORT=465
+SMTP_PORT=587
 SMTP_USER=smtpbdatam@orpainversiones.com
 SMTP_PASS=&k&}&lIpng8E
 ```
@@ -55,7 +55,7 @@ function debugLog(message: string, data?: any) {
 [2024-01-15T10:30:00.000Z] [EMAIL-DEBUG] Variables de entorno SMTP:
 [2024-01-15T10:30:00.001Z] [EMAIL-DATA] {
   "SMTP_HOST": "mail.orpainversiones.com",
-  "SMTP_PORT": "465",
+  "SMTP_PORT": "587",
   "SMTP_USER": "smtpbdatam@orpainversiones.com",
   "SMTP_PASS": "***CONFIGURADA***",
   "VERCEL": "1",
@@ -70,7 +70,7 @@ function debugLog(message: string, data?: any) {
 [2024-01-15T10:30:00.010Z] [EMAIL-DEBUG] Configuración SMTP generada:
 [2024-01-15T10:30:00.011Z] [EMAIL-DATA] {
   "host": "mail.orpainversiones.com",
-  "port": 465,
+  "port": 587,
   "secure": true,
   "auth": {
     "user": "smtpbdatam@orpainversiones.com",
@@ -124,7 +124,7 @@ function debugLog(message: string, data?: any) {
 ```
 [EMAIL-DEBUG] Error de conexión SMTP
 [EMAIL-DATA] {
-  "error": "connect ECONNREFUSED 192.168.1.1:465",
+  "error": "connect ECONNREFUSED 192.168.1.1:587",
   "code": "ECONNREFUSED"
 }
 ```
@@ -157,7 +157,7 @@ function debugLog(message: string, data?: any) {
 ```javascript
 {
   host: 'mail.orpainversiones.com',
-  port: 465,
+  port: 587,
   secure: true,
   connectionTimeout: 30000,
   greetingTimeout: 15000,
@@ -175,7 +175,7 @@ function debugLog(message: string, data?: any) {
 ```javascript
 {
   host: 'mail.orpainversiones.com',
-  port: 465,
+  port: 587,
   secure: true,
   connectionTimeout: 60000,
   greetingTimeout: 30000,
@@ -205,7 +205,7 @@ function debugLog(message: string, data?: any) {
   "environment": "vercel",
   "smtpConfig": {
     "host": "mail.orpainversiones.com",
-    "port": 465,
+    "port": 587,
     "secure": true
   }
 }
@@ -226,14 +226,14 @@ function debugLog(message: string, data?: any) {
    ```bash
    # En Vercel Dashboard > Settings > Environment Variables
    SMTP_HOST=mail.orpainversiones.com
-   SMTP_PORT=465
+   SMTP_PORT=587
    SMTP_USER=smtpbdatam@orpainversiones.com
    SMTP_PASS=&k&}&lIpng8E
    ```
 
 2. **Probar Conexión Manual**
    ```bash
-   telnet mail.orpainversiones.com 465
+   telnet mail.orpainversiones.com 587
    ```
 
 3. **Revisar Logs de Vercel**
@@ -242,7 +242,7 @@ function debugLog(message: string, data?: any) {
    ```
 
 4. **Verificar Firewall/Red**
-   - Puerto 465 abierto
+   - Puerto 587 abierto
    - SSL/TLS habilitado
    - No bloqueo de IPs de Vercel
 

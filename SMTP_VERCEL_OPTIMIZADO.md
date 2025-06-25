@@ -35,7 +35,7 @@ Este documento describe las optimizaciones implementadas en el sistema de envío
 ```env
 # Variables SMTP requeridas
 SMTP_HOST=mail.orpainversiones.com
-SMTP_PORT=465
+SMTP_PORT=587
 SMTP_USER=smtpbdatam@orpainversiones.com
 SMTP_PASS=&k&)&lTpnq8E
 
@@ -67,7 +67,7 @@ NODE_ENV=development  # Para entorno local
 ```javascript
 {
   host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT) || 465,
+  port: parseInt(process.env.SMTP_PORT) || 587,
   secure: true,  // SSL directo
   auth: { user, pass },
   connectionTimeout: 15000,

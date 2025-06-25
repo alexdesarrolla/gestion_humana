@@ -34,7 +34,7 @@ tls: {
 
 **ANTES:**
 ```javascript
-port: 465,
+port: 587,
 secure: true  // SSL directo
 ```
 
@@ -80,7 +80,7 @@ SMTP_PASS=&k&}&lIpng8E
 ### 1. **Actualizar Variables en Vercel**
 ```bash
 # En Vercel Dashboard > Settings > Environment Variables
-SMTP_PORT=587  # Cambiar de 465 a 587
+SMTP_PORT=587  # Cambiar de 587 a 587
 ```
 
 ### 2. **Redesplegar la Aplicación**
@@ -99,7 +99,7 @@ Buscar en los logs de Vercel:
 ## 🔍 Diagnóstico de Errores
 
 ### Error Resuelto: `550 5.5.1 authorization failed`
-**Causa:** Configuración TLS obsoleta (SSLv3) y puerto SSL directo (465)
+**Causa:** Configuración TLS obsoleta (SSLv3) y puerto SSL directo (587)
 **Solución:** STARTTLS en puerto 587 con TLS moderno
 
 ### Error Resuelto: `Invalid greeting`
@@ -131,7 +131,7 @@ Buscar en los logs de Vercel:
 
 ## ⚠️ Notas Importantes
 
-- **Puerto 587 + STARTTLS** es más compatible con Vercel que **Puerto 465 + SSL**
+- **Puerto 587 + STARTTLS** es más compatible con Vercel que **Puerto 587 + SSL**
 - **Connection pooling desactivado** evita problemas de estado en serverless
 - **Timeouts aumentados** compensan la latencia de Vercel
 - **TLS moderno** mejora la compatibilidad con servidores SMTP actuales

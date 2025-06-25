@@ -34,7 +34,7 @@ En el archivo `.env.local` se han configurado las siguientes variables:
 ```env
 # Configuración SMTP
 SMTP_HOST=mail.orpainversiones.com
-SMTP_PORT=465
+SMTP_PORT=587
 SMTP_USER=smtpbdatam@orpainversiones.com
 SMTP_PASS=&k&}&lIpng8E
 

@@ -10,7 +10,7 @@ Configura las siguientes variables en tu panel de Vercel (Settings > Environment
 
 ```
 SMTP_HOST=mail.orpainversiones.com
-SMTP_PORT=465
+SMTP_PORT=587
 SMTP_USER=smtpbdatam@orpainversiones.com
 SMTP_PASS=&k&}&lIpng8E
 ```
@@ -42,14 +42,14 @@ SMTP_PASS=tu-contraseña
 ### Proveedores Empresariales
 ```
 SMTP_HOST=mail.orpainversiones.com
-SMTP_PORT=465
+SMTP_PORT=587
 SMTP_USER=smtpbdatam@orpainversiones.com
 SMTP_PASS=&k&}&lIpng8E
 ```
 
 ## Notas Importantes
 
-1. **Puerto 587**: Se recomienda usar el puerto 587 con STARTTLS en lugar del puerto 465 con SSL para mejor compatibilidad con Vercel.
+1. **Puerto 587**: Se recomienda usar el puerto 587 con STARTTLS en lugar del puerto 587 con SSL para mejor compatibilidad con Vercel.
 
 2. **Seguridad**: Nunca hardcodees credenciales en el código. Siempre usa variables de entorno.
 

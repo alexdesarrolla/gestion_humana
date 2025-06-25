@@ -23,8 +23,8 @@ function getSMTPConfig() {
   
   return {
     host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || (isVercel ? '587' : '465')),
-    secure: process.env.SMTP_PORT === '465',
+    port: parseInt(process.env.SMTP_PORT || (isVercel ? '587' : '587')),
+    secure: process.env.SMTP_PORT === '587',
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS
@@ -132,7 +132,7 @@ async function processEmailsInBatches(usuarios: any[], batchSize = 10) {
 ```bash
 # .env.local (desarrollo)
 SMTP_HOST=mail.orpainversiones.com
-SMTP_PORT=465
+SMTP_PORT=587
 SMTP_USER=smtpbdatam@orpainversiones.com
 SMTP_PASS=tu_contraseña
 NODE_ENV=development
@@ -203,7 +203,7 @@ async function createTransporterWithFallback() {
       const transporter = nodemailer.createTransport({
         host: provider.host,
         port: provider.port,
-        secure: provider.port === 465,
+        secure: provider.port === 587,
         auth: { user: provider.user, pass: provider.pass }
       });
       
@@ -258,7 +258,7 @@ if (process.env.NODE_ENV === 'development') {
 
 ## 🚨 Troubleshooting Común
 
-1. **Error ECONNRESET**: Usar puerto 587 en lugar de 465
+1. **Error ECONNRESET**: Usar puerto 587 en lugar de 587
 2. **Timeout errors**: Reducir timeouts en Vercel
 3. **Rate limiting**: Implementar pausas entre lotes
 4. **SSL errors**: Configurar `rejectUnauthorized: false` para Vercel

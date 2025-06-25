@@ -486,6 +486,30 @@ export default function NuevoComunicado() {
                         onChange={e => setCargoSearch(e.target.value)}
                         className="mb-2 w-full"
                       />
+                      {/* Opción para seleccionar todos */}
+                      <label className="flex items-center gap-2 py-2 cursor-pointer select-none border-b border-gray-200 mb-2 font-medium">
+                        <input
+                          type="checkbox"
+                          checked={filteredCargos.length > 0 && filteredCargos.every(cargo => formData.cargo_ids.includes(cargo.id))}
+                          onChange={e => {
+                            const checked = e.target.checked;
+                            if (checked) {
+                              // Seleccionar todos los cargos filtrados
+                              const allFilteredIds = filteredCargos.map(cargo => cargo.id);
+                              const newCargoIds = [...new Set([...formData.cargo_ids, ...allFilteredIds])];
+                              setFormData(prev => ({ ...prev, cargo_ids: newCargoIds }));
+                            } else {
+                              // Deseleccionar todos los cargos filtrados
+                              const filteredIds = filteredCargos.map(cargo => cargo.id);
+                              const newCargoIds = formData.cargo_ids.filter(id => !filteredIds.includes(id));
+                              setFormData(prev => ({ ...prev, cargo_ids: newCargoIds }));
+                            }
+                          }}
+                        />
+                        <span className="text-primary font-medium">
+                          Seleccionar todos
+                        </span>
+                      </label>
                       {filteredCargos.length ? (
                         filteredCargos.map(cargo => (
                           <label

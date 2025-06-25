@@ -287,11 +287,42 @@ export default function NuevoComunicado() {
         await supabase.from("comunicados_cargos").insert(rows);
       }
 
-      setSuccess(publicar
-        ? "¡Comunicado publicado exitosamente!"
-        : "Comunicado guardado como borrador"
-      );
-      setTimeout(() => router.push("/administracion/comunicados"), 2000);
+      // 3) Enviar notificaciones por correo si se está publicando
+      if (publicar && formData.cargo_ids.length > 0) {
+        try {
+          const emailResponse = await fetch('/api/comunicados/email-notification', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              comunicadoId: comunicadoId,
+              titulo: formData.titulo,
+              contenido: formData.descripcion
+            })
+          });
+
+          const emailResult = await emailResponse.json();
+          
+          if (emailResponse.ok) {
+            console.log('Notificaciones enviadas:', emailResult);
+            setSuccess(`¡Comunicado publicado exitosamente! Notificaciones enviadas a ${emailResult.successful || 0} usuarios.`);
+          } else {
+            console.error('Error al enviar notificaciones:', emailResult);
+            setSuccess("¡Comunicado publicado exitosamente! Sin embargo, hubo un problema al enviar las notificaciones por correo.");
+          }
+        } catch (emailError) {
+          console.error('Error al enviar notificaciones por correo:', emailError);
+          setSuccess("¡Comunicado publicado exitosamente! Sin embargo, hubo un problema al enviar las notificaciones por correo.");
+        }
+      } else {
+        setSuccess(publicar
+          ? "¡Comunicado publicado exitosamente!"
+          : "Comunicado guardado como borrador"
+        );
+      }
+
+      setTimeout(() => router.push("/administracion/comunicados"), 3000);
     } catch (err: any) {
       setError("Error al guardar: " + (err.message || ""));
     } finally {

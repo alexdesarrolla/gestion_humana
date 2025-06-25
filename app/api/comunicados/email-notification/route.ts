@@ -64,16 +64,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Configurar nodemailer
+    // Validar variables de entorno SMTP
+    if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+      console.error('Variables de entorno SMTP no configuradas');
+      return NextResponse.json(
+        { error: 'Error de configuración del servidor de correo' },
+        { status: 500 }
+      );
+    }
+
+    // Configurar nodemailer optimizado para Vercel
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'mail.orpainversiones.com',
-      port: parseInt(process.env.SMTP_PORT || '465'),
-      secure: true, // SSL
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: process.env.SMTP_PORT === '465', // SSL solo si es puerto 465
       auth: {
-        user: process.env.SMTP_USER || 'smtpbdatam@orpainversiones.com',
-        pass: process.env.SMTP_PASS || '&k&}&lIpng8E'
-      }
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+      },
+      connectionTimeout: 60000, // 60 segundos
+      greetingTimeout: 30000,   // 30 segundos
+      socketTimeout: 60000,     // 60 segundos
+      pool: true,               // Usar pool de conexiones
+      maxConnections: 5,        // Máximo 5 conexiones simultáneas
+      maxMessages: 100          // Máximo 100 mensajes por conexión
     });
+
+    // Verificar conexión SMTP
+    try {
+      await transporter.verify();
+      console.log('Conexión SMTP verificada exitosamente');
+    } catch (error) {
+      console.error('Error de conexión SMTP:', error);
+      return NextResponse.json(
+        { error: 'Error de conexión con el servidor de correo' },
+        { status: 500 }
+      );
+    }
 
     // Preparar el contenido del correo
     const htmlContent = `
@@ -205,33 +232,72 @@ export async function POST(request: NextRequest) {
       </html>
     `;
 
-    // Enviar correos a todos los usuarios
+    // Enviar correos con límite de tiempo
+    const results: Array<{ email: string; status: string; error?: string }> = [];
     const emailPromises = usuarios.map(async (usuario) => {
       try {
-        await transporter.sendMail({
+        // Timeout por email individual (30 segundos)
+        const emailPromise = transporter.sendMail({
           from: {
             name: 'Sistema de Gestión Humana',
-            address: process.env.SMTP_USER || 'smtpbdatam@orpainversiones.com'
+            address: process.env.SMTP_USER!
           },
           to: usuario.correo_electronico,
           subject: `Nuevo Comunicado: ${titulo}`,
           html: htmlContent,
-          text: `Nuevo Comunicado: ${titulo}\n\n${contenido}\n\nPuede ver el comunicado completo en: https://gestionhumana360.co/perfil/comunicados`
+          text: `Nuevo Comunicado: ${titulo}\n\n${contenido}\n\nPuede ver el comunicado completo en: ${process.env.NEXT_PUBLIC_SITE_URL || 'https://gestionhumana360.co'}/perfil/comunicados`
         });
         
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout de 30 segundos')), 30000)
+        );
+        
+        await Promise.race([emailPromise, timeoutPromise]);
+        
         console.log(`Correo enviado exitosamente a: ${usuario.correo_electronico}`);
-        return { success: true, email: usuario.correo_electronico };
+        return { email: usuario.correo_electronico, status: 'success' };
       } catch (error) {
         console.error(`Error enviando correo a ${usuario.correo_electronico}:`, error);
-        return { success: false, email: usuario.correo_electronico, error: error };
+        return { 
+          email: usuario.correo_electronico, 
+          status: 'failed', 
+          error: error instanceof Error ? error.message : 'Error desconocido'
+        };
       }
     });
-
-    // Esperar a que todos los correos se envíen
-    const results = await Promise.all(emailPromises);
     
-    const successful = results.filter(r => r.success).length;
-    const failed = results.filter(r => !r.success).length;
+    // Ejecutar todos los envíos en paralelo con límite de tiempo global
+    try {
+      const globalTimeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout global de 4 minutos')), 240000)
+      );
+      
+      const emailResults = await Promise.race([
+        Promise.allSettled(emailPromises),
+        globalTimeout
+      ]) as PromiseSettledResult<{ email: string; status: string; error?: string }>[];
+      
+      // Procesar resultados
+      emailResults.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          results.push(result.value);
+        } else {
+          results.push({ email: 'unknown', status: 'failed', error: result.reason?.message || 'Error desconocido' });
+        }
+      });
+    } catch (error) {
+      console.error('Timeout global alcanzado:', error);
+      return NextResponse.json(
+        { error: 'Timeout en el envío de correos', results },
+        { status: 408 }
+      );
+    }
+    
+    // Cerrar el transporter
+    transporter.close();
+
+    const successful = results.filter(r => r.status === 'success').length;
+    const failed = results.filter(r => r.status === 'failed').length;
 
     return NextResponse.json({
       message: `Notificaciones enviadas: ${successful} exitosas, ${failed} fallidas`,

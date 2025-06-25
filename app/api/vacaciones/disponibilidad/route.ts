@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 import { createSupabaseClient } from "@/lib/supabase"
 
+// Configuración para exportación estática
+export const dynamic = "force-static"
+export const revalidate = false
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const empresaId = searchParams.get("empresaId")

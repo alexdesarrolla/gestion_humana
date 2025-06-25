@@ -46,7 +46,23 @@ export default function Perfil() {
         return
       }
 
-      setUserData(userData)
+      // Verificar si el usuario está actualmente de vacaciones
+      const today = new Date().toISOString().split('T')[0]
+      const { data: vacacionesActivas } = await supabase
+        .from("solicitudes_vacaciones")
+        .select("*")
+        .eq("usuario_id", session.user.id)
+        .eq("estado", "aprobado")
+        .lte("fecha_inicio", today)
+        .gte("fecha_fin", today)
+
+      // Agregar el estado de vacaciones al userData
+      const userDataWithVacaciones = {
+        ...userData,
+        enVacaciones: vacacionesActivas && vacacionesActivas.length > 0
+      }
+
+      setUserData(userDataWithVacaciones)
       setLoading(false)
     }
 

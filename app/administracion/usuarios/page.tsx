@@ -168,12 +168,26 @@ export default function Usuarios() {
       setAfps(afpsData || [])
       setCajaDeCompensacionOptions(cajasData || [])
 
-      // Los usuarios ya vienen con todas las relaciones incluidas
-      setUsers(usuarios || [])
-      setFilteredUsers(usuarios || [])
+      // Obtener vacaciones activas para todos los usuarios
+      const today = new Date().toISOString().split('T')[0]
+      const { data: vacacionesActivas } = await supabase
+        .from("solicitudes_vacaciones")
+        .select("usuario_id")
+        .eq("estado", "aprobado")
+        .lte("fecha_inicio", today)
+        .gte("fecha_fin", today)
+
+      // Agregar información de vacaciones a cada usuario
+      const usuariosConVacaciones = usuarios?.map(user => ({
+        ...user,
+        enVacaciones: vacacionesActivas?.some(vacacion => vacacion.usuario_id === user.auth_user_id) || false
+      })) || []
+
+      setUsers(usuariosConVacaciones)
+      setFilteredUsers(usuariosConVacaciones)
 
       // Extraer empresas únicas para filtros
-      const uniqueEmpresas = Array.from(new Set(usuarios?.map(user => {
+      const uniqueEmpresas = Array.from(new Set(usuariosConVacaciones?.map(user => {
         // Verificar si empresas existe y tiene la propiedad nombre
         if (user.empresas && typeof user.empresas === 'object' && 'nombre' in user.empresas) {
           return (user.empresas as any).nombre
@@ -403,9 +417,23 @@ export default function Usuarios() {
       return
     }
 
-    // Los usuarios ya vienen con todas las relaciones incluidas
-    setUsers(usuarios || [])
-    setFilteredUsers(usuarios || [])
+    // Obtener vacaciones activas para todos los usuarios
+    const today = new Date().toISOString().split('T')[0]
+    const { data: vacacionesActivas } = await supabase
+      .from("solicitudes_vacaciones")
+      .select("usuario_id")
+      .eq("estado", "aprobado")
+      .lte("fecha_inicio", today)
+      .gte("fecha_fin", today)
+
+    // Agregar información de vacaciones a cada usuario
+    const usuariosConVacaciones = usuarios?.map(user => ({
+      ...user,
+      enVacaciones: vacacionesActivas?.some(vacacion => vacacion.usuario_id === user.auth_user_id) || false
+    })) || []
+
+    setUsers(usuariosConVacaciones)
+    setFilteredUsers(usuariosConVacaciones)
   }
 
   const handleAddUserSubmit = async (e: React.FormEvent) => {

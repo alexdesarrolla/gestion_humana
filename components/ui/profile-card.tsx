@@ -301,9 +301,16 @@ export function ProfileCard({ userData }: ProfileCardProps) {
             <div>
               <CardTitle className="text-2xl md:text-2xl font-bold text-sm">{userData?.colaborador}</CardTitle>
               <p className="text-muted-foreground text-sm">{userData?.cargos?.nombre || "Sin cargo asignado"}</p>
-              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-3 py-1 mt-2 text-sm">
-                {userData?.empresas?.nombre || "Empresa no asignada"}
-              </Badge>
+              <div className="flex flex-wrap gap-2 mt-2">
+                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-3 py-1 text-sm">
+                  {userData?.empresas?.nombre || "Empresa no asignada"}
+                </Badge>
+                {userData?.enVacaciones && (
+                  <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 px-3 py-1 text-sm">
+                    De vacaciones
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
         </div>

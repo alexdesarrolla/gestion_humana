@@ -28,25 +28,27 @@ function getSMTPConfig() {
     isLocal
   });
   
-  const config = {
+  const config: any = {
     host: process.env.SMTP_HOST || 'mail.orpainversiones.com',
-    port: parseInt(process.env.SMTP_PORT || '465'),
-    secure: (process.env.SMTP_PORT || '465') === '465', // true para 465, false para otros puertos
+    port: parseInt(process.env.SMTP_PORT || '587'),
+    secure: false, // false para STARTTLS
     auth: {
       user: process.env.SMTP_USER || 'smtpbdatam@orpainversiones.com',
       pass: process.env.SMTP_PASS || '&k&}&lIpng8E'
     },
     // Configuración optimizada por entorno
-    connectionTimeout: isVercel ? 30000 : 60000,
-    greetingTimeout: isVercel ? 15000 : 30000,
-    socketTimeout: isVercel ? 30000 : 60000,
-    pool: true,
-    maxConnections: isVercel ? 2 : 5,
-    maxMessages: isVercel ? 10 : 100,
+    connectionTimeout: isVercel ? 45000 : 60000,
+    greetingTimeout: isVercel ? 20000 : 30000,
+    socketTimeout: isVercel ? 45000 : 60000,
+    pool: isVercel ? false : true, // Desactivar pool en Vercel
+    maxConnections: isVercel ? 1 : 5, // Una conexión a la vez en Vercel
+    maxMessages: isVercel ? 1 : 100, // Un mensaje por conexión en Vercel
     // Configuraciones específicas para diferentes entornos
     tls: {
       rejectUnauthorized: false,
-      ciphers: 'SSLv3'
+      minVersion: 'TLSv1.2',
+      maxVersion: 'TLSv1.3',
+      ciphers: 'HIGH:!aNULL:!MD5:!RC4'
     },
     logger: true, // Habilitar logging para debug
     debug: true   // Habilitar debug detallado

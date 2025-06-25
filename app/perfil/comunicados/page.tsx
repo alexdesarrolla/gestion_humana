@@ -2,17 +2,18 @@
 
 import React, { useState, useEffect } from "react";
 import { Sidebar } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Select,
-  SelectTrigger,
-  SelectValue,
   SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
+import ComunicadoAvatar from "@/components/ui/comunicado-avatar";
 import { createSupabaseClient } from "@/lib/supabase";
 import { Search, Eye, EyeOff, Calendar, Building } from "lucide-react";
 
@@ -303,10 +304,10 @@ export default function ComunicadosPage() {
                       <div key={c.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:border-gray-300 transition-colors">
                         {/* Imagen con relación de aspecto 4:3 */}
                         <div className="relative aspect-[4/3] overflow-hidden">
-                          <img
-                            src={c.imagen_url || "/placeholder.webp"}
-                            alt={c.titulo}
-                            className="w-full h-full object-cover"
+                          <ComunicadoAvatar
+                            titulo={c.titulo}
+                            imagenUrl={c.imagen_url}
+                            className="w-full h-full"
                           />
                           {/* Badge de estado de lectura */}
                            <div className="absolute top-3 right-3">

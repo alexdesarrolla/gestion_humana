@@ -7,6 +7,7 @@ import { AdminSidebar } from "@/components/ui/admin-sidebar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import ComunicadoAvatar from "@/components/ui/comunicado-avatar"
 
 import { CalendarIcon, Building2Icon, Users2Icon, ArrowLeftIcon, FileTextIcon, BriefcaseIcon, PaperclipIcon, DownloadIcon } from "lucide-react"
 
@@ -249,21 +250,13 @@ export default function DetalleComunicadoPage() {
                             <div className="lg:col-span-1 space-y-8">
                                 {/* Imagen */}
                                 <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-slate-100">
-                                    {comunicado.imagen_url ? (
-                                        <div className="w-full h-[280px] overflow-hidden">
-                                            <img
-                                                src={comunicado.imagen_url || "/placeholder.svg"}
-                                                alt={comunicado.titulo}
-                                                className="w-full h-full object-cover"
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div className="h-[280px] bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
-                                            <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center">
-                                                <FileTextIcon className="h-8 w-8 text-slate-400" />
-                                            </div>
-                                        </div>
-                                    )}
+                                    <div className="w-full h-[280px] overflow-hidden">
+                                        <ComunicadoAvatar
+                                            titulo={comunicado.titulo}
+                                            imagenUrl={comunicado.imagen_url}
+                                            className="w-full h-full"
+                                        />
+                                    </div>
                                 </div>
 
                                 {/* Información del comunicado */}

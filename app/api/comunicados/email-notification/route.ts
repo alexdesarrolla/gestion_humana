@@ -2,36 +2,65 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
 
+// Debug detallado para troubleshooting
+function debugLog(message: string, data?: any) {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] [EMAIL-DEBUG] ${message}`);
+  if (data) {
+    console.log(`[${timestamp}] [EMAIL-DATA]`, JSON.stringify(data, null, 2));
+  }
+}
+
 // Función para obtener configuración SMTP optimizada por entorno
 function getSMTPConfig() {
   const isVercel = process.env.VERCEL === '1';
   const isLocal = process.env.NODE_ENV === 'development';
   
-  return {
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || (isVercel ? '587' : '465')),
-    secure: process.env.SMTP_PORT === '465',
+  // Debug de variables de entorno
+  debugLog('Variables de entorno SMTP:', {
+    SMTP_HOST: process.env.SMTP_HOST,
+    SMTP_PORT: process.env.SMTP_PORT,
+    SMTP_USER: process.env.SMTP_USER,
+    SMTP_PASS: process.env.SMTP_PASS ? '***CONFIGURADA***' : 'NO CONFIGURADA',
+    VERCEL: process.env.VERCEL,
+    NODE_ENV: process.env.NODE_ENV,
+    isVercel,
+    isLocal
+  });
+  
+  const config = {
+    host: process.env.SMTP_HOST || 'mail.orpainversiones.com',
+    port: parseInt(process.env.SMTP_PORT || '465'),
+    secure: (process.env.SMTP_PORT || '465') === '465', // true para 465, false para otros puertos
     auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS
+      user: process.env.SMTP_USER || 'smtpbdatam@orpainversiones.com',
+      pass: process.env.SMTP_PASS || '&k&}&lIpng8E'
     },
     // Configuración optimizada por entorno
-    connectionTimeout: isVercel ? 45000 : 60000,
-    greetingTimeout: isVercel ? 20000 : 30000,
-    socketTimeout: isVercel ? 45000 : 60000,
+    connectionTimeout: isVercel ? 30000 : 60000,
+    greetingTimeout: isVercel ? 15000 : 30000,
+    socketTimeout: isVercel ? 30000 : 60000,
     pool: true,
-    maxConnections: isVercel ? 3 : 5,
-    maxMessages: isVercel ? 50 : 100,
-    // Configuraciones específicas para Vercel
-    ...(isVercel && {
-      tls: {
-        rejectUnauthorized: false
-      },
-      requireTLS: true,
-      logger: false,
-      debug: false
-    })
+    maxConnections: isVercel ? 2 : 5,
+    maxMessages: isVercel ? 10 : 100,
+    // Configuraciones específicas para diferentes entornos
+    tls: {
+      rejectUnauthorized: false,
+      ciphers: 'SSLv3'
+    },
+    logger: true, // Habilitar logging para debug
+    debug: true   // Habilitar debug detallado
   };
+  
+  debugLog('Configuración SMTP generada:', {
+    ...config,
+    auth: {
+      user: config.auth.user,
+      pass: '***OCULTA***'
+    }
+  });
+  
+  return config;
 }
 
 // Función para validar emails
@@ -41,20 +70,43 @@ function isValidEmail(email: string): boolean {
 }
 
 // Función para envío con reintentos
-async function sendEmailWithRetry(transporter: any, mailOptions: any, maxRetries = 2) {
+async function sendEmailWithRetry(transporter: any, mailOptions: any, maxRetries = 3) {
+  debugLog(`Iniciando envío de email a: ${mailOptions.to}`);
+  
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      await transporter.sendMail(mailOptions);
-      return { success: true, attempt };
+      debugLog(`Intento ${attempt}/${maxRetries} para ${mailOptions.to}`);
+      
+      const info = await transporter.sendMail(mailOptions);
+      
+      debugLog(`Email enviado exitosamente a ${mailOptions.to} en intento ${attempt}`, {
+        messageId: info.messageId,
+        response: info.response,
+        accepted: info.accepted,
+        rejected: info.rejected
+      });
+      
+      return { success: true, attempt, info };
     } catch (error) {
-      console.log(`Intento ${attempt} fallido para ${mailOptions.to}:`, error instanceof Error ? error.message : 'Error desconocido');
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      const errorCode = (error as any)?.code;
+      const errorCommand = (error as any)?.command;
+      
+      debugLog(`Intento ${attempt}/${maxRetries} fallido para ${mailOptions.to}`, {
+        error: errorMessage,
+        code: errorCode,
+        command: errorCommand,
+        stack: error instanceof Error ? error.stack : undefined
+      });
       
       if (attempt === maxRetries) {
+        debugLog(`Todos los intentos fallaron para ${mailOptions.to}`);
         throw error;
       }
       
-      // Espera exponencial entre reintentos (1s, 2s)
+      // Espera exponencial entre reintentos (1s, 2s, 4s)
       const delay = Math.pow(2, attempt - 1) * 1000;
+      debugLog(`Esperando ${delay}ms antes del siguiente intento para ${mailOptions.to}`);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
@@ -136,29 +188,62 @@ export async function POST(request: NextRequest) {
 
     console.log(`Procesando ${usuariosValidos.length} usuarios con emails válidos de ${usuarios.length} usuarios totales`);
 
+    debugLog('Iniciando proceso de envío de emails');
+    
     // Validar variables de entorno SMTP
-    if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      console.error('Variables de entorno SMTP no configuradas');
+    const missingVars = [];
+    if (!process.env.SMTP_HOST) missingVars.push('SMTP_HOST');
+    if (!process.env.SMTP_USER) missingVars.push('SMTP_USER');
+    if (!process.env.SMTP_PASS) missingVars.push('SMTP_PASS');
+    
+    if (missingVars.length > 0) {
+      debugLog('Variables de entorno SMTP faltantes:', { missingVars });
       return NextResponse.json(
-        { error: 'Error de configuración del servidor de correo' },
+        { error: `Variables de entorno faltantes: ${missingVars.join(', ')}` },
         { status: 500 }
       );
     }
 
     // Configurar nodemailer con configuración optimizada por entorno
+    debugLog('Obteniendo configuración SMTP...');
     const smtpConfig = getSMTPConfig();
+    
+    debugLog('Creando transporter de Nodemailer...');
     const transporter = nodemailer.createTransport(smtpConfig);
     
-    console.log(`Configurando SMTP para ${process.env.VERCEL ? 'Vercel' : 'Local'} - Puerto: ${smtpConfig.port}, Secure: ${smtpConfig.secure}`);
+    debugLog(`Transporter creado para ${process.env.VERCEL ? 'Vercel' : 'Local'}`, {
+      host: smtpConfig.host,
+      port: smtpConfig.port,
+      secure: smtpConfig.secure,
+      poolEnabled: smtpConfig.pool
+    });
 
     // Verificar conexión SMTP
+    debugLog('Verificando conexión SMTP...');
     try {
+      const verifyStart = Date.now();
       await transporter.verify();
-      console.log('Conexión SMTP verificada exitosamente');
+      const verifyTime = Date.now() - verifyStart;
+      
+      debugLog('Conexión SMTP verificada exitosamente', {
+        verificationTime: `${verifyTime}ms`
+      });
     } catch (error) {
-      console.error('Error de conexión SMTP:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      const errorCode = (error as any)?.code;
+      
+      debugLog('Error de conexión SMTP', {
+        error: errorMessage,
+        code: errorCode,
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
       return NextResponse.json(
-        { error: 'Error de conexión con el servidor de correo' },
+        { 
+          error: 'Error de conexión con el servidor de correo',
+          details: errorMessage,
+          code: errorCode
+        },
         { status: 500 }
       );
     }
@@ -294,11 +379,18 @@ export async function POST(request: NextRequest) {
     `;
 
     // Enviar correos con reintentos y límite de tiempo
-    const results: Array<{ email: string; status: string; error?: string; attempt?: number }> = [];
+    debugLog('Iniciando envío masivo de correos', {
+      totalEmails: usuariosValidos.length,
+      usuarios: usuariosValidos.map(u => u.correo_electronico)
+    });
+    
+    const results: Array<{ email: string; status: string; error?: string; attempt?: number; info?: any }> = [];
     const startTime = Date.now();
     
-    const emailPromises = usuariosValidos.map(async (usuario) => {
+    const emailPromises = usuariosValidos.map(async (usuario, index) => {
       try {
+        debugLog(`Preparando email ${index + 1}/${usuariosValidos.length} para ${usuario.correo_electronico}`);
+        
         const mailOptions = {
           from: {
             name: 'Sistema de Gestión Humana',
@@ -310,66 +402,118 @@ export async function POST(request: NextRequest) {
           text: `Nuevo Comunicado: ${titulo}\n\n${contenido}\n\nPuede ver el comunicado completo en: ${process.env.NEXT_PUBLIC_SITE_URL || 'https://gestionhumana360.co'}/perfil/comunicados`
         };
         
-        // Timeout por email individual (25 segundos para dar tiempo a reintentos)
+        debugLog(`Opciones de email preparadas para ${usuario.correo_electronico}`, {
+          from: mailOptions.from,
+          to: mailOptions.to,
+          subject: mailOptions.subject,
+          hasHtml: !!mailOptions.html,
+          hasText: !!mailOptions.text
+        });
+        
+        // Timeout por email individual (45 segundos para dar tiempo a reintentos)
         const emailPromise = sendEmailWithRetry(transporter, mailOptions);
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout de 25 segundos')), 25000)
+          setTimeout(() => reject(new Error('Timeout de 45 segundos')), 45000)
         );
         
-        const result = await Promise.race([emailPromise, timeoutPromise]) as { success: boolean; attempt: number };
+        const result = await Promise.race([emailPromise, timeoutPromise]) as { success: boolean; attempt: number; info: any };
         
-        console.log(`Correo enviado exitosamente a: ${usuario.correo_electronico} (intento ${result.attempt})`);
+        debugLog(`Email completado exitosamente para ${usuario.correo_electronico}`, {
+          attempt: result.attempt,
+          messageId: result.info?.messageId
+        });
+        
         return { 
           email: usuario.correo_electronico, 
           status: 'success',
-          attempt: result.attempt
+          attempt: result.attempt,
+          info: result.info
         };
       } catch (error) {
-        console.error(`Error enviando correo a ${usuario.correo_electronico}:`, error);
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+        const errorCode = (error as any)?.code;
+        
+        debugLog(`Error final enviando correo a ${usuario.correo_electronico}`, {
+          error: errorMessage,
+          code: errorCode,
+          stack: error instanceof Error ? error.stack : undefined
+        });
+        
         return { 
           email: usuario.correo_electronico, 
           status: 'failed', 
-          error: error instanceof Error ? error.message : 'Error desconocido'
+          error: errorMessage,
+          code: errorCode
         };
       }
     });
     
     // Ejecutar todos los envíos en paralelo con límite de tiempo global
+    debugLog('Ejecutando envíos en paralelo...');
+    
     try {
       const globalTimeout = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout global de 4 minutos')), 240000)
+        setTimeout(() => reject(new Error('Timeout global de 5 minutos')), 300000)
       );
       
       const emailResults = await Promise.race([
         Promise.allSettled(emailPromises),
         globalTimeout
-      ]) as PromiseSettledResult<{ email: string; status: string; error?: string }>[];
+      ]) as PromiseSettledResult<{ email: string; status: string; error?: string; attempt?: number; info?: any }>[];
+      
+      debugLog('Procesando resultados de envío...', {
+        totalResults: emailResults.length
+      });
       
       // Procesar resultados
-      emailResults.forEach((result) => {
+      emailResults.forEach((result, index) => {
         if (result.status === 'fulfilled') {
+          debugLog(`Resultado ${index + 1}: Exitoso`, {
+            email: result.value.email,
+            status: result.value.status,
+            attempt: result.value.attempt
+          });
           results.push(result.value);
         } else {
-          results.push({ email: 'unknown', status: 'failed', error: result.reason?.message || 'Error desconocido' });
+          debugLog(`Resultado ${index + 1}: Fallido`, {
+            reason: result.reason?.message || 'Error desconocido'
+          });
+          results.push({ 
+            email: 'unknown', 
+            status: 'failed', 
+            error: result.reason?.message || 'Error desconocido' 
+          });
         }
       });
     } catch (error) {
-      console.error('Timeout global alcanzado:', error);
+      debugLog('Timeout global alcanzado', {
+        error: error instanceof Error ? error.message : 'Error desconocido',
+        resultsUntilTimeout: results.length
+      });
+      
       return NextResponse.json(
-        { error: 'Timeout en el envío de correos', results },
+        { 
+          error: 'Timeout en el envío de correos', 
+          details: error instanceof Error ? error.message : 'Error desconocido',
+          results 
+        },
         { status: 408 }
       );
     }
     
     // Cerrar el transporter
+    debugLog('Cerrando transporter SMTP...');
     transporter.close();
+    debugLog('Transporter cerrado exitosamente');
 
     // Calcular métricas
+    debugLog('Calculando métricas finales...');
     const endTime = Date.now();
     const successful = results.filter(r => r.status === 'success').length;
     const failed = results.filter(r => r.status === 'failed').length;
-    const avgResponseTime = (endTime - startTime) / results.length;
+    const avgResponseTime = results.length > 0 ? (endTime - startTime) / results.length : 0;
     const totalRetries = results.reduce((sum, r) => sum + (r.attempt || 1) - 1, 0);
+    const totalTime = endTime - startTime;
     
     const metrics = {
       totalEmailsProcessed: results.length,
@@ -377,8 +521,9 @@ export async function POST(request: NextRequest) {
       validEmails: usuariosValidos.length,
       successful,
       failed,
-      successRate: ((successful / results.length) * 100).toFixed(2) + '%',
+      successRate: results.length > 0 ? ((successful / results.length) * 100).toFixed(2) + '%' : '0%',
       avgResponseTime: Math.round(avgResponseTime),
+      totalTime: Math.round(totalTime),
       totalRetries,
       environment: process.env.VERCEL ? 'vercel' : 'local',
       smtpConfig: {
@@ -388,18 +533,49 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    console.log('Métricas de envío:', metrics);
+    debugLog('Métricas finales calculadas', metrics);
+    
+    // Debug detallado de resultados
+    debugLog('Resumen detallado de resultados:', {
+      successful: results.filter(r => r.status === 'success').map(r => ({
+        email: r.email,
+        attempt: r.attempt
+      })),
+      failed: results.filter(r => r.status === 'failed').map(r => ({
+        email: r.email,
+        error: r.error
+      }))
+    });
 
-    return NextResponse.json({
+    const response = {
       message: `Notificaciones enviadas: ${successful} exitosas, ${failed} fallidas`,
       ...metrics,
       results
+    };
+    
+    debugLog('Enviando respuesta final', {
+      statusCode: 200,
+      responseSize: JSON.stringify(response).length
     });
 
+    return NextResponse.json(response);
+
   } catch (error) {
-    console.error('Error en el envío de notificaciones:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    debugLog('Error crítico en el proceso de envío de notificaciones', {
+      error: errorMessage,
+      stack: errorStack,
+      timestamp: new Date().toISOString()
+    });
+    
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { 
+        error: 'Error interno del servidor',
+        details: errorMessage,
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     );
   }

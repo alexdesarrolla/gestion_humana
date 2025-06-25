@@ -1,8 +1,5 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseClient } from "@/lib/supabase"
-
-// Configuración para rutas dinámicas
-export const dynamic = "force-dynamic"
 
 export async function PATCH(
   req: NextRequest,

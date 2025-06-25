@@ -2,10 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
 
-// Configuración para exportación estática
-export const dynamic = "force-static"
-export const revalidate = false
-
 export async function POST(request: NextRequest) {
   try {
     const { comunicadoId, titulo, contenido } = await request.json();

@@ -197,12 +197,7 @@ export default function AdminVacacionesCalendar() {
           id,
           fecha_inicio,
           fecha_fin,
-          usuario_nomina:usuario_id (
-            colaborador,
-            avatar_path,
-            empresas:empresa_id(nombre),
-            cargos:cargo_id(nombre)
-          )
+          usuario_id
         `)
         .eq("estado", "aprobado")
         .gte("fecha_inicio", inicioMes.toISOString().split('T')[0])
@@ -214,7 +209,46 @@ export default function AdminVacacionesCalendar() {
         throw vacacionesErr
       }
       
-      setVacacionesAprobadas(vacacionesData as VacacionAprobada[] || [])
+      if (!vacacionesData || vacacionesData.length === 0) {
+        setVacacionesAprobadas([])
+        return
+      }
+      
+      // Obtener los IDs únicos de usuarios
+      const userIds = [...new Set(vacacionesData.map(v => v.usuario_id))]
+      
+      // Obtener datos de usuarios
+      const { data: usuariosData, error: usuariosErr } = await supabase
+        .from("usuario_nomina")
+        .select(`
+          auth_user_id,
+          colaborador,
+          avatar_path,
+          empresas:empresa_id(nombre),
+          cargos:cargo_id(nombre)
+        `)
+        .in('auth_user_id', userIds)
+      
+      if (usuariosErr) {
+        console.error('Error al cargar datos de usuarios:', usuariosErr)
+        throw usuariosErr
+      }
+      
+      // Combinar datos
+      const vacacionesConUsuarios = vacacionesData.map(vacacion => {
+        const usuario = usuariosData?.find(u => u.auth_user_id === vacacion.usuario_id)
+        return {
+          ...vacacion,
+          usuario_nomina: usuario || {
+            colaborador: 'Usuario no encontrado',
+            avatar_path: '',
+            empresas: { nombre: '' },
+            cargos: { nombre: '' }
+          }
+        }
+      })
+      
+      setVacacionesAprobadas(vacacionesConUsuarios as VacacionAprobada[] || [])
     } catch (err: any) {
       console.error('Error en fetchVacacionesAprobadas:', err)
     } finally {

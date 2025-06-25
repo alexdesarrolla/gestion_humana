@@ -250,10 +250,10 @@ export default function DetalleComunicadoPage() {
                         {/* Modal de confirmación */}
                         <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
                             <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>Confirmar lectura</DialogTitle>
+                                <DialogHeader className="gap-2">
+                                    <DialogTitle>⚠️¡Atencíon!</DialogTitle>
                                     <DialogDescription>
-                                        ¿Estás seguro de que has leído toda la información del comunicado?
+                                        Confirmo lectura y aprobación del comunicado.
                                     </DialogDescription>
                                 </DialogHeader>
                                 <DialogFooter className="flex gap-2">

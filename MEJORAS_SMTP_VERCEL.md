@@ -133,15 +133,15 @@ async function processEmailsInBatches(usuarios: any[], batchSize = 10) {
 # .env.local (desarrollo)
 SMTP_HOST=mail.orpainversiones.com
 SMTP_PORT=587
-SMTP_USER=smtpbdatam@orpainversiones.com
-SMTP_PASS=tu_contraseña
+SMTP_USER=smtpgh360@orpainversiones.com
+SMTP_PASS=ECpkuCgdy2n
 NODE_ENV=development
 
 # Variables de Vercel (producción)
 SMTP_HOST=mail.orpainversiones.com
 SMTP_PORT=587
-SMTP_USER=smtpbdatam@orpainversiones.com
-SMTP_PASS=tu_contraseña
+SMTP_USER=smtpgh360@orpainversiones.com
+SMTP_PASS=ECpkuCgdy2n
 VERCEL=1
 ```
 

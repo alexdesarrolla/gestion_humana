@@ -36,8 +36,8 @@ Este documento describe las optimizaciones implementadas en el sistema de envío
 # Variables SMTP requeridas
 SMTP_HOST=mail.orpainversiones.com
 SMTP_PORT=587
-SMTP_USER=smtpbdatam@orpainversiones.com
-SMTP_PASS=&k&)&lTpnq8E
+SMTP_USER=smtpgh360@orpainversiones.com
+SMTP_PASS=ECpkuCgdy2n
 
 # Variables opcionales para optimización
 NEXT_PUBLIC_SITE_URL=https://gestionhumana360.co

@@ -1,5 +1,4 @@
-import * as React from "react"
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { type VariantProps, cva } from "class-variance-authority"
 import { PanelLeft, Menu, X, LogOut, User, Home, Info, FileText, Newspaper, Calendar, ChevronDown, Plus } from "lucide-react"
@@ -16,6 +15,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { createClient } from "@supabase/supabase-js"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
+import { usePermissions } from "@/hooks/use-permissions"
 
 const SIDEBAR_COOKIE_NAME = "sidebar:state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -37,6 +37,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [expandedMenus, setExpandedMenus] = useState<{[key: string]: boolean}>({})
   const router = useRouter()
+  const { userData, getAccessibleModules, loading: permissionsLoading } = usePermissions()
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut()
@@ -47,93 +48,127 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
 
   const currentPath = usePathname();
 
-  const menuItems = [
-    { name: "Escritorio", href: "/administracion", icon: Home, current: currentPath === "/administracion" },
-    { 
-      name: "Usuarios", 
-      icon: User, 
-      current: currentPath.includes("/administracion/usuarios"),
-      subItems: [
-        { 
-          name: "Todos", 
-          href: "/administracion/usuarios", 
-          icon: User, 
-          current: currentPath === "/administracion/usuarios" 
-        },
-        { 
-          name: "Cargos", 
-          href: "/administracion/usuarios/cargos", 
-          icon: FileText, 
-          current: currentPath === "/administracion/usuarios/cargos" 
-        },
-      ],
-    },
-    { 
-      name: "Solicitudes", 
-      icon: FileText, 
-      current: false,
-      subItems: [
-        { 
-          name: "Certificación Laboral", 
-          href: "/administracion/solicitudes/certificacion-laboral", 
-          icon: Newspaper, 
-          current: currentPath === "/administracion/solicitudes/certificacion-laboral" 
-        },
-        { 
-          name: "Vacaciones", 
-          href: "/administracion/solicitudes/vacaciones", 
-          icon: Calendar, 
-          current: currentPath === "/administracion/solicitudes/vacaciones" 
-        },
-        { 
-          name: "Permisos", 
-          href: "/administracion/solicitudes/permisos", 
-          icon: FileText, 
-          current: currentPath === "/administracion/solicitudes/permisos" 
-        },
-      ],
-    },
-    { 
-      name: "Comunicados", 
-      icon: Newspaper, 
-      current: currentPath.includes("/administracion/comunicados"),
-      subItems: [
-        { 
-          name: "Todos", 
-          href: "/administracion/comunicados", 
-          icon: FileText, 
-          current: currentPath === "/administracion/comunicados" 
-        },
-        { 
-          name: "Añadir nuevo", 
-          href: "/administracion/comunicados/nuevo", 
-          icon: Plus, 
-          current: currentPath === "/administracion/comunicados/nuevo" 
-        },
-        { 
-          name: "Categorías", 
-          href: "/administracion/comunicados/categorias", 
-          icon: FaFileAlt, 
-          current: currentPath === "/administracion/comunicados/categorias" 
-        },
-      ],
-    },
-    { 
-      name: "Novedades", 
-      icon: FileText, 
-      current: false,
-      subItems: [
-        { 
-          name: "Incapacidades", 
-          href: "/administracion/novedades/incapacidades", 
-          icon: FaFileAlt, 
-          current: currentPath === "/administracion/novedades/incapacidades" 
-        },
-        // Aquí se pueden agregar más submenús de novedades en el futuro
-      ],
-    },
-    { name: "Mis datos", href: "/administracion/perfil", icon: Info, current: currentPath === "/administracion/perfil" },
-  ]
+  // Generar menuItems dinámicamente basado en permisos
+  const menuItems = React.useMemo(() => {
+    if (permissionsLoading || !userData) return [];
+    
+    const accessibleModules = getAccessibleModules();
+    const items = [];
+    
+    // Siempre incluir Escritorio
+    items.push({ 
+      name: "Escritorio", 
+      href: "/administracion", 
+      icon: Home, 
+      current: currentPath === "/administracion" 
+    });
+    
+    // Mapear módulos accesibles a elementos del menú
+    accessibleModules.forEach(modulo => {
+      switch (modulo.nombre) {
+        case 'usuarios':
+          items.push({
+            name: "Usuarios",
+            icon: User,
+            current: currentPath.includes("/administracion/usuarios"),
+            subItems: [
+              {
+                name: "Todos",
+                href: "/administracion/usuarios",
+                icon: User,
+                current: currentPath === "/administracion/usuarios"
+              },
+              {
+                name: "Cargos",
+                href: "/administracion/usuarios/cargos",
+                icon: FileText,
+                current: currentPath === "/administracion/usuarios/cargos"
+              },
+            ],
+          });
+          break;
+        case 'solicitudes':
+          items.push({
+            name: "Solicitudes",
+            icon: FileText,
+            current: currentPath.includes("/administracion/solicitudes"),
+            subItems: [
+              {
+                name: "Certificación Laboral",
+                href: "/administracion/solicitudes/certificacion-laboral",
+                icon: Newspaper,
+                current: currentPath === "/administracion/solicitudes/certificacion-laboral"
+              },
+              {
+                name: "Vacaciones",
+                href: "/administracion/solicitudes/vacaciones",
+                icon: Calendar,
+                current: currentPath === "/administracion/solicitudes/vacaciones"
+              },
+              {
+                name: "Permisos",
+                href: "/administracion/solicitudes/permisos",
+                icon: FileText,
+                current: currentPath === "/administracion/solicitudes/permisos"
+              },
+            ],
+          });
+          break;
+        case 'comunicados':
+          items.push({
+            name: "Comunicados",
+            icon: Newspaper,
+            current: currentPath.includes("/administracion/comunicados"),
+            subItems: [
+              {
+                name: "Todos",
+                href: "/administracion/comunicados",
+                icon: FileText,
+                current: currentPath === "/administracion/comunicados"
+              },
+              {
+                name: "Añadir nuevo",
+                href: "/administracion/comunicados/nuevo",
+                icon: Plus,
+                current: currentPath === "/administracion/comunicados/nuevo"
+              },
+              {
+                name: "Categorías",
+                href: "/administracion/comunicados/categorias",
+                icon: FaFileAlt,
+                current: currentPath === "/administracion/comunicados/categorias"
+              },
+            ],
+          });
+          break;
+        case 'novedades':
+          items.push({
+            name: "Novedades",
+            icon: FileText,
+            current: currentPath.includes("/administracion/novedades"),
+            subItems: [
+              {
+                name: "Incapacidades",
+                href: "/administracion/novedades/incapacidades",
+                icon: FaFileAlt,
+                current: currentPath === "/administracion/novedades/incapacidades"
+              },
+            ],
+          });
+          break;
+      }
+    });
+    
+    // Siempre incluir Mis datos
+    items.push({ 
+      name: "Mis datos", 
+      href: "/administracion/perfil", 
+      icon: Info, 
+      current: currentPath === "/administracion/perfil" 
+    });
+    
+    return items;
+  }, [permissionsLoading, userData, currentPath, getAccessibleModules]);
   
   // Inicializar el estado de expansión basado en la ruta actual
   useEffect(() => {

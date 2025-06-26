@@ -4,10 +4,11 @@ import * as React from "react"
 import { useState } from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { type VariantProps, cva } from "class-variance-authority"
-import { PanelLeft, Menu, X, LogOut, Newspaper, Info, FileText, Calendar } from "lucide-react"
+import { PanelLeft, Menu, X, LogOut, Newspaper, Info, FileText, Calendar, Shield } from "lucide-react"
 import { FaUser, FaFileAlt, FaCalendarAlt, FaSignOutAlt, FaIdCard } from 'react-icons/fa'
 
 import { useIsMobile } from "@/hooks/use-mobile"
+import { usePermissions } from "@/hooks/use-permissions"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -148,6 +149,7 @@ export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
   const [expandedMenus, setExpandedMenus] = useState<{[key: string]: boolean}>({})
   const router = useRouter()
   const currentPath = usePathname()
+  const { userData: permissionsData, permisos, loading: permissionsLoading } = usePermissions()
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut()
@@ -155,6 +157,28 @@ export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
       router.push("/login")
     }
   }
+
+  // Crear submenús de administrador basados en permisos
+  const adminSubItems = React.useMemo(() => {
+    console.log('Sidebar - permissionsData:', permissionsData)
+    console.log('Sidebar - permisos:', permisos)
+    if (!permissionsData || !permisos.length) {
+      return []
+    }
+    
+    // Filtrar solo los módulos de administración
+    const adminModules = permisos
+      .filter(permiso => permiso.puede_ver && permiso.modulos.ruta.startsWith('/administracion'))
+      .map(permiso => ({
+        name: permiso.modulos.nombre,
+        href: permiso.modulos.ruta,
+        icon: Shield,
+        current: currentPath === permiso.modulos.ruta
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+    
+    return adminModules
+  }, [permissionsData, permisos, currentPath])
 
   const menuItems = [
     { name: "Mis datos", href: "/perfil", icon: Info, current: currentPath === "/perfil" },
@@ -205,6 +229,13 @@ export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
       icon: Newspaper,
       current: currentPath === "/perfil/comunicados"
     },
+    // Menú de administrador dinámico
+    ...(adminSubItems.length > 0 ? [{
+      name: "Administración",
+      icon: Shield,
+      current: false,
+      subItems: adminSubItems
+    }] : []),
     // Aquí se pueden agregar más secciones en el futuro
   ]
   

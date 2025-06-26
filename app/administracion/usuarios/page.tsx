@@ -17,6 +17,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { PermissionsManager, type PermisoModulo } from "@/components/ui/permissions-manager"
 
 export default function Usuarios() {
   const router = useRouter()
@@ -34,6 +35,8 @@ export default function Usuarios() {
   const [cargos, setCargos] = useState<any[]>([])
   const [selectedEmpresa, setSelectedEmpresa] = useState<string>("")
   const [selectedCargo, setSelectedCargo] = useState<string>("all")
+  const [selectedEstado, setSelectedEstado] = useState<string>("all")
+  const [selectedRol, setSelectedRol] = useState<string>("all")
   const [selectedUser, setSelectedUser] = useState<any>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false)
@@ -70,6 +73,9 @@ export default function Usuarios() {
   const [editUserError, setEditUserError] = useState('')
   const [editUserSuccess, setEditUserSuccess] = useState(false)
   const [editUserLoading, setEditUserLoading] = useState(false)
+  
+  // Estados para permisos
+  const [userPermissions, setUserPermissions] = useState<PermisoModulo[]>([])
 
   // Paginación
   const [currentPage, setCurrentPage] = useState(1)
@@ -238,7 +244,7 @@ export default function Usuarios() {
 
     // Establecer un nuevo timeout para aplicar la búsqueda después de 300ms
     searchTimeout.current = setTimeout(() => {
-      applyFilters(value, selectedEmpresa, selectedCargo, sortConfig)
+      applyFilters(value, selectedEmpresa, selectedCargo, selectedEstado, selectedRol, sortConfig)
     }, 300)
   }
 
@@ -247,6 +253,8 @@ export default function Usuarios() {
     search: string,
     empresa: string,
     cargo: string,
+    estado: string,
+    rol: string,
     sort: { key: string; direction: "asc" | "desc" } | null,
   ) => {
     let result = [...users]
@@ -271,6 +279,16 @@ export default function Usuarios() {
     // Aplicar filtro de cargo
     if (cargo && cargo !== "all") {
       result = result.filter((user) => user.cargos?.nombre === cargo)
+    }
+
+    // Aplicar filtro de estado
+    if (estado && estado !== "all") {
+      result = result.filter((user) => user.estado === estado)
+    }
+
+    // Aplicar filtro de rol
+    if (rol && rol !== "all") {
+      result = result.filter((user) => user.rol === rol)
     }
 
     // Aplicar ordenamiento
@@ -326,9 +344,10 @@ export default function Usuarios() {
 
     setSearchLoading(true)
     searchTimeout.current = setTimeout(() => {
-      applyFilters(searchTerm, selectedEmpresa, selectedCargo, sortConfig)
+      applyFilters(searchTerm, selectedEmpresa, selectedCargo, selectedEstado, selectedRol, sortConfig)
+      setCurrentPage(1)
     }, 300)
-  }, [selectedEmpresa, selectedCargo, sortConfig, users])
+  }, [selectedEmpresa, selectedCargo, selectedEstado, selectedRol, sortConfig, users])
 
   // Efecto para calcular la paginación
   useEffect(() => {
@@ -344,11 +363,13 @@ export default function Usuarios() {
     setSearchTerm("")
     setSelectedEmpresa("")
     setSelectedCargo("all")
+    setSelectedEstado("all")
+    setSelectedRol("all")
     setSortConfig(null)
     setCurrentPage(1)
 
     // Aplicar filtros inmediatamente sin esperar
-    applyFilters("", "", "all", null)
+    applyFilters("", "", "all", "all", null)
   }
 
   const handleViewDetails = (user: any) => {
@@ -366,7 +387,8 @@ export default function Usuarios() {
     console.log('Usuario seleccionado:', user);
     console.log('Género del usuario:', user.genero);
     setEditUserData({
-      id: user.id,
+      id: user.id, // ID de la tabla usuario_nomina para actualizar
+      auth_user_id: user.auth_user_id, // ID de auth para permisos
       nombre: user.colaborador || '',
       correo: user.correo_electronico || '',
       telefono: user.telefono || '',
@@ -395,7 +417,7 @@ export default function Usuarios() {
   const fetchUsers = async () => {
     const supabase = createSupabaseClient()
     
-    // Obtener lista de usuarios con rol 'usuario' incluyendo todas las relaciones
+    // Obtener lista de todos los usuarios incluyendo todas las relaciones
     const { data: usuarios, error: usuariosError } = await supabase
       .from("usuario_nomina")
       .select(`
@@ -532,7 +554,9 @@ export default function Usuarios() {
         afp_id: editUserData.afp_id ? parseInt(editUserData.afp_id) : null,
         cesantias_id: editUserData.cesantias_id ? parseInt(editUserData.cesantias_id) : null,
         caja_de_compensacion_id: editUserData.caja_de_compensacion_id ? parseInt(editUserData.caja_de_compensacion_id) : null,
-        direccion_residencia: editUserData.direccion_residencia || null
+        direccion_residencia: editUserData.direccion_residencia || null,
+        motivo_retiro: editUserData.estado === 'inactivo' ? (editUserData.motivo_retiro || null) : null,
+        fecha_retiro: editUserData.estado === 'inactivo' ? (editUserData.fecha_retiro || null) : null
       }
 
       const { error: dbError } = await supabase
@@ -542,8 +566,36 @@ export default function Usuarios() {
 
       if (dbError) throw dbError
       
+      // Los usuarios normales no tienen permisos especiales
+      if (false) {
+        // Primero eliminar permisos existentes
+        await supabase
+          .from('usuario_permisos')
+          .delete()
+          .eq('usuario_id', editUserData.auth_user_id)
+        
+        // Insertar nuevos permisos
+        const permisosParaInsertar = userPermissions.map(permiso => ({
+          usuario_id: editUserData.auth_user_id,
+          modulo_id: permiso.modulo_id,
+          puede_ver: permiso.puede_ver,
+          puede_crear: permiso.puede_crear,
+          puede_editar: permiso.puede_editar,
+          puede_eliminar: permiso.puede_eliminar
+        }))
+        
+        if (permisosParaInsertar.length > 0) {
+          const { error: permisosError } = await supabase
+            .from('usuario_permisos')
+            .insert(permisosParaInsertar)
+          
+          if (permisosError) throw permisosError
+        }
+      }
+      
       setEditUserSuccess(true)
       setEditUserData(null)
+      setUserPermissions([])
       
       // Recargar la lista de usuarios
       await fetchUsers()
@@ -699,6 +751,34 @@ export default function Usuarios() {
                         </Select>
                       </div>
 
+                      <div className="w-full md:w-48">
+                        <label className="text-sm font-medium mb-1 block">Estado</label>
+                        <Select value={selectedEstado} onValueChange={setSelectedEstado}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Todos los estados" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Todos los estados</SelectItem>
+                            <SelectItem value="activo">Activo</SelectItem>
+                            <SelectItem value="inactivo">Inactivo</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="w-full md:w-48">
+                        <label className="text-sm font-medium mb-1 block">Rol</label>
+                        <Select value={selectedRol} onValueChange={setSelectedRol}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Todos los roles" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Todos los roles</SelectItem>
+                            <SelectItem value="usuario">Usuario</SelectItem>
+
+                          </SelectContent>
+                        </Select>
+                      </div>
+
                       <Button variant="outline" onClick={clearFilters} className="flex items-center gap-1">
                         <X className="h-4 w-4" />
                         Limpiar filtros
@@ -706,7 +786,7 @@ export default function Usuarios() {
                     </div>
 
                     {/* Indicadores de filtros activos */}
-                    {(searchTerm || selectedEmpresa || selectedCargo || sortConfig) && (
+                    {(searchTerm || selectedEmpresa || selectedCargo || selectedEstado !== "all" || selectedRol !== "all" || sortConfig) && (
                       <div className="flex flex-wrap gap-2 mt-4">
                         <div className="text-sm text-muted-foreground">Filtros activos:</div>
                         {searchTerm && (
@@ -722,6 +802,16 @@ export default function Usuarios() {
                         {selectedCargo && selectedCargo !== "all" && (
                           <Badge variant="outline" className="flex items-center gap-1">
                             Cargo: {selectedCargo}
+                          </Badge>
+                        )}
+                        {selectedEstado && selectedEstado !== "all" && (
+                          <Badge variant="outline" className="flex items-center gap-1">
+                            Estado: {selectedEstado === "activo" ? "Activo" : "Inactivo"}
+                          </Badge>
+                        )}
+                        {selectedRol && selectedRol !== "all" && (
+                          <Badge variant="outline" className="flex items-center gap-1">
+                            Rol: Usuario
                           </Badge>
                         )}
                         {sortConfig && (
@@ -1024,6 +1114,7 @@ export default function Usuarios() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="usuario">Usuario</SelectItem>
+
                       <SelectItem value="administrador">Administrador</SelectItem>
                     </SelectContent>
                   </Select>
@@ -1282,8 +1373,7 @@ export default function Usuarios() {
             {editUserData && (
               <form className="space-y-6 px-2" onSubmit={handleEditUserSubmit}>
                 {/* Campos obligatorios */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+                <div>
                     <Label htmlFor="edit-nombre">Nombre completo *</Label>
                     <Input
                       id="edit-nombre"
@@ -1294,6 +1384,7 @@ export default function Usuarios() {
                       className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
                     />
                   </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                   <div>
                     <Label htmlFor="edit-email">Correo electrónico *</Label>
@@ -1327,6 +1418,7 @@ export default function Usuarios() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="usuario">Usuario</SelectItem>
+
                         <SelectItem value="administrador">Administrador</SelectItem>
                       </SelectContent>
                     </Select>
@@ -1344,6 +1436,34 @@ export default function Usuarios() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {/* Campos específicos para usuarios inactivos */}
+                  {editUserData.estado === 'inactivo' && (
+                    <>
+                      <div>
+                        <Label htmlFor="edit-motivo_retiro">Motivo de Retiro</Label>
+                        <Textarea
+                          id="edit-motivo_retiro"
+                          value={editUserData.motivo_retiro || ''}
+                          onChange={(e) => setEditUserData({ ...editUserData, motivo_retiro: e.target.value })}
+                          className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
+                          rows={3}
+                          placeholder="Especifique el motivo del retiro..."
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="edit-fecha_retiro">Fecha de Retiro</Label>
+                        <Input
+                          id="edit-fecha_retiro"
+                          type="date"
+                          value={editUserData.fecha_retiro || ''}
+                          onChange={(e) => setEditUserData({ ...editUserData, fecha_retiro: e.target.value })}
+                          className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Información adicional */}
@@ -1551,6 +1671,8 @@ export default function Usuarios() {
                     />
                   </div>
                 </div>
+
+
 
                 <div className="flex justify-end gap-2 pt-4 border-t">
                   <Button type="button" variant="outline" onClick={() => setIsEditUserModalOpen(false)}>

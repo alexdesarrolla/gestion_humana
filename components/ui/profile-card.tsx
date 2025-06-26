@@ -28,6 +28,7 @@ import { createSupabaseClient } from "@/lib/supabase"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 
+
 interface ProfileCardProps {
   userData: any
 }
@@ -40,6 +41,7 @@ export function ProfileCard({ userData }: ProfileCardProps) {
   const [showUploadOptions, setShowUploadOptions] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createSupabaseClient()
+
 
   useEffect(() => {
     if (userData) {
@@ -97,7 +99,10 @@ export function ProfileCard({ userData }: ProfileCardProps) {
       // Crear un canvas para redimensionar la imagen a exactamente 600px de ancho manteniendo relación de aspecto
       const img = document.createElement('img')
       img.src = URL.createObjectURL(file)
-      await new Promise((resolve) => { img.onload = resolve })
+      await new Promise((resolve, reject) => {
+        img.onload = resolve
+        img.onerror = () => reject(new Error('Error al cargar la imagen'))
+      })
       
       const canvas = document.createElement('canvas')
       const targetWidth = 600
@@ -112,8 +117,14 @@ export function ProfileCard({ userData }: ProfileCardProps) {
       }
       
       // Convertir a webp con 85% de calidad.
-      const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob((blob) => resolve(blob), 'image/webp', 0.85)
+      const blob = await new Promise<Blob | null>((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(blob)
+          } else {
+            reject(new Error('Error al convertir la imagen a WebP'))
+          }
+        }, 'image/webp', 0.85)
       })
       
       if (!blob) throw new Error('Error al convertir la imagen')
@@ -194,8 +205,17 @@ export function ProfileCard({ userData }: ProfileCardProps) {
               <div
                 className="h-20 w-20 rounded-full overflow-hidden cursor-pointer border-2 border-white shadow-md"
                 onClick={() => setIsModalOpen(true)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setIsModalOpen(true)
+                  }
+                }}
+                aria-label="Ver avatar en tamaño completo"
               >
-                <img src={avatarUrl || undefined} alt="User avatar" className="h-full w-full object-cover" />
+                <img src={avatarUrl || undefined} alt="Avatar del usuario" className="h-full w-full object-cover" />
               </div>
               <div
                 className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
@@ -221,7 +241,7 @@ export function ProfileCard({ userData }: ProfileCardProps) {
                   <div className="p-6 flex flex-col items-center">
                     <div className="relative mb-6">
                       <div className="h-40 w-40 rounded-full overflow-hidden border-4 border-white shadow-lg">
-                        <img src={avatarUrl || undefined} alt="User avatar" className="h-full w-full object-cover" />
+                        <img src={avatarUrl || undefined} alt="Avatar del usuario" className="h-full w-full object-cover" />
                       </div>
                     </div>
 
@@ -270,9 +290,10 @@ export function ProfileCard({ userData }: ProfileCardProps) {
 
                   <div className="space-y-4">
                     <button
-                      className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                      className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={triggerFileInput}
                       disabled={isUploading}
+                      aria-label={isUploading ? "Subiendo imagen" : "Seleccionar imagen desde el dispositivo"}
                     >
                       {isUploading ? (
                         <Loader2 className="h-5 w-5 text-primary animate-spin" />
@@ -305,6 +326,11 @@ export function ProfileCard({ userData }: ProfileCardProps) {
                 <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-3 py-1 text-sm">
                   {userData?.empresas?.nombre || "Empresa no asignada"}
                 </Badge>
+                {userData?.estado === "inactivo" && (
+                  <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200 px-3 py-1 text-sm">
+                    Inactivo
+                  </Badge>
+                )}
                 {userData?.enVacaciones && (
                   <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 px-3 py-1 text-sm">
                     De vacaciones
@@ -317,7 +343,7 @@ export function ProfileCard({ userData }: ProfileCardProps) {
       </CardHeader>
       <CardContent className="pt-6">
         <Tabs defaultValue="personal" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 h-auto [&>*]:whitespace-normal [&>*]:">
+          <TabsList className="grid w-full h-auto [&>*]:whitespace-normal grid-cols-3">
             <TabsTrigger value="personal">Información Personal</TabsTrigger>
             <TabsTrigger value="laboral">Información Laboral</TabsTrigger>
             <TabsTrigger value="afiliaciones">Afiliaciones</TabsTrigger>
@@ -366,7 +392,7 @@ export function ProfileCard({ userData }: ProfileCardProps) {
               </div>
 
               <div className="flex items-start gap-3">
-                <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <User className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Edad</p>
                   <p className="text-sm font-medium">{userData?.edad || "No disponible"} años</p>
@@ -424,6 +450,26 @@ export function ProfileCard({ userData }: ProfileCardProps) {
                   <p className="text-sm font-medium">{userData?.sedes?.nombre || "No disponible"}</p>
                 </div>
               </div>
+
+              {userData?.estado === "inactivo" && (
+                <>
+                  <div className="flex items-start gap-3">
+                    <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Fecha de Retiro</p>
+                      <p className="text-sm font-medium">{userData?.fecha_retiro || "No disponible"}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <User className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Motivo de Retiro</p>
+                      <p className="text-sm font-medium">{userData?.motivo_retiro || "No disponible"}</p>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </TabsContent>
 
@@ -462,6 +508,8 @@ export function ProfileCard({ userData }: ProfileCardProps) {
               </div>
             </div>
           </TabsContent>
+
+
         </Tabs>
       </CardContent>
     </Card>

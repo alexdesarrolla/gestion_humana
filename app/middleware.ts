@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
 // Función segura para crear el cliente de Supabase
 const createSupabaseClientSafe = () => {
@@ -44,12 +45,23 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/login', request.url));
     }
 
-    // Verificar acceso según el rol
+    // Verificar acceso según el rol y permisos
     const path = request.nextUrl.pathname;
 
-    if (path.startsWith('/administracion') && userData.rol !== 'administrador') {
-      // Si intenta acceder a la sección de administración sin ser administrador, redirigir a perfil
-      return NextResponse.redirect(new URL('/perfil', request.url));
+    if (path.startsWith('/administracion')) {
+      // Los administradores tienen acceso completo
+      if (userData.rol === 'administrador') {
+        return NextResponse.next();
+      }
+      
+      // Solo los administradores tienen acceso a las rutas de administración
+      if (userData.rol !== 'administrador') {
+          return NextResponse.redirect(new URL('/perfil', request.url));
+        }
+      } else {
+        // Los usuarios normales no pueden acceder a administración
+        return NextResponse.redirect(new URL('/perfil', request.url));
+      }
     }
 
     return NextResponse.next();

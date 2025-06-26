@@ -46,12 +46,8 @@ export default function Perfil() {
         return
       }
 
-      // Verificar si el usuario está activo
-      if (userData.estado !== "activo") {
-        await supabase.auth.signOut()
-        router.push("/login")
-        return
-      }
+      // Permitir acceso a usuarios inactivos para que puedan ver su perfil
+      // (Se removió la verificación que redirigía a login)
 
       // Verificar si el usuario está actualmente de vacaciones
       const today = new Date().toISOString().split('T')[0]

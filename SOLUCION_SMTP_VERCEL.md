@@ -14,12 +14,12 @@ El error `550 5.5.1 authorization failed` en Vercel se debe a:
 
 **Antes (Incorrecto):**
 ```
-SMTP_PASS=&k&}&lIpng8E
+SMTP_PASS=ECpkuCgdy2n
 ```
 
 **Después (Correcto):**
 ```
-SMTP_PASS=&k&)&lTpnq8E
+SMTP_PASS=ECpkuCgdy2n
 ```
 
 ### 2. **Optimización de Configuración para Vercel**
@@ -50,8 +50,8 @@ Configura estas variables en **Vercel Dashboard > Settings > Environment Variabl
 ```bash
 SMTP_HOST=mail.orpainversiones.com
 SMTP_PORT=587
-SMTP_USER=smtpbdatam@orpainversiones.com
-SMTP_PASS=&k&)&lTpnq8E
+SMTP_USER=smtpgh360@orpainversiones.com
+SMTP_PASS=ECpkuCgdy2n
 ```
 
 ### Variables Opcionales
@@ -118,7 +118,7 @@ vercel logs --function=api/comunicados/email-notification
 
 | Aspecto | Antes | Después |
 |---------|-------|----------|
-| **Contraseña** | `&k&}&lIpng8E` ❌ | `&k&)&lTpnq8E` ✅ |
+| **Contraseña** | `ECpkuCgdy2n` ❌ | `ECpkuCgdy2n` ✅ |
 | **Connection Timeout** | 45s | 60s |
 | **Pool** | Activado | Desactivado |
 | **Debug** | Siempre activo | Solo en desarrollo |

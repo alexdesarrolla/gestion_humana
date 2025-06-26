@@ -71,8 +71,8 @@ socketTimeout: 45000
 ```env
 SMTP_HOST=mail.orpainversiones.com
 SMTP_PORT=587
-SMTP_USER=smtpbdatam@orpainversiones.com
-SMTP_PASS=&k&)&lTpnq8E
+SMTP_USER=smtpgh360@orpainversiones.com
+SMTP_PASS=ECpkuCgdy2n
 ```
 
 ## 📋 Pasos para Aplicar la Corrección

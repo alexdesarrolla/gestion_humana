@@ -35,8 +35,8 @@ En el archivo `.env.local` se han configurado las siguientes variables:
 # Configuración SMTP
 SMTP_HOST=mail.orpainversiones.com
 SMTP_PORT=587
-SMTP_USER=smtpbdatam@orpainversiones.com
-SMTP_PASS=&k&)&lTpnq8E
+SMTP_USER=smtpgh360@orpainversiones.com
+SMTP_PASS=ECpkuCgdy2n
 
 # URL del sitio para enlaces en correos
 NEXT_PUBLIC_SITE_URL=http://localhost:3000

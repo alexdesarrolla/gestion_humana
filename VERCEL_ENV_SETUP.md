@@ -11,8 +11,8 @@ Configura las siguientes variables en tu panel de Vercel (Settings > Environment
 ```
 SMTP_HOST=mail.orpainversiones.com
 SMTP_PORT=587
-SMTP_USER=smtpbdatam@orpainversiones.com
-SMTP_PASS=&k&)&lTpnq8E
+SMTP_USER=smtpgh360@orpainversiones.com
+SMTP_PASS=ECpkuCgdy2n
 ```
 
 ### Variables Opcionales
@@ -43,8 +43,8 @@ SMTP_PASS=tu-contraseña
 ```
 SMTP_HOST=mail.orpainversiones.com
 SMTP_PORT=587
-SMTP_USER=smtpbdatam@orpainversiones.com
-SMTP_PASS=&k&)&lTpnq8E
+SMTP_USER=smtpgh360@orpainversiones.com
+SMTP_PASS=ECpkuCgdy2n
 ```
 
 ## Notas Importantes

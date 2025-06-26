@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ChevronDown, ChevronUp, Search, X, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Loader2, Plus, EyeIcon, EyeOff, Edit } from "lucide-react"
+import { ChevronDown, ChevronUp, Search, X, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Loader2, Plus, Edit } from "lucide-react"
 import { ProfileCard } from "@/components/ui/profile-card"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
@@ -43,8 +43,6 @@ export default function Usuarios() {
     nombre: '',
     correo: '',
     telefono: '',
-    password: '',
-    confirmPassword: '',
     rol: 'usuario',
     genero: '',
     cedula: '',
@@ -67,8 +65,7 @@ export default function Usuarios() {
   const [cajaDeCompensacionOptions, setCajaDeCompensacionOptions] = useState<any[]>([])
   const [addUserError, setAddUserError] = useState('')
   const [addUserSuccess, setAddUserSuccess] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
   const [addUserLoading, setAddUserLoading] = useState(false)
   const [editUserError, setEditUserError] = useState('')
   const [editUserSuccess, setEditUserSuccess] = useState(false)
@@ -180,7 +177,7 @@ export default function Usuarios() {
       // Agregar información de vacaciones a cada usuario
       const usuariosConVacaciones = usuarios?.map(user => ({
         ...user,
-        enVacaciones: vacacionesActivas?.some(vacacion => vacacion.usuario_id === user.auth_user_id) || false
+        enVacaciones: user.auth_user_id ? vacacionesActivas?.some(vacacion => vacacion.usuario_id === user.auth_user_id) || false : false
       })) || []
 
       setUsers(usuariosConVacaciones)
@@ -374,6 +371,7 @@ export default function Usuarios() {
       correo: user.correo_electronico || '',
       telefono: user.telefono || '',
       rol: user.rol || 'usuario',
+      estado: user.estado || 'activo',
       genero: user.genero ? user.genero.toLowerCase() : '',
       cedula: user.cedula || '',
       fecha_ingreso: user.fecha_ingreso || '',
@@ -429,7 +427,7 @@ export default function Usuarios() {
     // Agregar información de vacaciones a cada usuario
     const usuariosConVacaciones = usuarios?.map(user => ({
       ...user,
-      enVacaciones: vacacionesActivas?.some(vacacion => vacacion.usuario_id === user.auth_user_id) || false
+      enVacaciones: user.auth_user_id ? vacacionesActivas?.some(vacacion => vacacion.usuario_id === user.auth_user_id) || false : false
     })) || []
 
     setUsers(usuariosConVacaciones)
@@ -442,92 +440,63 @@ export default function Usuarios() {
     setAddUserSuccess(false)
     setAddUserLoading(true)
 
-    if (newUserData.password !== newUserData.confirmPassword) {
-      setAddUserError('Las contraseñas no coinciden')
-      setAddUserLoading(false)
-      return
-    }
-
     try {
       const supabase = createSupabaseClient()
 
-      // Obtener la sesión actual del administrador antes de crear el nuevo usuario
-      const { data: { session: currentSession } } = await supabase.auth.getSession()
+      // Insertar directamente en la tabla usuario_nomina sin crear autenticación
+      const { error: dbError } = await supabase
+        .from('usuario_nomina')
+        .insert([
+          {
+            colaborador: newUserData.nombre,
+            correo_electronico: newUserData.correo,
+            telefono: newUserData.telefono,
+            rol: newUserData.rol,
+            genero: newUserData.genero || null,
+            cedula: newUserData.cedula || null,
+            fecha_ingreso: newUserData.fecha_ingreso || null,
+            empresa_id: newUserData.empresa_id ? parseInt(newUserData.empresa_id) : null,
+            cargo_id: newUserData.cargo_id || null,
+            sede_id: newUserData.sede_id ? parseInt(newUserData.sede_id) : null,
+            fecha_nacimiento: newUserData.fecha_nacimiento || null,
+            edad: newUserData.edad ? parseInt(newUserData.edad) : null,
+            rh: newUserData.rh || null,
+            eps_id: newUserData.eps_id ? parseInt(newUserData.eps_id) : null,
+            afp_id: newUserData.afp_id ? parseInt(newUserData.afp_id) : null,
+            cesantias_id: newUserData.cesantias_id ? parseInt(newUserData.cesantias_id) : null,
+            caja_de_compensacion_id: newUserData.caja_de_compensacion_id ? parseInt(newUserData.caja_de_compensacion_id) : null,
+            direccion_residencia: newUserData.direccion_residencia || null,
+            estado: 'activo'
+          }
+        ])
 
-      // Crear el usuario usando la función admin de Supabase
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: newUserData.correo,
-        password: newUserData.password,
-        email_confirm: true
+      if (dbError) throw dbError
+      
+      setAddUserSuccess(true)
+      setNewUserData({
+        nombre: '',
+        correo: '',
+        telefono: '',
+        rol: 'usuario',
+        genero: '',
+        cedula: '',
+        fecha_ingreso: '',
+        empresa_id: '',
+        cargo_id: '',
+        sede_id: '',
+        fecha_nacimiento: '',
+        edad: '',
+        rh: '',
+        eps_id: '',
+        afp_id: '',
+        cesantias_id: '',
+        caja_de_compensacion_id: '',
+        direccion_residencia: ''
       })
-
-      if (authError) throw authError
-
-      if (authData.user) {
-        const { error: dbError } = await supabase
-          .from('usuario_nomina')
-          .insert([
-            {
-              colaborador: newUserData.nombre,
-              correo_electronico: newUserData.correo,
-              telefono: newUserData.telefono,
-              auth_user_id: authData.user.id,
-              user_id: authData.user.id,
-              rol: newUserData.rol,
-              genero: newUserData.genero || null,
-              cedula: newUserData.cedula || null,
-              fecha_ingreso: newUserData.fecha_ingreso || null,
-              empresa_id: newUserData.empresa_id ? parseInt(newUserData.empresa_id) : null,
-              cargo_id: newUserData.cargo_id ? parseInt(newUserData.cargo_id) : null,
-              sede_id: newUserData.sede_id ? parseInt(newUserData.sede_id) : null,
-              fecha_nacimiento: newUserData.fecha_nacimiento || null,
-              edad: newUserData.edad ? parseInt(newUserData.edad) : null,
-              rh: newUserData.rh || null,
-              eps_id: newUserData.eps_id || null,
-              afp_id: newUserData.afp_id || null,
-              cesantias_id: newUserData.cesantias_id ? parseInt(newUserData.cesantias_id) : null,
-              caja_de_compensacion_id: newUserData.caja_de_compensacion_id ? parseInt(newUserData.caja_de_compensacion_id) : null,
-              direccion_residencia: newUserData.direccion_residencia || null
-            }
-          ])
-
-        if (dbError) throw dbError
-        
-        // Restaurar la sesión del administrador si es necesario
-        if (currentSession) {
-          await supabase.auth.setSession({
-            access_token: currentSession.access_token,
-            refresh_token: currentSession.refresh_token
-          })
-        }
-        
-        setAddUserSuccess(true)
-        setNewUserData({
-          nombre: '',
-          correo: '',
-          telefono: '',
-          password: '',
-          confirmPassword: '',
-          rol: 'usuario',
-          genero: '',
-          cedula: '',
-          fecha_ingreso: '',
-          empresa_id: '',
-          cargo_id: '',
-          sede_id: '',
-          fecha_nacimiento: '',
-          edad: '',
-          rh: '',
-          eps_id: '',
-          afp_id: '',
-          cesantias_id: '',
-          caja_de_compensacion_id: '',
-          direccion_residencia: ''
-        })
-        
-        // Recargar la lista de usuarios
-        await fetchUsers()
-      }
+      
+      // Recargar la lista de usuarios
+      await fetchUsers()
+      
     } catch (err: any) {
       setAddUserError(err.message)
     } finally {
@@ -549,6 +518,7 @@ export default function Usuarios() {
         correo_electronico: editUserData.correo,
         telefono: editUserData.telefono,
         rol: editUserData.rol,
+        estado: editUserData.estado,
         genero: editUserData.genero || null,
         cedula: editUserData.cedula || null,
         fecha_ingreso: editUserData.fecha_ingreso || null,
@@ -558,8 +528,8 @@ export default function Usuarios() {
         fecha_nacimiento: editUserData.fecha_nacimiento || null,
         edad: editUserData.edad ? parseInt(editUserData.edad) : null,
         rh: editUserData.rh || null,
-        eps_id: editUserData.eps_id || null,
-        afp_id: editUserData.afp_id || null,
+        eps_id: editUserData.eps_id ? parseInt(editUserData.eps_id) : null,
+        afp_id: editUserData.afp_id ? parseInt(editUserData.afp_id) : null,
         cesantias_id: editUserData.cesantias_id ? parseInt(editUserData.cesantias_id) : null,
         caja_de_compensacion_id: editUserData.caja_de_compensacion_id ? parseInt(editUserData.caja_de_compensacion_id) : null,
         direccion_residencia: editUserData.direccion_residencia || null
@@ -817,13 +787,22 @@ export default function Usuarios() {
                                 {getSortIcon("correo_electronico")}
                               </div>
                             </TableHead>
+                            <TableHead
+                              className="cursor-pointer hover:bg-muted/50"
+                              onClick={() => requestSort("estado")}
+                            >
+                              <div className="flex items-center">
+                                Estado
+                                {getSortIcon("estado")}
+                              </div>
+                            </TableHead>
                             <TableHead>Acciones</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {paginatedUsers.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                                 No se encontraron usuarios con los filtros aplicados
                               </TableCell>
                             </TableRow>
@@ -855,6 +834,14 @@ export default function Usuarios() {
                   )}
                                 </TableCell>
                                 <TableCell>{user.correo_electronico}</TableCell>
+                                <TableCell>
+                                  <Badge 
+                                    variant={user.estado === 'activo' ? 'default' : 'destructive'}
+                                    className={user.estado === 'activo' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}
+                                  >
+                                    {user.estado === 'activo' ? 'Activo' : 'Inactivo'}
+                                  </Badge>
+                                </TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-2">
                                     <Button
@@ -1042,51 +1029,7 @@ export default function Usuarios() {
                   </Select>
                 </div>
 
-                <div>
-                  <Label htmlFor="password">Contraseña *</Label>
-                  <div className="relative mt-1">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      required
-                      value={newUserData.password}
-                      onChange={(e) => setNewUserData({ ...newUserData, password: e.target.value })}
-                      className="border-2 focus:border-blue-500 transition-colors px-3 py-2"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </div>
 
-                <div>
-                  <Label htmlFor="confirmPassword">Confirmar Contraseña *</Label>
-                  <div className="relative mt-1">
-                    <Input
-                      id="confirmPassword"
-                      type={showConfirmPassword ? "text" : "password"}
-                      required
-                      value={newUserData.confirmPassword}
-                      onChange={(e) => setNewUserData({ ...newUserData, confirmPassword: e.target.value })}
-                      className="border-2 focus:border-blue-500 transition-colors px-3 py-2"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    >
-                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </div>
               </div>
 
               {/* Información adicional */}
@@ -1385,6 +1328,19 @@ export default function Usuarios() {
                       <SelectContent>
                         <SelectItem value="usuario">Usuario</SelectItem>
                         <SelectItem value="administrador">Administrador</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="edit-estado">Estado *</Label>
+                    <Select value={editUserData.estado} onValueChange={(value) => setEditUserData({ ...editUserData, estado: value })}>
+                      <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                        <SelectValue placeholder="Seleccionar estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="activo">Activo</SelectItem>
+                        <SelectItem value="inactivo">Inactivo</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

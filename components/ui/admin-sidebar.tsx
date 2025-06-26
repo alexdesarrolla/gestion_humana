@@ -174,8 +174,8 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
   useEffect(() => {
     const newExpandedMenus = {...expandedMenus};
     menuItems.forEach((item, index) => {
-      if (item.subItems) {
-        const hasActiveSubItem = item.subItems.some(subItem => subItem.current);
+      if ('subItems' in item && item.subItems && Array.isArray(item.subItems)) {
+        const hasActiveSubItem = item.subItems.some((subItem: any) => subItem.current);
         if (hasActiveSubItem) {
           newExpandedMenus[index] = true;
         }
@@ -236,7 +236,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
             <nav className="mt-5 px-2 space-y-1">
               {menuItems.map((item, index) => (
                 <div key={item.name}>
-                  {item.subItems ? (
+                  {('subItems' in item && item.subItems) ? (
                     <>
                       <button
                         onClick={() => toggleMenu(index)}
@@ -264,7 +264,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
                       </button>
                       {expandedMenus[index] && (
                         <div className="pl-8 mt-1 space-y-1">
-                          {item.subItems.map((subItem) => (
+                          {('subItems' in item && item.subItems && Array.isArray(item.subItems)) && item.subItems.map((subItem: any) => (
                             <Link
                               key={subItem.name}
                               href={subItem.href}
@@ -329,7 +329,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
             <nav className="mt-8 flex-1 px-2 space-y-1">
               {menuItems.map((item, index) => (
                 <div key={item.name}>
-                  {item.subItems ? (
+                  {('subItems' in item && item.subItems) ? (
                     <>
                       <button
                         onClick={() => toggleMenu(index)}
@@ -357,7 +357,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
                       </button>
                       {expandedMenus[index] && (
                         <div className="pl-8 mt-1 space-y-1">
-                          {item.subItems.map((subItem) => (
+                          {('subItems' in item && item.subItems && Array.isArray(item.subItems)) && item.subItems.map((subItem: any) => (
                             <Link
                               key={subItem.name}
                               href={subItem.href}

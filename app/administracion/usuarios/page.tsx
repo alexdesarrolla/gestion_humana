@@ -369,7 +369,7 @@ export default function Usuarios() {
     setCurrentPage(1)
 
     // Aplicar filtros inmediatamente sin esperar
-    applyFilters("", "", "all", "all", null)
+    applyFilters("", "", "all", "all", "all", null)
   }
 
   const handleViewDetails = (user: any) => {

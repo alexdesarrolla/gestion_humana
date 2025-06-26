@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 
 // Función segura para crear el cliente de Supabase
 const createSupabaseClientSafe = () => {
@@ -56,10 +55,6 @@ export async function middleware(request: NextRequest) {
       
       // Solo los administradores tienen acceso a las rutas de administración
       if (userData.rol !== 'administrador') {
-          return NextResponse.redirect(new URL('/perfil', request.url));
-        }
-      } else {
-        // Los usuarios normales no pueden acceder a administración
         return NextResponse.redirect(new URL('/perfil', request.url));
       }
     }

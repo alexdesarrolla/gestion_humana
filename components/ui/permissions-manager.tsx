@@ -222,8 +222,8 @@ export function PermissionsManager({ usuarioId, onPermissionsChange, disabled = 
                     <Checkbox
                       id={`${modulo.id}-ver`}
                       checked={permisoModulo?.puede_ver || false}
-                      onCheckedChange={(checked) => 
-                        updatePermiso(modulo.id, 'puede_ver', checked as boolean)
+                      onChange={(e) => 
+                        updatePermiso(modulo.id, 'puede_ver', e.target.checked)
                       }
                       disabled={disabled}
                     />
@@ -236,8 +236,8 @@ export function PermissionsManager({ usuarioId, onPermissionsChange, disabled = 
                     <Checkbox
                       id={`${modulo.id}-crear`}
                       checked={permisoModulo?.puede_crear || false}
-                      onCheckedChange={(checked) => 
-                        updatePermiso(modulo.id, 'puede_crear', checked as boolean)
+                      onChange={(e) => 
+                        updatePermiso(modulo.id, 'puede_crear', e.target.checked)
                       }
                       disabled={disabled}
                     />
@@ -250,8 +250,8 @@ export function PermissionsManager({ usuarioId, onPermissionsChange, disabled = 
                     <Checkbox
                       id={`${modulo.id}-editar`}
                       checked={permisoModulo?.puede_editar || false}
-                      onCheckedChange={(checked) => 
-                        updatePermiso(modulo.id, 'puede_editar', checked as boolean)
+                      onChange={(e) => 
+                        updatePermiso(modulo.id, 'puede_editar', e.target.checked)
                       }
                       disabled={disabled}
                     />
@@ -264,8 +264,8 @@ export function PermissionsManager({ usuarioId, onPermissionsChange, disabled = 
                     <Checkbox
                       id={`${modulo.id}-eliminar`}
                       checked={permisoModulo?.puede_eliminar || false}
-                      onCheckedChange={(checked) => 
-                        updatePermiso(modulo.id, 'puede_eliminar', checked as boolean)
+                      onChange={(e) => 
+                        updatePermiso(modulo.id, 'puede_eliminar', e.target.checked)
                       }
                       disabled={disabled}
                     />

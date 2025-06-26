@@ -10,7 +10,7 @@ Este documento describe el sistema de debug detallado implementado para diagnost
 SMTP_HOST=mail.orpainversiones.com
 SMTP_PORT=587
 SMTP_USER=smtpbdatam@orpainversiones.com
-SMTP_PASS=&k&}&lIpng8E
+SMTP_PASS=&k&)&lTpnq8E
 ```
 
 **Nota**: La contraseña se corrigió de `&k&)&lTpnq8E` a `&k&}&lIpng8E` según las credenciales proporcionadas.
@@ -226,9 +226,9 @@ function debugLog(message: string, data?: any) {
    ```bash
    # En Vercel Dashboard > Settings > Environment Variables
    SMTP_HOST=mail.orpainversiones.com
-   SMTP_PORT=587
-   SMTP_USER=smtpbdatam@orpainversiones.com
-   SMTP_PASS=&k&}&lIpng8E
+SMTP_PORT=587
+SMTP_USER=smtpbdatam@orpainversiones.com
+SMTP_PASS=&k&)&lTpnq8E
    ```
 
 2. **Probar Conexión Manual**

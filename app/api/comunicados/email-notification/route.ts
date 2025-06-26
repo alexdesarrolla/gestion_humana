@@ -28,30 +28,38 @@ function getSMTPConfig() {
     isLocal
   });
   
+  // Credenciales corregidas - la contraseña correcta es &k&)&lTpnq8E
+  const defaultCredentials = {
+    host: 'mail.orpainversiones.com',
+    user: 'smtpbdatam@orpainversiones.com',
+    pass: '&k&)&lTpnq8E' // Contraseña corregida
+  };
+  
   const config: any = {
-    host: process.env.SMTP_HOST || 'mail.orpainversiones.com',
+    host: process.env.SMTP_HOST || defaultCredentials.host,
     port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: false, // false para STARTTLS
+    secure: false, // false para STARTTLS en puerto 587
     auth: {
-      user: process.env.SMTP_USER || 'smtpbdatam@orpainversiones.com',
-      pass: process.env.SMTP_PASS || '&k&}&lIpng8E'
+      user: process.env.SMTP_USER || defaultCredentials.user,
+      pass: process.env.SMTP_PASS || defaultCredentials.pass
     },
     // Configuración optimizada por entorno
-    connectionTimeout: isVercel ? 45000 : 60000,
-    greetingTimeout: isVercel ? 20000 : 30000,
-    socketTimeout: isVercel ? 45000 : 60000,
-    pool: isVercel ? false : true, // Desactivar pool en Vercel
-    maxConnections: isVercel ? 1 : 5, // Una conexión a la vez en Vercel
-    maxMessages: isVercel ? 1 : 100, // Un mensaje por conexión en Vercel
-    // Configuraciones específicas para diferentes entornos
+    connectionTimeout: isVercel ? 60000 : 60000, // Aumentado para Vercel
+    greetingTimeout: isVercel ? 30000 : 30000,   // Aumentado para Vercel
+    socketTimeout: isVercel ? 60000 : 60000,     // Aumentado para Vercel
+    pool: false, // Desactivar pool para mejor compatibilidad
+    maxConnections: 1, // Una conexión a la vez
+    maxMessages: 1,    // Un mensaje por conexión
+    // Configuraciones TLS mejoradas para Vercel
     tls: {
       rejectUnauthorized: false,
       minVersion: 'TLSv1.2',
-      maxVersion: 'TLSv1.3',
       ciphers: 'HIGH:!aNULL:!MD5:!RC4'
     },
-    logger: true, // Habilitar logging para debug
-    debug: true   // Habilitar debug detallado
+    // Configuraciones adicionales para Vercel
+    requireTLS: true,
+    logger: true,
+    debug: isLocal // Solo debug en local para reducir logs en Vercel
   };
   
   debugLog('Configuración SMTP generada:', {

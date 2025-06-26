@@ -72,7 +72,7 @@ socketTimeout: 45000
 SMTP_HOST=mail.orpainversiones.com
 SMTP_PORT=587
 SMTP_USER=smtpbdatam@orpainversiones.com
-SMTP_PASS=&k&}&lIpng8E
+SMTP_PASS=&k&)&lTpnq8E
 ```
 
 ## 📋 Pasos para Aplicar la Corrección

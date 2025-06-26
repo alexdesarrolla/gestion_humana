@@ -58,6 +58,13 @@ export default function Administracion() {
         return
       }
 
+      // Verificar si el usuario está activo
+      if (userData.estado !== "activo") {
+        await supabase.auth.signOut()
+        router.push("/login")
+        return
+      }
+
       // Verificar si el usuario es administrador
       if (userData.rol !== 'administrador') {
         router.push('/perfil')

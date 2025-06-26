@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
 // Función segura para crear el cliente de Supabase
 const createSupabaseClientSafe = () => {
@@ -26,15 +27,22 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/login', request.url));
     }
 
-    // Obtener el rol del usuario
+    // Obtener el rol y estado del usuario
     const { data: userData, error: userError } = await supabase
       .from('usuario_nomina')
-      .select('rol')
+      .select('rol, estado')
       .eq('auth_user_id', session.user.id)
       .single();
 
     if (userError) {
       throw userError;
+    }
+
+    // Verificar si el usuario está activo
+    if (userData.estado !== 'activo') {
+      // Si el usuario no está activo, cerrar sesión y redirigir al login
+      await supabase.auth.signOut();
+      return NextResponse.redirect(new URL('/login', request.url));
     }
 
     // Verificar acceso según el rol

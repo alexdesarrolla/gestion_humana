@@ -36,14 +36,21 @@ export default function Login() {
       } = await supabase.auth.getSession()
 
       if (session && !error) {
-        // Si hay sesión activa, obtener el rol y redirigir
+        // Si hay sesión activa, obtener el rol y estado, y redirigir
         const { data: userData, error: userError } = await supabase
           .from("usuario_nomina")
-          .select("rol")
+          .select("rol, estado")
           .eq("auth_user_id", session.user.id)
           .single()
 
         if (!userError && userData) {
+          // Verificar si el usuario está activo
+          if (userData.estado !== "activo") {
+            // Cerrar la sesión si el usuario no está activo
+            await supabase.auth.signOut()
+            return
+          }
+
           if (userData.rol === "administrador") {
             router.push("/administracion")
           } else {
@@ -99,14 +106,21 @@ export default function Login() {
       if (error) throw error
 
       if (data.user) {
-        // Obtener el rol del usuario
+        // Obtener el rol y estado del usuario
         const { data: userData, error: userError } = await supabase
           .from("usuario_nomina")
-          .select("rol")
+          .select("rol, estado")
           .eq("auth_user_id", data.user.id)
           .single()
 
         if (userError) throw userError
+
+        // Verificar si el usuario está activo
+        if (userData.estado !== "activo") {
+          // Cerrar la sesión si el usuario no está activo
+          await supabase.auth.signOut()
+          throw new Error("Tu cuenta no está activa actualmente. Contacta al administrador para más información.")
+        }
 
         // Redirigir según el rol
         if (userData.rol === "administrador") {

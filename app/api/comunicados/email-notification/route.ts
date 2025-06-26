@@ -28,11 +28,11 @@ function getSMTPConfig() {
     isLocal
   });
   
-  // Credenciales corregidas - la contraseña correcta es &k&)&lTpnq8E
+  // Credenciales de Gmail
   const defaultCredentials = {
-    host: 'mail.orpainversiones.com',
-    user: 'smtpbdatam@orpainversiones.com',
-    pass: '&k&)&lTpnq8E' // Contraseña corregida
+    host: 'smtp.gmail.com',
+    user: 'digital@bdatam.com',
+    pass: 'ewjqvsntmbadbzah' // App Password de Gmail
   };
   
   const config: any = {

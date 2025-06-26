@@ -32,11 +32,11 @@ Cada correo incluye:
 En el archivo `.env.local` se han configurado las siguientes variables:
 
 ```env
-# Configuración SMTP
-SMTP_HOST=mail.orpainversiones.com
+# Configuración SMTP - Gmail
+SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USER=smtpgh360@orpainversiones.com
-SMTP_PASS=ECpkuCgdy2n
+SMTP_USER=digital@bdatam.com
+SMTP_PASS=ewjqvsntmbadbzah
 
 # URL del sitio para enlaces en correos
 NEXT_PUBLIC_SITE_URL=http://localhost:3000

@@ -25,18 +25,18 @@ NEXT_PUBLIC_SITE_URL=https://tu-dominio.vercel.app
 
 ### Gmail/Google Workspace
 ```
-SMTP_HOST=smtp.gmail.com
+SMTP_HOST=mail.orpainversiones.com
 SMTP_PORT=587
-SMTP_USER=tu-email@gmail.com
-SMTP_PASS=tu-app-password
+SMTP_USER=smtpgh360@orpainversiones.com
+SMTP_PASS=ECpkuCgdy2n
 ```
 
 ### Outlook/Hotmail
 ```
-SMTP_HOST=smtp-mail.outlook.com
+SMTP_HOST=mail.orpainversiones.com
 SMTP_PORT=587
-SMTP_USER=tu-email@outlook.com
-SMTP_PASS=tu-contraseña
+SMTP_USER=smtpgh360@orpainversiones.com
+SMTP_PASS=ECpkuCgdy2n
 ```
 
 ### Proveedores Empresariales

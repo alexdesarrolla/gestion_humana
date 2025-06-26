@@ -226,9 +226,9 @@ function debugLog(message: string, data?: any) {
    ```bash
    # En Vercel Dashboard > Settings > Environment Variables
    SMTP_HOST=mail.orpainversiones.com
-SMTP_PORT=587
-SMTP_USER=smtpgh360@orpainversiones.com
-SMTP_PASS=ECpkuCgdy2n
+   SMTP_PORT=587
+   SMTP_USER=smtpgh360@orpainversiones.com
+   SMTP_PASS=ECpkuCgdy2n
    ```
 
 2. **Probar Conexión Manual**

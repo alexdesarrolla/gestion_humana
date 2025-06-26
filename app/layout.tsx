@@ -10,6 +10,9 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Gestión Humana 360",
   description: "Creado por Bdatam",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({

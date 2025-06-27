@@ -17,7 +17,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { PermissionsManager, type PermisoModulo } from "@/components/ui/permissions-manager"
+import { PermissionsManager } from "@/components/ui/permissions-manager"
 
 export default function Usuarios() {
   const router = useRouter()
@@ -76,7 +76,7 @@ export default function Usuarios() {
   const [editUserLoading, setEditUserLoading] = useState(false)
   
   // Estados para permisos
-  const [userPermissions, setUserPermissions] = useState<PermisoModulo[]>([])
+  const [userPermissions, setUserPermissions] = useState<any[]>([])
 
   // Paginación
   const [currentPage, setCurrentPage] = useState(1)
@@ -400,13 +400,13 @@ export default function Usuarios() {
         const currentYear = new Date().getFullYear()
         
         // Buscar vacaciones del año actual
-        const vacacionesEsteAno = todasVacacionesAprobadas.filter(v => {
+        const vacacionesEsteAno = todasVacacionesAprobadas.filter((v: any) => {
           const fechaInicio = new Date(v.fecha_inicio)
           return fechaInicio.getFullYear() === currentYear
         })
         
         if (vacacionesEsteAno.length > 0) {
-          const proximasVacaciones = vacacionesEsteAno[0]
+          const proximasVacaciones: any = vacacionesEsteAno[0]
           const fechaInicio = new Date(proximasVacaciones.fecha_inicio)
           const fechaFin = new Date(proximasVacaciones.fecha_fin)
           const hoy = new Date()
@@ -554,8 +554,8 @@ export default function Usuarios() {
       if (user.auth_user_id && todasLasVacaciones) {
         const anoActual = new Date().getFullYear()
         const vacacionesEsteAno = todasLasVacaciones
-          .filter(vacacion => vacacion.usuario_id === user.auth_user_id)
-          .filter(vacacion => {
+          .filter((vacacion: any) => vacacion.usuario_id === user.auth_user_id)
+          .filter((vacacion: any) => {
             const fechaInicio = new Date(vacacion.fecha_inicio)
             return fechaInicio.getFullYear() === anoActual
           })
@@ -564,7 +564,7 @@ export default function Usuarios() {
           const hoy = new Date()
           
           // Buscar vacaciones actuales primero
-          const vacacionActual = vacacionesEsteAno.find(v => {
+          const vacacionActual = vacacionesEsteAno.find((v: any) => {
             const fechaInicio = new Date(v.fecha_inicio)
             const fechaFin = new Date(v.fecha_fin)
             return fechaInicio <= hoy && fechaFin >= hoy
@@ -579,7 +579,7 @@ export default function Usuarios() {
             }
           } else {
             // Buscar vacaciones futuras
-            const vacacionFutura = vacacionesEsteAno.find(v => {
+            const vacacionFutura = vacacionesEsteAno.find((v: any) => {
               const fechaInicio = new Date(v.fecha_inicio)
               return fechaInicio > hoy
             })

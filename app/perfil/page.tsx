@@ -74,13 +74,13 @@ export default function Perfil() {
         const currentYear = new Date().getFullYear()
         
         // Buscar vacaciones del año actual
-        const vacacionesEsteAno = todasVacacionesAprobadas.filter(v => {
+        const vacacionesEsteAno = todasVacacionesAprobadas.filter((v: any) => {
           const fechaInicio = new Date(v.fecha_inicio)
           return fechaInicio.getFullYear() === currentYear
         })
         
         if (vacacionesEsteAno.length > 0) {
-          const proximasVacaciones = vacacionesEsteAno[0]
+          const proximasVacaciones: any = vacacionesEsteAno[0]
           const fechaInicio = new Date(proximasVacaciones.fecha_inicio)
           const fechaFin = new Date(proximasVacaciones.fecha_fin)
           const hoy = new Date()

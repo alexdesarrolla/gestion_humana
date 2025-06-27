@@ -316,7 +316,7 @@ export function ProfileCard({ userData }: ProfileCardProps) {
                 )}
                 {userData?.enVacaciones && (
                   <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 px-3 py-1 text-sm">
-                    De vacaciones
+                    De vacaciones🌴
                   </Badge>
                 )}
               </div>

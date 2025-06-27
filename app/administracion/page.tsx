@@ -25,6 +25,56 @@ export default function Administracion() {
     totalCompanies: 0
   })
 
+  // Función para cargar solicitudes de vacaciones
+  const loadSolicitudesVacaciones = async () => {
+    const supabase = createSupabaseClient()
+    const { data: solicitudesVacacionesData } = await supabase
+      .from('solicitudes_vacaciones')
+      .select(`
+        id,
+        usuario_id,
+        estado,
+        fecha_inicio,
+        fecha_fin,
+        fecha_solicitud
+      `)
+      .eq('estado', 'pendiente')
+      .order('fecha_solicitud', { ascending: false })
+      .limit(5)
+
+    if (solicitudesVacacionesData && solicitudesVacacionesData.length > 0) {
+      const vacacionesUserIds = solicitudesVacacionesData.map(s => s.usuario_id)
+      const { data: vacacionesUsuariosData } = await supabase
+        .from('usuario_nomina')
+        .select(`
+          auth_user_id,
+          colaborador,
+          cedula,
+          cargo_id,
+          empresa_id,
+          empresas:empresa_id(nombre),
+          cargos:cargo_id(nombre)
+        `)
+        .in('auth_user_id', vacacionesUserIds)
+
+      const solicitudesVacacionesCompletas = solicitudesVacacionesData.map(s => {
+        const usuario = vacacionesUsuariosData?.find(u => u.auth_user_id === s.usuario_id)
+        return {
+          ...s,
+          usuario: usuario ? {
+            colaborador: usuario.colaborador,
+            cedula: usuario.cedula,
+            cargo: usuario.cargos ? usuario.cargos.nombre : 'N/A',
+            fecha_ingreso: null
+          } : null
+        }
+      })
+      setSolicitudesVacaciones(solicitudesVacacionesCompletas)
+    } else {
+      setSolicitudesVacaciones([])
+    }
+  }
+
   useEffect(() => {
     const checkAuth = async () => {
       const supabase = createSupabaseClient()
@@ -92,16 +142,8 @@ export default function Administracion() {
         .order('fecha_solicitud', { ascending: false })
         .limit(5)
 
-      // Obtener las últimas 5 solicitudes de vacaciones pendientes
-      const { data: solicitudesVacacionesData } = await supabase
-        .from('solicitudes_vacaciones')
-        .select(`
-          *,
-          usuario:usuario_id(colaborador, cedula, cargo, fecha_ingreso)
-        `)
-        .eq('estado', 'pendiente')
-        .order('fecha_solicitud', { ascending: false })
-        .limit(5)
+      // Cargar solicitudes de vacaciones
+      await loadSolicitudesVacaciones()
 
       // Obtener las últimas 5 solicitudes de permisos pendientes
       const { data: solicitudesPermisosData } = await supabase
@@ -120,10 +162,32 @@ export default function Administracion() {
       })
 
       setSolicitudesCertificacion(solicitudesCertificacionData || [])
-      setSolicitudesVacaciones(solicitudesVacacionesData || [])
       setSolicitudesPermisos(solicitudesPermisosData || [])
       setUserData(userData)
       setLoading(false)
+
+      // Configurar subscripciones en tiempo real
+      const vacacionesSubscription = supabase
+        .channel('solicitudes_vacaciones_dashboard')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'solicitudes_vacaciones',
+            filter: 'estado=eq.pendiente'
+          },
+          async () => {
+             // Recargar solicitudes de vacaciones cuando hay cambios
+             await loadSolicitudesVacaciones()
+           }
+        )
+        .subscribe()
+
+      // Cleanup function
+      return () => {
+        vacacionesSubscription.unsubscribe()
+      }
     }
 
     checkAuth()

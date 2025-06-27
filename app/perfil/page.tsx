@@ -59,10 +59,63 @@ export default function Perfil() {
         .lte("fecha_inicio", today)
         .gte("fecha_fin", today)
 
+      // Obtener todas las vacaciones aprobadas del usuario para determinar el estado
+      const { data: todasVacacionesAprobadas } = await supabase
+        .from("solicitudes_vacaciones")
+        .select("fecha_inicio, fecha_fin")
+        .eq("usuario_id", session.user.id)
+        .eq("estado", "aprobado")
+        .order("fecha_inicio", { ascending: false })
+
+      let estadoVacaciones = "sin_vacaciones"
+      let rangoVacaciones = null
+      
+      if (todasVacacionesAprobadas && todasVacacionesAprobadas.length > 0) {
+        const currentYear = new Date().getFullYear()
+        
+        // Buscar vacaciones del año actual
+        const vacacionesEsteAno = todasVacacionesAprobadas.filter(v => {
+          const fechaInicio = new Date(v.fecha_inicio)
+          return fechaInicio.getFullYear() === currentYear
+        })
+        
+        if (vacacionesEsteAno.length > 0) {
+          const proximasVacaciones = vacacionesEsteAno[0]
+          const fechaInicio = new Date(proximasVacaciones.fecha_inicio)
+          const fechaFin = new Date(proximasVacaciones.fecha_fin)
+          const hoy = new Date()
+          
+          if (fechaFin < hoy) {
+            // Ya tomó vacaciones este año
+            estadoVacaciones = "ya_tomo"
+            rangoVacaciones = {
+              inicio: proximasVacaciones.fecha_inicio,
+              fin: proximasVacaciones.fecha_fin
+            }
+          } else if (fechaInicio <= hoy && fechaFin >= hoy) {
+            // Está actualmente de vacaciones
+            estadoVacaciones = "en_vacaciones"
+            rangoVacaciones = {
+              inicio: proximasVacaciones.fecha_inicio,
+              fin: proximasVacaciones.fecha_fin
+            }
+          } else if (fechaInicio > hoy) {
+            // Tiene vacaciones pendientes
+            estadoVacaciones = "pendientes"
+            rangoVacaciones = {
+              inicio: proximasVacaciones.fecha_inicio,
+              fin: proximasVacaciones.fecha_fin
+            }
+          }
+        }
+      }
+
       // Agregar el estado de vacaciones al userData
       const userDataWithVacaciones = {
         ...userData,
-        enVacaciones: vacacionesActivas && vacacionesActivas.length > 0
+        enVacaciones: vacacionesActivas && vacacionesActivas.length > 0,
+        estadoVacaciones,
+        rangoVacaciones
       }
 
       setUserData(userDataWithVacaciones)

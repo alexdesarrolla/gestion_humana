@@ -277,7 +277,7 @@ export default function CertificacionLaboral() {
                       {solicitudes.map((s) => (
                         <TableRow key={s.id}>
                           <TableCell>
-                            {formatDate(new Date(s.fecha_solicitud))}
+                            {formatDate(new Date(s.fecha_solicitud + 'T00:00:00'))}
                           </TableCell>
                           <TableCell>{s.dirigido_a}</TableCell>
                           <TableCell>{s.ciudad}</TableCell>

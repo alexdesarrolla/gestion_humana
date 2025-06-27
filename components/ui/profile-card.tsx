@@ -28,7 +28,6 @@ import { createSupabaseClient } from "@/lib/supabase"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 
-
 interface ProfileCardProps {
   userData: any
 }
@@ -42,15 +41,12 @@ export function ProfileCard({ userData }: ProfileCardProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createSupabaseClient()
 
-
   useEffect(() => {
     if (userData) {
       if (userData.avatar_path) {
-        // Si el usuario tiene un avatar personalizado, usamos esa ruta
         const { data } = supabase.storage.from("avatar").getPublicUrl(userData.avatar_path)
         setAvatarUrl(data.publicUrl)
       } else if (userData.genero) {
-        // Si no tiene avatar personalizado, usamos el predeterminado según género
         const path = userData.genero === "F" ? "defecto/avatar-f.webp" : "defecto/avatar-m.webp"
         const { data } = supabase.storage.from("avatar").getPublicUrl(path)
         setAvatarUrl(data.publicUrl)
@@ -62,7 +58,6 @@ export function ProfileCard({ userData }: ProfileCardProps) {
     const file = event.target.files?.[0]
     if (!file) return
 
-    // Validar tipo de archivo
     const fileExt = file.name.split(".").pop()?.toLowerCase()
     const allowedExts = ["jpg", "jpeg", "png", "webp"]
 
@@ -71,7 +66,6 @@ export function ProfileCard({ userData }: ProfileCardProps) {
       return
     }
 
-    // Validar tamaño (máximo 5MB)
     if (file.size > 5 * 1024 * 1024) {
       setUploadError("El archivo es demasiado grande. Máximo 5MB.")
       return
@@ -81,7 +75,6 @@ export function ProfileCard({ userData }: ProfileCardProps) {
       setIsUploading(true)
       setUploadError(null)
 
-      // Obtener la ruta actual del avatar desde la base de datos ANTES de hacer cambios
       const { data: currentUser, error: fetchError } = await supabase
         .from("usuario_nomina")
         .select("avatar_path")
@@ -96,7 +89,6 @@ export function ProfileCard({ userData }: ProfileCardProps) {
 
       const oldAvatarPath = currentUser?.avatar_path as string | undefined
 
-      // Crear un canvas para redimensionar la imagen a exactamente 600px de ancho manteniendo relación de aspecto
       const img = document.createElement('img')
       img.src = URL.createObjectURL(file)
       await new Promise((resolve, reject) => {
@@ -116,7 +108,6 @@ export function ProfileCard({ userData }: ProfileCardProps) {
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
       }
       
-      // Convertir a webp con 85% de calidad.
       const blob = await new Promise<Blob | null>((resolve, reject) => {
         canvas.toBlob((blob) => {
           if (blob) {
@@ -129,15 +120,12 @@ export function ProfileCard({ userData }: ProfileCardProps) {
       
       if (!blob) throw new Error('Error al convertir la imagen')
       
-      // Generar un nombre único con hash para el archivo
       const fileHash = `${userData.auth_user_id}_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`
       const fileName = `${fileHash}.webp`
       const filePath = `usuarios/${fileName}`
 
-      // Convertir el blob a File para subirlo
       const webpFile = new File([blob], fileName, { type: 'image/webp' })
       
-      // Subir el archivo procesado (webp) a Supabase Storage
       const { error: uploadError } = await supabase.storage.from("avatar").upload(filePath, webpFile, {
         cacheControl: "3600",
         upsert: false,
@@ -149,7 +137,6 @@ export function ProfileCard({ userData }: ProfileCardProps) {
         return
       }
 
-      // Actualizar la tabla usuario_nomina con la nueva ruta del avatar
       const { error: updateError } = await supabase
         .from("usuario_nomina")
         .update({ avatar_path: filePath })
@@ -157,7 +144,6 @@ export function ProfileCard({ userData }: ProfileCardProps) {
 
       if (updateError) throw updateError
 
-      // AHORA eliminar la imagen anterior del storage (después de que todo sea exitoso)
       if (oldAvatarPath && oldAvatarPath !== filePath) {
         const { error: deleteError } = await supabase.storage
           .from("avatar")
@@ -170,13 +156,11 @@ export function ProfileCard({ userData }: ProfileCardProps) {
         }
       }
 
-      // Obtener la URL pública del nuevo avatar
       const { data } = supabase.storage.from("avatar").getPublicUrl(filePath)
       setAvatarUrl(data.publicUrl)
 
-      // Cerrar el modal de opciones de carga
       setShowUploadOptions(false)
-      setIsModalOpen(false) // Cerrar el modal principal también
+      setIsModalOpen(false)
     } catch (error) {
       console.error("Error al subir avatar:", error)
       setUploadError("Error al subir el avatar. Intente nuevamente.")
@@ -267,7 +251,6 @@ export function ProfileCard({ userData }: ProfileCardProps) {
               </div>
             )}
 
-            {/* Modal de opciones de carga */}
             {showUploadOptions && (
               <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
                 <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
@@ -451,6 +434,32 @@ export function ProfileCard({ userData }: ProfileCardProps) {
                 </div>
               </div>
 
+              <div className="flex items-start gap-3">
+                <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Estado de Vacaciones</p>
+                  <p className="text-sm font-medium">
+                    {(() => {
+                      if (userData?.estadoVacaciones === "ya_tomo" && userData?.rangoVacaciones) {
+                        const fechaInicio = new Date(userData.rangoVacaciones.inicio + 'T00:00:00').toLocaleDateString('es-ES')
+                        const fechaFin = new Date(userData.rangoVacaciones.fin + 'T00:00:00').toLocaleDateString('es-ES')
+                        return `Ya tomó vacaciones (${fechaInicio} - ${fechaFin})`
+                      } else if (userData?.estadoVacaciones === "en_vacaciones" && userData?.rangoVacaciones) {
+                        const fechaInicio = new Date(userData.rangoVacaciones.inicio + 'T00:00:00').toLocaleDateString('es-ES')
+                        const fechaFin = new Date(userData.rangoVacaciones.fin + 'T00:00:00').toLocaleDateString('es-ES')
+                        return `Actualmente de vacaciones (${fechaInicio} - ${fechaFin})`
+                      } else if (userData?.estadoVacaciones === "pendientes" && userData?.rangoVacaciones) {
+                        const fechaInicio = new Date(userData.rangoVacaciones.inicio + 'T00:00:00').toLocaleDateString('es-ES')
+                        const fechaFin = new Date(userData.rangoVacaciones.fin + 'T00:00:00').toLocaleDateString('es-ES')
+                        return `Vacaciones pendientes para (${fechaInicio} - ${fechaFin})`
+                      } else {
+                        return "No tiene vacaciones aprobadas actualmente"
+                      }
+                    })()}
+                  </p>
+                </div>
+              </div>
+
               {userData?.estado === "inactivo" && (
                 <>
                   <div className="flex items-start gap-3">
@@ -508,8 +517,6 @@ export function ProfileCard({ userData }: ProfileCardProps) {
               </div>
             </div>
           </TabsContent>
-
-
         </Tabs>
       </CardContent>
     </Card>

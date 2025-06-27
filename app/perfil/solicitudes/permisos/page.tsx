@@ -497,14 +497,14 @@ export default function SolicitudPermisos() {
                           {solicitudes.length > 0 ? (
                             solicitudes.map((solicitud) => (
                               <TableRow key={solicitud.id}>
-                                <TableCell>{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</TableCell>
+                                <TableCell>{new Date(solicitud.fecha_solicitud + 'T00:00:00').toLocaleDateString()}</TableCell>
                                 <TableCell>
                                   {solicitud.tipo_permiso === 'no_remunerado' ? 'No remunerado' :
                                    solicitud.tipo_permiso === 'remunerado' ? 'Remunerado' :
                                    'Actividad interna'}
                                 </TableCell>
-                                <TableCell>{new Date(solicitud.fecha_inicio).toLocaleDateString()}</TableCell>
-                                <TableCell>{new Date(solicitud.fecha_fin).toLocaleDateString()}</TableCell>
+                                <TableCell>{new Date(solicitud.fecha_inicio + 'T00:00:00').toLocaleDateString()}</TableCell>
+                                <TableCell>{new Date(solicitud.fecha_fin + 'T00:00:00').toLocaleDateString()}</TableCell>
                                 <TableCell>
                                   <Badge
                                     variant={solicitud.estado === 'aprobado' ? 'secondary' :

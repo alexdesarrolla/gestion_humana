@@ -47,9 +47,9 @@ export default function IncapacidadesUsuario() {
   const [unseenCounts, setUnseenCounts] = useState<Record<string, number>>({})
 
   // Formatea fecha
-  const formatDate = (date: string | Date) => {
+  const formatDate = (date: string) => {
     const options: Intl.DateTimeFormatOptions = { year: "numeric", month: "long", day: "numeric" }
-    return new Date(date).toLocaleDateString("es-CO", options)
+    return new Date(date + 'T00:00:00').toLocaleDateString("es-CO", options)
   }
 
   // Función para contar comentarios no vistos por el usuario

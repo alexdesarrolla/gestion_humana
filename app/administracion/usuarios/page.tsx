@@ -379,9 +379,78 @@ export default function Usuarios() {
     applyFilters("", "", "all", "all", "all", null)
   }
 
-  const handleViewDetails = (user: any) => {
-    setSelectedUser(user)
-    setIsModalOpen(true)
+  const handleViewDetails = async (user: any) => {
+    try {
+      const supabase = createSupabaseClient()
+      // Obtener información completa de vacaciones para el usuario seleccionado
+      const today = new Date().toISOString().split('T')[0]
+      
+      // Obtener todas las vacaciones aprobadas del usuario para determinar el estado
+      const { data: todasVacacionesAprobadas } = await supabase
+        .from("solicitudes_vacaciones")
+        .select("fecha_inicio, fecha_fin")
+        .eq("usuario_id", user.auth_user_id)
+        .eq("estado", "aprobado")
+        .order("fecha_inicio", { ascending: false })
+
+      let estadoVacaciones = "sin_vacaciones"
+      let rangoVacaciones = null
+      
+      if (todasVacacionesAprobadas && todasVacacionesAprobadas.length > 0) {
+        const currentYear = new Date().getFullYear()
+        
+        // Buscar vacaciones del año actual
+        const vacacionesEsteAno = todasVacacionesAprobadas.filter(v => {
+          const fechaInicio = new Date(v.fecha_inicio)
+          return fechaInicio.getFullYear() === currentYear
+        })
+        
+        if (vacacionesEsteAno.length > 0) {
+          const proximasVacaciones = vacacionesEsteAno[0]
+          const fechaInicio = new Date(proximasVacaciones.fecha_inicio)
+          const fechaFin = new Date(proximasVacaciones.fecha_fin)
+          const hoy = new Date()
+          
+          if (fechaFin < hoy) {
+            // Ya tomó vacaciones este año
+            estadoVacaciones = "ya_tomo"
+            rangoVacaciones = {
+              inicio: proximasVacaciones.fecha_inicio,
+              fin: proximasVacaciones.fecha_fin
+            }
+          } else if (fechaInicio <= hoy && fechaFin >= hoy) {
+            // Está actualmente de vacaciones
+            estadoVacaciones = "en_vacaciones"
+            rangoVacaciones = {
+              inicio: proximasVacaciones.fecha_inicio,
+              fin: proximasVacaciones.fecha_fin
+            }
+          } else if (fechaInicio > hoy) {
+            // Tiene vacaciones pendientes
+            estadoVacaciones = "pendientes"
+            rangoVacaciones = {
+              inicio: proximasVacaciones.fecha_inicio,
+              fin: proximasVacaciones.fecha_fin
+            }
+          }
+        }
+      }
+
+      // Agregar el estado de vacaciones al userData
+      const userDataWithVacaciones = {
+        ...user,
+        estadoVacaciones,
+        rangoVacaciones
+      }
+
+      setSelectedUser(userDataWithVacaciones)
+      setIsModalOpen(true)
+    } catch (error) {
+      console.error('Error al obtener información de vacaciones:', error)
+      // En caso de error, mostrar el usuario sin información adicional de vacaciones
+      setSelectedUser(user)
+      setIsModalOpen(true)
+    }
   }
 
   const handleAddUser = () => {
@@ -443,21 +512,113 @@ export default function Usuarios() {
       console.error("Error al obtener usuarios:", usuariosError)
       return
     }
-
+    
+    // Log temporal para obtener auth_user_id
+    console.log('🔑 Auth User IDs disponibles:', usuarios?.map(u => ({ 
+      nombre: u.colaborador, 
+      auth_user_id: u.auth_user_id 
+    })))
+    
     // Obtener vacaciones activas para todos los usuarios
     const today = new Date().toISOString().split('T')[0]
-    const { data: vacacionesActivas } = await supabase
+    console.log('🔍 Buscando vacaciones para fecha:', today)
+    
+    const { data: vacacionesActivas, error: vacacionesError } = await supabase
       .from("solicitudes_vacaciones")
       .select("usuario_id")
       .eq("estado", "aprobado")
       .lte("fecha_inicio", today)
       .gte("fecha_fin", today)
+    
+    console.log('📊 Vacaciones activas encontradas:', vacacionesActivas)
+    console.log('❌ Error en vacaciones activas:', vacacionesError)
 
-    // Agregar información de vacaciones a cada usuario
-    const usuariosConVacaciones = usuarios?.map(user => ({
-      ...user,
-      enVacaciones: user.auth_user_id ? vacacionesActivas?.some(vacacion => vacacion.usuario_id === user.auth_user_id) || false : false
-    })) || []
+    // Obtener todas las vacaciones aprobadas para calcular el estado completo
+    const { data: todasLasVacaciones, error: todasVacacionesError } = await supabase
+      .from("solicitudes_vacaciones")
+      .select("usuario_id, fecha_inicio, fecha_fin")
+      .eq("estado", "aprobado")
+      .order("fecha_inicio", { ascending: true })
+    
+    console.log('📋 Todas las vacaciones aprobadas:', todasLasVacaciones)
+    console.log('❌ Error en todas las vacaciones:', todasVacacionesError)
+
+    // Agregar información completa de vacaciones a cada usuario
+    const usuariosConVacaciones = usuarios?.map(user => {
+      let estadoVacaciones = "sin_vacaciones"
+      let rangoVacaciones = null
+      const enVacaciones = user.auth_user_id ? vacacionesActivas?.some(vacacion => vacacion.usuario_id === user.auth_user_id) || false : false
+      
+      console.log(`👤 Procesando usuario: ${user.colaborador}, auth_user_id: ${user.auth_user_id}, enVacaciones: ${enVacaciones}`)
+      
+      if (user.auth_user_id && todasLasVacaciones) {
+        const anoActual = new Date().getFullYear()
+        const vacacionesEsteAno = todasLasVacaciones
+          .filter(vacacion => vacacion.usuario_id === user.auth_user_id)
+          .filter(vacacion => {
+            const fechaInicio = new Date(vacacion.fecha_inicio)
+            return fechaInicio.getFullYear() === anoActual
+          })
+        
+        if (vacacionesEsteAno.length > 0) {
+          const hoy = new Date()
+          
+          // Buscar vacaciones actuales primero
+          const vacacionActual = vacacionesEsteAno.find(v => {
+            const fechaInicio = new Date(v.fecha_inicio)
+            const fechaFin = new Date(v.fecha_fin)
+            return fechaInicio <= hoy && fechaFin >= hoy
+          })
+          
+          if (vacacionActual) {
+            // Está actualmente de vacaciones
+            estadoVacaciones = "en_vacaciones"
+            rangoVacaciones = {
+              inicio: vacacionActual.fecha_inicio,
+              fin: vacacionActual.fecha_fin
+            }
+          } else {
+            // Buscar vacaciones futuras
+            const vacacionFutura = vacacionesEsteAno.find(v => {
+              const fechaInicio = new Date(v.fecha_inicio)
+              return fechaInicio > hoy
+            })
+            
+            if (vacacionFutura) {
+              // Tiene vacaciones pendientes
+              estadoVacaciones = "pendientes"
+              rangoVacaciones = {
+                inicio: vacacionFutura.fecha_inicio,
+                fin: vacacionFutura.fecha_fin
+              }
+            } else {
+              // Ya tomó vacaciones este año (todas las fechas de fin son pasadas)
+              const vacacionPasada = vacacionesEsteAno[vacacionesEsteAno.length - 1] // La más reciente
+              estadoVacaciones = "ya_tomo"
+              rangoVacaciones = {
+                inicio: vacacionPasada.fecha_inicio,
+                fin: vacacionPasada.fecha_fin
+              }
+            }
+          }
+        }
+      }
+      
+      const resultado = {
+        ...user,
+        enVacaciones,
+        estadoVacaciones,
+        rangoVacaciones
+      }
+      
+      console.log(`✅ Usuario ${user.colaborador} procesado:`, {
+        estadoVacaciones,
+        rangoVacaciones,
+        enVacaciones
+      })
+      
+      return resultado
+    }) || []
 
     setUsers(usuariosConVacaciones)
     setFilteredUsers(usuariosConVacaciones)

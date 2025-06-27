@@ -142,7 +142,7 @@ export default function SolicitudVacaciones() {
       return new Date(year, month - 1, day).toLocaleDateString('es-CO', options)
     }
     
-    return new Date(date).toLocaleDateString('es-CO', options)
+    return new Date(date + 'T00:00:00').toLocaleDateString('es-CO', options)
   }
 
   const enviarSolicitud = async () => {

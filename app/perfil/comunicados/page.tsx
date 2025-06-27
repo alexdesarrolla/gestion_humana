@@ -344,7 +344,7 @@ export default function ComunicadosPage() {
                             <div>{c.area_responsable}</div>
                             <div>
                               {c.fecha_publicacion
-                                ? new Date(c.fecha_publicacion).toLocaleDateString('es-ES')
+                                ? new Date(c.fecha_publicacion + 'T00:00:00').toLocaleDateString('es-ES')
                                 : "-"}
                             </div>
                           </div>

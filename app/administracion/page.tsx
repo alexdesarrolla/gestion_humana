@@ -79,7 +79,63 @@ export default function Administracion() {
     }
   }
 
+  // Función para recargar estadísticas en tiempo real
+  const loadStats = async () => {
+    const supabase = createSupabaseClient()
+    
+    // Obtener estadísticas de usuarios
+    const { data: users } = await supabase
+      .from('usuario_nomina')
+      .select('*')
+      .eq('rol', 'usuario')
+
+    const { data: activeUsers } = await supabase
+      .from('usuario_nomina')
+      .select('*')
+      .eq('rol', 'usuario')
+      .eq('estado', 'activo')
+
+    const { data: inactiveUsers } = await supabase
+      .from('usuario_nomina')
+      .select('*')
+      .eq('rol', 'usuario')
+      .eq('estado', 'inactivo')
+
+    // Obtener usuarios que están actualmente en vacaciones
+    const today = new Date().toISOString().split('T')[0]
+    const { data: vacationRequests } = await supabase
+      .from('solicitudes_vacaciones')
+      .select('usuario_id')
+      .eq('estado', 'aprobado')
+      .lte('fecha_inicio', today)
+      .gte('fecha_fin', today)
+    
+    const vacationUserIds = vacationRequests?.map(req => req.usuario_id) || []
+    const uniqueVacationUserIds = [...new Set(vacationUserIds)]
+    
+    const { data: vacationUsers } = uniqueVacationUserIds.length > 0 ? await supabase
+      .from('usuario_nomina')
+      .select('*')
+      .eq('rol', 'usuario')
+      .eq('estado', 'activo')
+      .in('auth_user_id', uniqueVacationUserIds) : { data: [] }
+
+    const { data: companies } = await supabase
+      .from('empresas')
+      .select('*')
+
+    setStats({
+      totalUsers: users?.length || 0,
+      activeUsers: activeUsers?.length || 0,
+      inactiveUsers: inactiveUsers?.length || 0,
+      vacationUsers: vacationUsers?.length || 0,
+      totalCompanies: companies?.length || 0
+    })
+  }
+
   useEffect(() => {
+    let subscriptions: any[] = []
+    
     const checkAuth = async () => {
       const supabase = createSupabaseClient()
       const {
@@ -286,27 +342,265 @@ export default function Administracion() {
       setUserData(userData)
       setLoading(false)
 
-      // Configurar subscripciones en tiempo real
-      const vacacionesSubscription = supabase
-        .channel('solicitudes_vacaciones_dashboard')
+      // Configurar subscripciones en tiempo real después de cargar datos iniciales
+      console.log('Configurando suscripciones de tiempo real...')
+      
+      // Suscripción para cambios en usuarios (afecta estadísticas)
+      const usuariosChannel = supabase
+        .channel('admin_usuarios_realtime', {
+          config: {
+            broadcast: { self: true }
+          }
+        })
         .on(
           'postgres_changes',
           {
             event: '*',
             schema: 'public',
-            table: 'solicitudes_vacaciones',
-            filter: 'estado=eq.pendiente'
+            table: 'usuario_nomina'
           },
-          async () => {
-             // Recargar solicitudes de vacaciones cuando hay cambios
-             await loadSolicitudesVacaciones()
-           }
+          async (payload) => {
+            console.log('Cambio detectado en usuario_nomina:', payload)
+            await loadStats()
+          }
         )
-        .subscribe()
+        .subscribe((status) => {
+          console.log('Estado suscripción usuarios:', status)
+        })
 
-      // Cleanup function
+      // Suscripción para cambios en empresas
+      const empresasChannel = supabase
+        .channel('admin_empresas_realtime', {
+          config: {
+            broadcast: { self: true }
+          }
+        })
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'empresas'
+          },
+          async (payload) => {
+            console.log('Cambio detectado en empresas:', payload)
+            await loadStats()
+          }
+        )
+        .subscribe((status) => {
+          console.log('Estado suscripción empresas:', status)
+        })
+
+      // Suscripción para cambios en solicitudes de vacaciones (todas)
+      const vacacionesChannel = supabase
+        .channel('admin_vacaciones_realtime', {
+          config: {
+            broadcast: { self: true }
+          }
+        })
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'solicitudes_vacaciones'
+          },
+          async (payload) => {
+            console.log('Cambio detectado en solicitudes_vacaciones:', payload)
+            // Recargar tanto las solicitudes pendientes como las estadísticas de usuarios en vacaciones
+            await loadSolicitudesVacaciones()
+            await loadStats()
+          }
+        )
+        .subscribe((status) => {
+          console.log('Estado suscripción vacaciones:', status)
+        })
+
+      // Suscripción para cambios en solicitudes de certificación
+      const certificacionChannel = supabase
+        .channel('admin_certificacion_realtime', {
+          config: {
+            broadcast: { self: true }
+          }
+        })
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'solicitudes_certificacion'
+          },
+          async (payload) => {
+            console.log('Cambio detectado en solicitudes_certificacion:', payload)
+            // Recargar solicitudes de certificación
+            const { data: solicitudesCertificacionData } = await supabase
+              .from('solicitudes_certificacion')
+              .select(`
+                *,
+                usuario_nomina:usuario_id(colaborador, cedula)
+              `)
+              .eq('estado', 'pendiente')
+              .order('fecha_solicitud', { ascending: false })
+              .limit(5)
+            setSolicitudesCertificacion(solicitudesCertificacionData || [])
+          }
+        )
+        .subscribe((status) => {
+          console.log('Estado suscripción certificación:', status)
+        })
+
+      // Suscripción para cambios en solicitudes de permisos
+      const permisosChannel = supabase
+        .channel('admin_permisos_realtime', {
+          config: {
+            broadcast: { self: true }
+          }
+        })
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'solicitudes_permisos'
+          },
+          async (payload) => {
+            console.log('Cambio detectado en solicitudes_permisos:', payload)
+            // Recargar solicitudes de permisos
+            const { data: solicitudesPermisosData } = await supabase
+              .from('solicitudes_permisos')
+              .select(`
+                id, tipo_permiso, fecha_inicio, fecha_fin, hora_inicio, hora_fin, 
+                motivo, compensacion, estado, fecha_solicitud, fecha_resolucion, 
+                motivo_rechazo, pdf_url, usuario_id, admin_id
+              `)
+              .eq('estado', 'pendiente')
+              .order('fecha_solicitud', { ascending: false })
+              .limit(5)
+
+            if (solicitudesPermisosData && solicitudesPermisosData.length > 0) {
+              const permisosUserIds = [...new Set(solicitudesPermisosData.map(s => s.usuario_id))]
+              const { data: permisosUsuariosData } = await supabase
+                .from('usuario_nomina')
+                .select(`
+                  auth_user_id,
+                  colaborador,
+                  cedula,
+                  cargo_id,
+                  empresa_id,
+                  empresas:empresa_id(nombre),
+                  cargos:cargo_id(nombre)
+                `)
+                .in('auth_user_id', permisosUserIds)
+
+              const solicitudesPermisosCompletas = solicitudesPermisosData.map(s => {
+                const usuario = permisosUsuariosData?.find(u => u.auth_user_id === s.usuario_id)
+                return {
+                  ...s,
+                  usuario: usuario ? {
+                    colaborador: usuario.colaborador,
+                    cedula: usuario.cedula,
+                    cargo: usuario.cargos ? usuario.cargos.nombre : 'N/A',
+                    fecha_ingreso: null,
+                    empresa_id: usuario.empresa_id,
+                    empresas: usuario.empresas
+                  } : null
+                }
+              })
+              setSolicitudesPermisos(solicitudesPermisosCompletas)
+            } else {
+              setSolicitudesPermisos([])
+            }
+          }
+        )
+        .subscribe((status) => {
+          console.log('Estado suscripción permisos:', status)
+        })
+
+      // Suscripción para cambios en incapacidades
+      const incapacidadesChannel = supabase
+        .channel('admin_incapacidades_realtime', {
+          config: {
+            broadcast: { self: true }
+          }
+        })
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'incapacidades'
+          },
+          async (payload) => {
+            console.log('Cambio detectado en incapacidades:', payload)
+            // Recargar incapacidades
+            const { data: incapacidadesData } = await supabase
+              .from('incapacidades')
+              .select(`
+                id,
+                fecha_inicio,
+                fecha_fin,
+                fecha_subida,
+                usuario_id
+              `)
+              .order('fecha_subida', { ascending: false })
+              .limit(5)
+
+            if (incapacidadesData && incapacidadesData.length > 0) {
+              const incapacidadesUserIds = [...new Set(incapacidadesData.map(i => i.usuario_id))]
+              const { data: incapacidadesUsuariosData } = await supabase
+                .from('usuario_nomina')
+                .select(`
+                  auth_user_id,
+                  colaborador,
+                  cedula,
+                  cargo_id,
+                  empresa_id,
+                  empresas:empresa_id(nombre),
+                  cargos:cargo_id(nombre)
+                `)
+                .in('auth_user_id', incapacidadesUserIds)
+
+              const incapacidadesCompletas = incapacidadesData.map(i => {
+                const usuario = incapacidadesUsuariosData?.find(u => u.auth_user_id === i.usuario_id)
+                return {
+                  ...i,
+                  usuario: usuario ? {
+                    colaborador: usuario.colaborador,
+                    cedula: usuario.cedula,
+                    cargo: usuario.cargos ? usuario.cargos.nombre : 'N/A',
+                    fecha_ingreso: null,
+                    empresa_id: usuario.empresa_id,
+                    empresas: usuario.empresas
+                  } : null
+                }
+              })
+              setNotificacionesIncapacidades(incapacidadesCompletas)
+            } else {
+              setNotificacionesIncapacidades([])
+            }
+          }
+        )
+        .subscribe((status) => {
+          console.log('Estado suscripción incapacidades:', status)
+        })
+
+      // Guardar referencias de los canales para cleanup
+      subscriptions = [
+        usuariosChannel,
+        empresasChannel,
+        vacacionesChannel,
+        certificacionChannel,
+        permisosChannel,
+        incapacidadesChannel
+      ]
+
       return () => {
-        vacacionesSubscription.unsubscribe()
+        console.log('Limpiando suscripciones...')
+        subscriptions.forEach(subscription => {
+          if (subscription) {
+            subscription.unsubscribe()
+          }
+        })
       }
     }
 

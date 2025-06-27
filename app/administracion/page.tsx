@@ -7,7 +7,7 @@ import { ProfileCard } from "@/components/ui/profile-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { createSupabaseClient } from "@/lib/supabase"
 import { AdminSidebar } from "@/components/ui/admin-sidebar"
-import { FaUser, FaBuilding } from 'react-icons/fa';
+import { FaUser, FaBuilding, FaUserCheck, FaUserTimes, FaUmbrellaBeach } from 'react-icons/fa';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,8 +22,12 @@ export default function Administracion() {
   const [solicitudesPermisos, setSolicitudesPermisos] = useState<any[]>([])
   const [stats, setStats] = useState({
     totalUsers: 0,
+    activeUsers: 0,
+    inactiveUsers: 0,
+    vacationUsers: 0,
     totalCompanies: 0
   })
+  const [notificacionesIncapacidades, setNotificacionesIncapacidades] = useState<any[]>([])
 
   // Función para cargar solicitudes de vacaciones
   const loadSolicitudesVacaciones = async () => {
@@ -127,6 +131,37 @@ export default function Administracion() {
         .select('*')
         .eq('rol', 'usuario')
 
+      const { data: activeUsers } = await supabase
+        .from('usuario_nomina')
+        .select('*')
+        .eq('rol', 'usuario')
+        .eq('estado', 'activo')
+
+      const { data: inactiveUsers } = await supabase
+        .from('usuario_nomina')
+        .select('*')
+        .eq('rol', 'usuario')
+        .eq('estado', 'inactivo')
+
+      // Obtener usuarios que están actualmente en vacaciones
+      const today = new Date().toISOString().split('T')[0]
+      const { data: vacationRequests } = await supabase
+        .from('solicitudes_vacaciones')
+        .select('usuario_id')
+        .eq('estado', 'aprobado')
+        .lte('fecha_inicio', today)
+        .gte('fecha_fin', today)
+      
+      const vacationUserIds = vacationRequests?.map(req => req.usuario_id) || []
+      const uniqueVacationUserIds = [...new Set(vacationUserIds)]
+      
+      const { data: vacationUsers } = uniqueVacationUserIds.length > 0 ? await supabase
+        .from('usuario_nomina')
+        .select('*')
+        .eq('rol', 'usuario')
+        .eq('estado', 'activo')
+        .in('auth_user_id', uniqueVacationUserIds) : { data: [] }
+
       const { data: companies } = await supabase
         .from('empresas')
         .select('*')
@@ -156,10 +191,26 @@ export default function Administracion() {
         .order('fecha_solicitud', { ascending: false })
         .limit(5)
 
+      // Obtener notificaciones de incapacidades pendientes
+      const { data: incapacidadesData } = await supabase
+        .from('solicitudes_incapacidades')
+        .select(`
+          *,
+          usuario_nomina:usuario_id(colaborador, cedula)
+        `)
+        .eq('estado', 'pendiente')
+        .order('fecha_solicitud', { ascending: false })
+        .limit(5)
+
       setStats({
         totalUsers: users?.length || 0,
+        activeUsers: activeUsers?.length || 0,
+        inactiveUsers: inactiveUsers?.length || 0,
+        vacationUsers: vacationUsers?.length || 0,
         totalCompanies: companies?.length || 0
       })
+
+      setNotificacionesIncapacidades(incapacidadesData || [])
 
       setSolicitudesCertificacion(solicitudesCertificacionData || [])
       setSolicitudesPermisos(solicitudesPermisosData || [])
@@ -216,29 +267,48 @@ export default function Administracion() {
                   <p className="text-muted-foreground">Gestiona usuarios y configuración del sistema.</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                {/* Tarjetas informativas principales */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                   <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                     <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center">
-                      <FaUser className="mr-2 text-blue-600" /> Usuarios Registrados
+                      <FaUserCheck className="mr-2 text-green-600" /> Usuarios activos
                     </h3>
                     <div className="flex items-center">
-                      <span className="text-3xl font-bold text-blue-600">{stats.totalUsers}</span>
+                      <span className="text-3xl font-bold text-green-600">{stats.activeUsers}</span>
                       <span className="ml-2 text-sm text-gray-500">usuarios</span>
                     </div>
                   </div>
                   <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                     <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center">
-                      <FaBuilding className="mr-2 text-green-600" /> Empresas Registradas
+                      <FaUserTimes className="mr-2 text-red-600" /> Usuarios Inactivos
                     </h3>
                     <div className="flex items-center">
-                      <span className="text-3xl font-bold text-green-600">{stats.totalCompanies}</span>
+                      <span className="text-3xl font-bold text-red-600">{stats.inactiveUsers}</span>
+                      <span className="ml-2 text-sm text-gray-500">usuarios</span>
+                    </div>
+                  </div>
+                  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center">
+                      <FaBuilding className="mr-2 text-blue-600" /> Empresas registradas
+                    </h3>
+                    <div className="flex items-center">
+                      <span className="text-3xl font-bold text-blue-600">{stats.totalCompanies}</span>
                       <span className="ml-2 text-sm text-gray-500">empresas</span>
+                    </div>
+                  </div>
+                  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center">
+                      <FaUmbrellaBeach className="mr-2 text-orange-600" /> Usuarios de vacaciones
+                    </h3>
+                    <div className="flex items-center">
+                      <span className="text-3xl font-bold text-orange-600">{stats.vacationUsers}</span>
+                      <span className="ml-2 text-sm text-gray-500">usuarios</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Grid de Solicitudes */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                {/* Grid de Solicitudes - 2x2 */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Tabla de Solicitudes de Certificación */}
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                     <div className="flex justify-between items-center mb-4">
@@ -248,7 +318,7 @@ export default function Administracion() {
                         size="sm"
                         onClick={() => router.push('/administracion/solicitudes/certificacion-laboral')}
                       >
-                        Ver todas las solicitudes
+                        Ver todas
                       </Button>
                     </div>
                     <Table>
@@ -256,7 +326,6 @@ export default function Administracion() {
                         <TableRow>
                           <TableHead>Fecha</TableHead>
                           <TableHead>Colaborador</TableHead>
-                          <TableHead>Cédula</TableHead>
                           <TableHead>Estado</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -265,7 +334,6 @@ export default function Administracion() {
                           <TableRow key={solicitud.id}>
                             <TableCell>{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</TableCell>
                             <TableCell>{solicitud.usuario_nomina?.colaborador}</TableCell>
-                            <TableCell>{solicitud.usuario_nomina?.cedula}</TableCell>
                             <TableCell>
                               <Badge
                                 variant={solicitud.estado === 'aprobado' ? 'secondary' :
@@ -279,8 +347,8 @@ export default function Administracion() {
                         ))}
                         {solicitudesCertificacion.length === 0 && (
                           <TableRow>
-                            <TableCell colSpan={4} className="text-center py-4">
-                              No hay solicitudes registradas
+                            <TableCell colSpan={3} className="text-center py-4">
+                              No hay solicitudes pendientes
                             </TableCell>
                           </TableRow>
                         )}
@@ -297,7 +365,7 @@ export default function Administracion() {
                         size="sm"
                         onClick={() => router.push('/administracion/solicitudes/vacaciones')}
                       >
-                        Ver todas las solicitudes
+                        Ver todas
                       </Button>
                     </div>
                     <Table>
@@ -306,7 +374,6 @@ export default function Administracion() {
                           <TableHead>Fecha</TableHead>
                           <TableHead>Colaborador</TableHead>
                           <TableHead>Días</TableHead>
-                          <TableHead>Estado</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -321,28 +388,103 @@ export default function Administracion() {
                                 (1000 * 3600 * 24)
                               ) + 1}
                             </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={solicitud.estado === 'aprobado' ? 'secondary' :
-                                        solicitud.estado === 'rechazado' ? 'destructive' :
-                                        'default'}
-                              >
-                                {solicitud.estado.charAt(0).toUpperCase() + solicitud.estado.slice(1)}
-                              </Badge>
-                            </TableCell>
                           </TableRow>
                         ))}
                         {solicitudesVacaciones.length === 0 && (
                           <TableRow>
-                            <TableCell colSpan={4} className="text-center py-4">
-                              No hay solicitudes registradas
+                            <TableCell colSpan={3} className="text-center py-4">
+                              No hay solicitudes pendientes
                             </TableCell>
                           </TableRow>
                         )}
                       </TableBody>
                     </Table>
                   </div>
+
+                  {/* Tabla de Solicitudes de Permisos */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <h2 className="text-xl font-semibold">Solicitudes de Permisos</h2>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push('/administracion/solicitudes/permisos')}
+                      >
+                        Ver todas
+                      </Button>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Colaborador</TableHead>
+                          <TableHead>Tipo</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {solicitudesPermisos.map((solicitud) => (
+                          <TableRow key={solicitud.id}>
+                            <TableCell>{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</TableCell>
+                            <TableCell>{solicitud.usuario?.colaborador}</TableCell>
+                            <TableCell>{solicitud.tipo_permiso}</TableCell>
+                          </TableRow>
+                        ))}
+                        {solicitudesPermisos.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={3} className="text-center py-4">
+                              No hay solicitudes pendientes
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
                   </div>
+
+                  {/* Tabla de Notificaciones de Incapacidades */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <h2 className="text-xl font-semibold">Notificaciones de Incapacidades</h2>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push('/administracion/solicitudes/incapacidades')}
+                      >
+                        Ver todas
+                      </Button>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Colaborador</TableHead>
+                          <TableHead>Días</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {notificacionesIncapacidades.map((solicitud) => (
+                          <TableRow key={solicitud.id}>
+                            <TableCell>{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</TableCell>
+                            <TableCell>{solicitud.usuario_nomina?.colaborador}</TableCell>
+                            <TableCell>
+                              {Math.ceil(
+                                (new Date(solicitud.fecha_fin).getTime() - 
+                                new Date(solicitud.fecha_inicio).getTime()) / 
+                                (1000 * 3600 * 24)
+                              ) + 1}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {notificacionesIncapacidades.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={3} className="text-center py-4">
+                              No hay notificaciones pendientes
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

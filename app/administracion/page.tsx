@@ -56,19 +56,26 @@ export default function Administracion() {
           cedula,
           cargo_id,
           empresa_id,
-          empresas:empresa_id(nombre),
-          cargos:cargo_id(nombre)
+          empresas:empresa_id(nombre)
         `)
         .in('auth_user_id', vacacionesUserIds)
 
+      // Obtener información de cargos por separado
+      const cargoIds = vacacionesUsuariosData?.map(u => u.cargo_id).filter(Boolean) || []
+      const { data: cargosData } = cargoIds.length > 0 ? await supabase
+        .from('cargos')
+        .select('id, nombre')
+        .in('id', cargoIds) : { data: [] }
+
       const solicitudesVacacionesCompletas = solicitudesVacacionesData.map(s => {
         const usuario = vacacionesUsuariosData?.find(u => u.auth_user_id === s.usuario_id)
+        const cargo = usuario?.cargo_id ? cargosData?.find(c => c.id === usuario.cargo_id) : null
         return {
           ...s,
           usuario: usuario ? {
-            colaborador: usuario.colaborador,
-            cedula: usuario.cedula,
-            cargo: usuario.cargos ? usuario.cargos.nombre : 'N/A',
+            colaborador: String(usuario.colaborador || ''),
+            cedula: String(usuario.cedula || ''),
+            cargo: cargo ? String(cargo.nombre || 'N/A') : 'N/A',
             fecha_ingreso: null
           } : null
         }
@@ -249,7 +256,7 @@ export default function Administracion() {
         .limit(5)
 
       // Obtener datos de usuarios para las solicitudes de permisos
-      let solicitudesPermisosCompletas = []
+      let solicitudesPermisosCompletas: any[] = []
       if (solicitudesPermisosData && solicitudesPermisosData.length > 0) {
         const permisosUserIds = [...new Set(solicitudesPermisosData.map(s => s.usuario_id))]
         const { data: permisosUsuariosData } = await supabase
@@ -260,22 +267,31 @@ export default function Administracion() {
             cedula,
             cargo_id,
             empresa_id,
-            empresas:empresa_id(nombre),
-            cargos:cargo_id(nombre)
+            empresas:empresa_id(nombre)
           `)
           .in('auth_user_id', permisosUserIds)
 
+        // Obtener información de cargos por separado
+        const permisosCargoIds = permisosUsuariosData?.map(u => u.cargo_id).filter(Boolean) || []
+        const { data: permisosCargosData } = permisosCargoIds.length > 0 ? await supabase
+          .from('cargos')
+          .select('id, nombre')
+          .in('id', permisosCargoIds) : { data: [] }
+
         solicitudesPermisosCompletas = solicitudesPermisosData.map(s => {
           const usuario = permisosUsuariosData?.find(u => u.auth_user_id === s.usuario_id)
+          const cargo = usuario?.cargo_id ? permisosCargosData?.find(c => c.id === usuario.cargo_id) : null
           return {
             ...s,
             usuario: usuario ? {
-              colaborador: usuario.colaborador,
-              cedula: usuario.cedula,
-              cargo: usuario.cargos ? usuario.cargos.nombre : 'N/A',
+              colaborador: String(usuario.colaborador || ''),
+              cedula: String(usuario.cedula || ''),
+              cargo: cargo ? String(cargo.nombre || 'N/A') : 'N/A',
               fecha_ingreso: null,
-              empresa_id: usuario.empresa_id,
-              empresas: usuario.empresas
+              empresa_id: Number(usuario.empresa_id || 0),
+              empresas: {
+                nombre: String((usuario.empresas as any)?.nombre || '')
+              }
             } : null
           }
         })
@@ -295,7 +311,23 @@ export default function Administracion() {
         .limit(5)
 
       // Obtener datos de usuarios para las incapacidades
-      let incapacidadesCompletas = []
+let incapacidadesCompletas: Array<{
+  id: number;
+  fecha_inicio: string;
+  fecha_fin: string;
+  fecha_subida: string;
+  usuario_id: string;
+  usuario?: {
+    colaborador: string;
+    cedula: string;
+    cargo: string;
+    fecha_ingreso: string | null;
+    empresa_id: number;
+    empresas: {
+      nombre: string;
+    };
+  } | null;
+}> = [];
       if (incapacidadesData && incapacidadesData.length > 0) {
         const incapacidadesUserIds = [...new Set(incapacidadesData.map(i => i.usuario_id))]
         const { data: incapacidadesUsuariosData } = await supabase
@@ -306,22 +338,35 @@ export default function Administracion() {
             cedula,
             cargo_id,
             empresa_id,
-            empresas:empresa_id(nombre),
-            cargos:cargo_id(nombre)
+            empresas:empresa_id(nombre)
           `)
           .in('auth_user_id', incapacidadesUserIds)
 
-        incapacidadesCompletas = incapacidadesData.map(i => {
+        // Obtener información de cargos por separado
+        const incapacidadesCargoIds = incapacidadesUsuariosData?.map(u => u.cargo_id).filter(Boolean) || []
+        const { data: incapacidadesCargosData } = incapacidadesCargoIds.length > 0 ? await supabase
+          .from('cargos')
+          .select('id, nombre')
+          .in('id', incapacidadesCargoIds) : { data: [] }
+
+        incapacidadesCompletas = incapacidadesData.map((i: any) => {
           const usuario = incapacidadesUsuariosData?.find(u => u.auth_user_id === i.usuario_id)
+          const cargo = usuario?.cargo_id ? incapacidadesCargosData?.find(c => c.id === usuario.cargo_id) : null
           return {
-            ...i,
+            id: Number(i.id),
+            fecha_inicio: String(i.fecha_inicio),
+            fecha_fin: String(i.fecha_fin),
+            fecha_subida: String(i.fecha_subida),
+            usuario_id: String(i.usuario_id),
             usuario: usuario ? {
-              colaborador: usuario.colaborador,
-              cedula: usuario.cedula,
-              cargo: usuario.cargos ? usuario.cargos.nombre : 'N/A',
+              colaborador: String(usuario.colaborador || ''),
+              cedula: String(usuario.cedula || ''),
+              cargo: cargo ? String(cargo.nombre || 'N/A') : 'N/A',
               fecha_ingreso: null,
-              empresa_id: usuario.empresa_id,
-              empresas: usuario.empresas
+              empresa_id: Number(usuario.empresa_id || 0),
+              empresas: {
+                nombre: String((usuario.empresas as any)?.nombre || '')
+              }
             } : null
           }
         })
@@ -487,22 +532,31 @@ export default function Administracion() {
                   cedula,
                   cargo_id,
                   empresa_id,
-                  empresas:empresa_id(nombre),
-                  cargos:cargo_id(nombre)
+                  empresas:empresa_id(nombre)
                 `)
                 .in('auth_user_id', permisosUserIds)
 
+              // Obtener información de cargos por separado
+              const permisosCargoIds2 = permisosUsuariosData?.map(u => u.cargo_id).filter(Boolean) || []
+              const { data: permisosCargosData2 } = permisosCargoIds2.length > 0 ? await supabase
+                .from('cargos')
+                .select('id, nombre')
+                .in('id', permisosCargoIds2) : { data: [] }
+
               const solicitudesPermisosCompletas = solicitudesPermisosData.map(s => {
                 const usuario = permisosUsuariosData?.find(u => u.auth_user_id === s.usuario_id)
+                const cargo = usuario?.cargo_id ? permisosCargosData2?.find(c => c.id === usuario.cargo_id) : null
                 return {
                   ...s,
                   usuario: usuario ? {
-                    colaborador: usuario.colaborador,
-                    cedula: usuario.cedula,
-                    cargo: usuario.cargos ? usuario.cargos.nombre : 'N/A',
+                    colaborador: String(usuario.colaborador || ''),
+                    cedula: String(usuario.cedula || ''),
+                    cargo: cargo ? String(cargo.nombre || 'N/A') : 'N/A',
                     fecha_ingreso: null,
-                    empresa_id: usuario.empresa_id,
-                    empresas: usuario.empresas
+                    empresa_id: Number(usuario.empresa_id || 0),
+                    empresas: {
+                      nombre: String((usuario.empresas as any)?.nombre || '')
+                    }
                   } : null
                 }
               })
@@ -555,22 +609,35 @@ export default function Administracion() {
                   cedula,
                   cargo_id,
                   empresa_id,
-                  empresas:empresa_id(nombre),
-                  cargos:cargo_id(nombre)
+                  empresas:empresa_id(nombre)
                 `)
                 .in('auth_user_id', incapacidadesUserIds)
 
+              // Obtener información de cargos por separado
+              const incapacidadesCargoIds2 = incapacidadesUsuariosData?.map(u => u.cargo_id).filter(Boolean) || []
+              const { data: incapacidadesCargosData2 } = incapacidadesCargoIds2.length > 0 ? await supabase
+                .from('cargos')
+                .select('id, nombre')
+                .in('id', incapacidadesCargoIds2) : { data: [] }
+
               const incapacidadesCompletas = incapacidadesData.map(i => {
                 const usuario = incapacidadesUsuariosData?.find(u => u.auth_user_id === i.usuario_id)
+                const cargo = usuario?.cargo_id ? incapacidadesCargosData2?.find(c => c.id === usuario.cargo_id) : null
                 return {
-                  ...i,
+                  id: Number(i.id),
+                  fecha_inicio: String(i.fecha_inicio),
+                  fecha_fin: String(i.fecha_fin),
+                  fecha_subida: String(i.fecha_subida),
+                  usuario_id: String(i.usuario_id),
                   usuario: usuario ? {
-                    colaborador: usuario.colaborador,
-                    cedula: usuario.cedula,
-                    cargo: usuario.cargos ? usuario.cargos.nombre : 'N/A',
+                    colaborador: String(usuario.colaborador || ''),
+                    cedula: String(usuario.cedula || ''),
+                    cargo: cargo ? String(cargo.nombre || 'N/A') : 'N/A',
                     fecha_ingreso: null,
-                    empresa_id: usuario.empresa_id,
-                    empresas: usuario.empresas
+                    empresa_id: Number(usuario.empresa_id || 0),
+                    empresas: {
+                      nombre: String((usuario.empresas as any)?.nombre || '')
+                    }
                   } : null
                 }
               })

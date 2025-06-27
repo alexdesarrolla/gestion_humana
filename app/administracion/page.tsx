@@ -184,12 +184,46 @@ export default function Administracion() {
       const { data: solicitudesPermisosData } = await supabase
         .from('solicitudes_permisos')
         .select(`
-          *,
-          usuario:usuario_id(colaborador, cedula, cargo, fecha_ingreso, empresa_id, empresas(nombre))
+          id, tipo_permiso, fecha_inicio, fecha_fin, hora_inicio, hora_fin, 
+          motivo, compensacion, estado, fecha_solicitud, fecha_resolucion, 
+          motivo_rechazo, pdf_url, usuario_id, admin_id
         `)
         .eq('estado', 'pendiente')
         .order('fecha_solicitud', { ascending: false })
         .limit(5)
+
+      // Obtener datos de usuarios para las solicitudes de permisos
+      let solicitudesPermisosCompletas = []
+      if (solicitudesPermisosData && solicitudesPermisosData.length > 0) {
+        const permisosUserIds = [...new Set(solicitudesPermisosData.map(s => s.usuario_id))]
+        const { data: permisosUsuariosData } = await supabase
+          .from('usuario_nomina')
+          .select(`
+            auth_user_id,
+            colaborador,
+            cedula,
+            cargo_id,
+            empresa_id,
+            empresas:empresa_id(nombre),
+            cargos:cargo_id(nombre)
+          `)
+          .in('auth_user_id', permisosUserIds)
+
+        solicitudesPermisosCompletas = solicitudesPermisosData.map(s => {
+          const usuario = permisosUsuariosData?.find(u => u.auth_user_id === s.usuario_id)
+          return {
+            ...s,
+            usuario: usuario ? {
+              colaborador: usuario.colaborador,
+              cedula: usuario.cedula,
+              cargo: usuario.cargos ? usuario.cargos.nombre : 'N/A',
+              fecha_ingreso: null,
+              empresa_id: usuario.empresa_id,
+              empresas: usuario.empresas
+            } : null
+          }
+        })
+      }
 
       // Obtener notificaciones de incapacidades pendientes
       const { data: incapacidadesData } = await supabase
@@ -213,7 +247,7 @@ export default function Administracion() {
       setNotificacionesIncapacidades(incapacidadesData || [])
 
       setSolicitudesCertificacion(solicitudesCertificacionData || [])
-      setSolicitudesPermisos(solicitudesPermisosData || [])
+      setSolicitudesPermisos(solicitudesPermisosCompletas || [])
       setUserData(userData)
       setLoading(false)
 

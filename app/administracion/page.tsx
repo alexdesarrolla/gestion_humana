@@ -225,16 +225,51 @@ export default function Administracion() {
         })
       }
 
-      // Obtener notificaciones de incapacidades pendientes
+      // Obtener las últimas 5 incapacidades
       const { data: incapacidadesData } = await supabase
-        .from('solicitudes_incapacidades')
+        .from('incapacidades')
         .select(`
-          *,
-          usuario_nomina:usuario_id(colaborador, cedula)
+          id,
+          fecha_inicio,
+          fecha_fin,
+          fecha_subida,
+          usuario_id
         `)
-        .eq('estado', 'pendiente')
-        .order('fecha_solicitud', { ascending: false })
+        .order('fecha_subida', { ascending: false })
         .limit(5)
+
+      // Obtener datos de usuarios para las incapacidades
+      let incapacidadesCompletas = []
+      if (incapacidadesData && incapacidadesData.length > 0) {
+        const incapacidadesUserIds = [...new Set(incapacidadesData.map(i => i.usuario_id))]
+        const { data: incapacidadesUsuariosData } = await supabase
+          .from('usuario_nomina')
+          .select(`
+            auth_user_id,
+            colaborador,
+            cedula,
+            cargo_id,
+            empresa_id,
+            empresas:empresa_id(nombre),
+            cargos:cargo_id(nombre)
+          `)
+          .in('auth_user_id', incapacidadesUserIds)
+
+        incapacidadesCompletas = incapacidadesData.map(i => {
+          const usuario = incapacidadesUsuariosData?.find(u => u.auth_user_id === i.usuario_id)
+          return {
+            ...i,
+            usuario: usuario ? {
+              colaborador: usuario.colaborador,
+              cedula: usuario.cedula,
+              cargo: usuario.cargos ? usuario.cargos.nombre : 'N/A',
+              fecha_ingreso: null,
+              empresa_id: usuario.empresa_id,
+              empresas: usuario.empresas
+            } : null
+          }
+        })
+      }
 
       setStats({
         totalUsers: users?.length || 0,
@@ -244,7 +279,7 @@ export default function Administracion() {
         totalCompanies: companies?.length || 0
       })
 
-      setNotificacionesIncapacidades(incapacidadesData || [])
+      setNotificacionesIncapacidades(incapacidadesCompletas || [])
 
       setSolicitudesCertificacion(solicitudesCertificacionData || [])
       setSolicitudesPermisos(solicitudesPermisosCompletas || [])
@@ -495,14 +530,14 @@ export default function Administracion() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {notificacionesIncapacidades.map((solicitud) => (
-                          <TableRow key={solicitud.id}>
-                            <TableCell>{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</TableCell>
-                            <TableCell>{solicitud.usuario_nomina?.colaborador}</TableCell>
+                        {notificacionesIncapacidades.map((incapacidad) => (
+                          <TableRow key={incapacidad.id}>
+                            <TableCell>{new Date(incapacidad.fecha_subida).toLocaleDateString()}</TableCell>
+                            <TableCell>{incapacidad.usuario?.colaborador}</TableCell>
                             <TableCell>
                               {Math.ceil(
-                                (new Date(solicitud.fecha_fin).getTime() - 
-                                new Date(solicitud.fecha_inicio).getTime()) / 
+                                (new Date(incapacidad.fecha_fin).getTime() - 
+                                new Date(incapacidad.fecha_inicio).getTime()) / 
                                 (1000 * 3600 * 24)
                               ) + 1}
                             </TableCell>

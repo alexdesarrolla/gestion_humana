@@ -37,7 +37,7 @@ async function removeModerator() {
       console.log('\n2. Convirtiendo moderadores a usuarios...')
       const { error: updateError } = await supabase
         .from('usuario_nomina')
-        .update({ rol: 'usuario', updated_at: new Date().toISOString() })
+        .update({ rol: 'usuario' })
         .eq('rol', 'moderador')
       
       if (updateError) {
@@ -48,17 +48,30 @@ async function removeModerator() {
       console.log(`✅ ${moderadores.length} usuarios convertidos de moderador a usuario`)
     }
     
-    // 3. Eliminar permisos de ex-moderadores
-    console.log('\n3. Eliminando permisos de ex-moderadores...')
-    const { error: deletePermError } = await supabase
+    // 3. Verificar si existe la tabla usuario_permisos antes de eliminar
+    console.log('\n3. Verificando tabla usuario_permisos...')
+    const { data: permTable, error: permTableError } = await supabase
       .from('usuario_permisos')
-      .delete()
-      .in('usuario_id', moderadores.map(m => m.id).filter(id => id))
+      .select('id')
+      .limit(1)
     
-    if (deletePermError) {
-      console.error('Error al eliminar permisos:', deletePermError)
+    if (permTableError && permTableError.code === '42P01') {
+      console.log('⚠️  Tabla usuario_permisos no existe, saltando eliminación de permisos')
+    } else if (permTableError) {
+      console.error('Error al verificar tabla usuario_permisos:', permTableError)
     } else {
-      console.log('✅ Permisos de ex-moderadores eliminados')
+      // La tabla existe, proceder con la eliminación
+      console.log('Eliminando permisos de ex-moderadores...')
+      const { error: deletePermError } = await supabase
+        .from('usuario_permisos')
+        .delete()
+        .in('usuario_id', moderadores.map(m => m.id).filter(id => id))
+      
+      if (deletePermError) {
+        console.error('Error al eliminar permisos:', deletePermError)
+      } else {
+        console.log('✅ Permisos de ex-moderadores eliminados')
+      }
     }
     
     // 4. Verificar estado final

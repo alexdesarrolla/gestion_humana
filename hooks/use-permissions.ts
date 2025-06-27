@@ -6,27 +6,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 )
 
-interface Modulo {
-  id: string
-  nombre: string
-  descripcion: string
-  ruta: string
-  icono: string
-  orden: number
-  activo: boolean
-}
-
-interface UsuarioPermiso {
-  id: string
-  usuario_id: string
-  modulo_id: string
-  puede_ver: boolean
-  puede_crear: boolean
-  puede_editar: boolean
-  puede_eliminar: boolean
-  modulos: Modulo
-}
-
 interface UserData {
   id: string
   rol: 'usuario' | 'administrador'
@@ -35,15 +14,14 @@ interface UserData {
 
 export function usePermissions() {
   const [userData, setUserData] = useState<UserData | null>(null)
-  const [permisos, setPermisos] = useState<UsuarioPermiso[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    loadUserPermissions()
+    loadUserData()
   }, [])
 
-  const loadUserPermissions = async () => {
+  const loadUserData = async () => {
     try {
       setLoading(true)
       setError(null)
@@ -70,62 +48,8 @@ export function usePermissions() {
       setUserData(user)
       console.log('Usuario cargado:', user)
 
-      // Si es administrador, tiene todos los permisos
-      if (user.rol === 'administrador') {
-        const { data: modulos, error: modulosError } = await supabase
-          .from('modulos')
-          .select('*')
-          .eq('activo', true)
-          .order('orden')
-
-        if (modulosError) {
-          console.error('Error al obtener módulos:', modulosError)
-          throw new Error('Error al obtener módulos')
-        }
-
-        // Crear permisos completos para administrador
-        const permisosAdmin = modulos.map(modulo => ({
-          id: `admin-${modulo.id}`,
-          usuario_id: session.user.id,
-          modulo_id: modulo.id,
-          puede_ver: true,
-          puede_crear: true,
-          puede_editar: true,
-          puede_eliminar: true,
-          modulos: modulo
-        }))
-
-        setPermisos(permisosAdmin)
-      } else {
-        // Para usuarios, obtener permisos específicos
-        const { data: userPermisos, error: permisosError } = await supabase
-          .from('usuario_permisos')
-          .select(`
-            *,
-            modulos (
-              id,
-              nombre,
-              descripcion,
-              ruta,
-              icono,
-              orden,
-              activo
-            )
-          `)
-          .eq('usuario_id', session.user.id)
-          .eq('modulos.activo', true)
-          .order('modulos.orden', { foreignTable: 'modulos' })
-
-        if (permisosError) {
-          console.error('Error al obtener permisos:', permisosError)
-          throw new Error('Error al obtener permisos del usuario')
-        }
-
-        console.log('Permisos cargados:', userPermisos)
-        setPermisos(userPermisos || [])
-      }
     } catch (err) {
-      console.error('Error en loadUserPermissions:', err)
+      console.error('Error en loadUserData:', err)
       setError(err instanceof Error ? err.message : 'Error desconocido')
     } finally {
       setLoading(false)
@@ -139,10 +63,9 @@ export function usePermissions() {
     // Los administradores pueden acceder a todo
     if (userData.rol === 'administrador') return true
     
-    // Verificar si el usuario tiene permisos para esta ruta
-    return permisos.some(permiso => 
-      permiso.modulos.ruta === ruta && permiso.puede_ver
-    )
+    // Los usuarios regulares pueden acceder a rutas básicas
+    const rutasUsuario = ['/perfil', '/perfil/solicitudes', '/perfil/comunicados', '/perfil/novedades']
+    return rutasUsuario.includes(ruta)
   }
 
   // Función para verificar permisos específicos
@@ -152,16 +75,12 @@ export function usePermissions() {
     // Los administradores tienen todos los permisos
     if (userData.rol === 'administrador') return true
     
-    const permiso = permisos.find(p => p.modulos.ruta === moduloRuta)
-    if (!permiso) return false
+    // Los usuarios regulares solo pueden ver y crear en sus módulos
+    const rutasUsuario = ['/perfil', '/perfil/solicitudes', '/perfil/comunicados', '/perfil/novedades']
+    if (!rutasUsuario.includes(moduloRuta)) return false
     
-    switch (accion) {
-      case 'ver': return permiso.puede_ver
-      case 'crear': return permiso.puede_crear
-      case 'editar': return permiso.puede_editar
-      case 'eliminar': return permiso.puede_eliminar
-      default: return false
-    }
+    // Los usuarios pueden ver y crear, pero no editar ni eliminar
+    return accion === 'ver' || accion === 'crear'
   }
 
   // Función para verificar si es administrador
@@ -174,36 +93,19 @@ export function usePermissions() {
     return userData?.rol === 'administrador'
   }
 
-  // Función para obtener módulos accesibles
-  const getAccessibleModules = (): Modulo[] => {
-    if (!userData) return []
-    
-    if (userData.rol === 'administrador') {
-      // Para administradores, devolver todos los módulos de sus permisos
-      return permisos.map(p => p.modulos)
-    }
-    
-    // Para otros usuarios, devolver solo módulos con permiso de ver
-    return permisos
-      .filter(p => p.puede_ver)
-      .map(p => p.modulos)
-  }
-
-  // Función para refrescar permisos
+  // Función para refrescar datos
   const refreshPermissions = () => {
-    loadUserPermissions()
+    loadUserData()
   }
 
   return {
     userData,
-    permisos,
     loading,
     error,
     canAccess,
     hasPermission,
     isAdministrator,
     isAdmin,
-    getAccessibleModules,
     refreshPermissions
   }
 }

@@ -62,10 +62,11 @@ export default function Usuarios() {
     caja_de_compensacion_id: '',
     direccion_residencia: ''
   })
-  const [sedes, setSedes] = useState<any[]>([])
-  const [eps, setEps] = useState<any[]>([])
-  const [afps, setAfps] = useState<any[]>([])
-  const [cajaDeCompensacionOptions, setCajaDeCompensacionOptions] = useState<any[]>([])
+  const [sedes, setSedes] = useState<any[]>([]);
+  const [eps, setEps] = useState<any[]>([]);
+  const [afps, setAfps] = useState<any[]>([]);
+  const [cesantias, setCesantias] = useState<any[]>([]);
+  const [cajaDeCompensacionOptions, setCajaDeCompensacionOptions] = useState<any[]>([]);
   const [addUserError, setAddUserError] = useState('')
   const [addUserSuccess, setAddUserSuccess] = useState(false)
 
@@ -166,9 +167,15 @@ export default function Usuarios() {
         .select("id, nombre")
         .order("nombre")
 
+      const { data: cesantiasData } = await supabase
+        .from("cesantias")
+        .select("id, nombre")
+        .order("nombre")
+
       setSedes(sedesData || [])
       setEps(epsData || [])
       setAfps(afpsData || [])
+      setCesantias(cesantiasData || [])
       setCajaDeCompensacionOptions(cajasData || [])
 
       // Obtener vacaciones activas para todos los usuarios
@@ -566,32 +573,7 @@ export default function Usuarios() {
 
       if (dbError) throw dbError
       
-      // Los usuarios normales no tienen permisos especiales
-      if (false) {
-        // Primero eliminar permisos existentes
-        await supabase
-          .from('usuario_permisos')
-          .delete()
-          .eq('usuario_id', editUserData.auth_user_id)
-        
-        // Insertar nuevos permisos
-        const permisosParaInsertar = userPermissions.map(permiso => ({
-          usuario_id: editUserData.auth_user_id,
-          modulo_id: permiso.modulo_id,
-          puede_ver: permiso.puede_ver,
-          puede_crear: permiso.puede_crear,
-          puede_editar: permiso.puede_editar,
-          puede_eliminar: permiso.puede_eliminar
-        }))
-        
-        if (permisosParaInsertar.length > 0) {
-          const { error: permisosError } = await supabase
-            .from('usuario_permisos')
-            .insert(permisosParaInsertar)
-          
-          if (permisosError) throw permisosError
-        }
-      }
+      // Sistema simplificado: solo roles básicos (usuario/administrador)
       
       setEditUserSuccess(true)
       setEditUserData(null)
@@ -1302,6 +1284,25 @@ export default function Usuarios() {
                   </div>
 
                   <div>
+                    <Label htmlFor="cesantias">Cesantías</Label>
+                    <Select value={newUserData.cesantias_id} onValueChange={(value) => setNewUserData({ ...newUserData, cesantias_id: value })}>
+                      <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                        <SelectValue placeholder="Seleccionar cesantías" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cesantias
+                          .filter(cesantia => cesantia && cesantia.id && cesantia.nombre)
+                          .filter((cesantia, index, self) => self.findIndex(c => c.id === cesantia.id) === index)
+                          .map((cesantia) => (
+                            <SelectItem key={`cesantia-${cesantia.id}`} value={cesantia.id.toString()}>
+                              {cesantia.nombre}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
                     <Label htmlFor="caja_compensacion">Caja de Compensación</Label>
                     <Select value={newUserData.caja_de_compensacion_id} onValueChange={(value) => setNewUserData({ ...newUserData, caja_de_compensacion_id: value })}>
                       <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
@@ -1634,6 +1635,25 @@ export default function Usuarios() {
                             .map((afp) => (
                               <SelectItem key={`edit-afp-${afp.id}`} value={afp.id.toString()}>
                                 {afp.nombre}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="edit-cesantias">Cesantías</Label>
+                      <Select value={editUserData.cesantias_id} onValueChange={(value) => setEditUserData({ ...editUserData, cesantias_id: value })}>
+                        <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                          <SelectValue placeholder="Seleccionar cesantías" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {cesantias
+                            .filter(cesantia => cesantia && cesantia.id && cesantia.nombre)
+                            .filter((cesantia, index, self) => self.findIndex(c => c.id === cesantia.id) === index)
+                            .map((cesantia) => (
+                              <SelectItem key={`edit-cesantia-${cesantia.id}`} value={cesantia.id.toString()}>
+                                {cesantia.nombre}
                               </SelectItem>
                             ))}
                         </SelectContent>

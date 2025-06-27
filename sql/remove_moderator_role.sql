@@ -5,18 +5,26 @@ BEGIN;
 
 -- 1. Actualizar todos los usuarios con rol 'moderador' a 'usuario'
 UPDATE usuario_nomina 
-SET rol = 'usuario', updated_at = NOW()
+SET rol = 'usuario'
 WHERE rol = 'moderador';
 
--- 2. Eliminar todos los permisos de los ex-moderadores
--- (esto se hará automáticamente por el trigger si existe)
-DELETE FROM usuario_permisos 
-WHERE usuario_id IN (
-    SELECT auth_user_id 
-    FROM usuario_nomina 
-    WHERE rol = 'usuario' 
-    AND auth_user_id IS NOT NULL
-);
+-- 2. Verificar si la tabla usuario_permisos existe antes de eliminar
+-- (La tabla puede no existir si no se ha migrado el sistema de permisos)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'usuario_permisos') THEN
+        DELETE FROM usuario_permisos 
+        WHERE usuario_id IN (
+            SELECT auth_user_id 
+            FROM usuario_nomina 
+            WHERE rol = 'usuario' 
+            AND auth_user_id IS NOT NULL
+        );
+        RAISE NOTICE 'Permisos de ex-moderadores eliminados de usuario_permisos';
+    ELSE
+        RAISE NOTICE 'Tabla usuario_permisos no existe, saltando eliminación de permisos';
+    END IF;
+END $$;
 
 -- 3. Actualizar el constraint de roles para eliminar 'moderador'
 ALTER TABLE usuario_nomina 
@@ -36,7 +44,10 @@ RETURNS TRIGGER AS $$
 BEGIN
     -- Si el usuario ya no es administrador, eliminar sus permisos
     IF OLD.rol = 'administrador' AND NEW.rol = 'usuario' THEN
-        DELETE FROM usuario_permisos WHERE usuario_id = NEW.auth_user_id;
+        -- Verificar si la tabla usuario_permisos existe antes de eliminar
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'usuario_permisos') THEN
+            DELETE FROM usuario_permisos WHERE usuario_id = NEW.auth_user_id;
+        END IF;
     END IF;
     
     RETURN NEW;

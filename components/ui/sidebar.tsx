@@ -149,7 +149,7 @@ export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
   const [expandedMenus, setExpandedMenus] = useState<{[key: string]: boolean}>({})
   const router = useRouter()
   const currentPath = usePathname()
-  const { userData: permissionsData, permisos, loading: permissionsLoading } = usePermissions()
+  const { userData: permissionsData, loading: permissionsLoading } = usePermissions()
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut()
@@ -158,27 +158,42 @@ export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
     }
   }
 
-  // Crear submenús de administrador basados en permisos
+  // Crear submenús de administrador basados en rol
   const adminSubItems = React.useMemo(() => {
-    console.log('Sidebar - permissionsData:', permissionsData)
-    console.log('Sidebar - permisos:', permisos)
-    if (!permissionsData || !permisos.length) {
+    if (!permissionsData || permissionsData.rol !== 'administrador') {
       return []
     }
     
-    // Filtrar solo los módulos de administración
-    const adminModules = permisos
-      .filter(permiso => permiso.puede_ver && permiso.modulos.ruta.startsWith('/administracion'))
-      .map(permiso => ({
-        name: permiso.modulos.nombre,
-        href: permiso.modulos.ruta,
+    // Solo administradores tienen acceso a estas rutas
+    const adminModules = [
+      {
+        name: "Usuarios",
+        href: "/administracion/usuarios",
         icon: Shield,
-        current: currentPath === permiso.modulos.ruta
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name))
+        current: currentPath === "/administracion/usuarios"
+      },
+      {
+        name: "Solicitudes",
+        href: "/administracion/solicitudes",
+        icon: Shield,
+        current: currentPath.startsWith("/administracion/solicitudes")
+      },
+      {
+        name: "Comunicados",
+        href: "/administracion/comunicados",
+        icon: Shield,
+        current: currentPath.startsWith("/administracion/comunicados")
+      },
+      {
+        name: "Novedades",
+        href: "/administracion/novedades",
+        icon: Shield,
+        current: currentPath.startsWith("/administracion/novedades")
+      }
+    ]
     
     return adminModules
-  }, [permissionsData, permisos, currentPath])
+  }, [permissionsData, currentPath])
 
   const menuItems = [
     { name: "Mis datos", href: "/perfil", icon: Info, current: currentPath === "/perfil" },

@@ -37,7 +37,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [expandedMenus, setExpandedMenus] = useState<{[key: string]: boolean}>({})
   const router = useRouter()
-  const { userData, getAccessibleModules, loading: permissionsLoading } = usePermissions()
+  const { userData, loading: permissionsLoading } = usePermissions()
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut()
@@ -48,11 +48,10 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
 
   const currentPath = usePathname();
 
-  // Generar menuItems dinámicamente basado en permisos
+  // Generar menuItems dinámicamente basado en rol
   const menuItems = React.useMemo(() => {
     if (permissionsLoading || !userData) return [];
     
-    const accessibleModules = getAccessibleModules();
     const items = [];
     
     // Siempre incluir Escritorio
@@ -63,101 +62,98 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
       current: currentPath === "/administracion" 
     });
     
-    // Mapear módulos accesibles a elementos del menú
-    accessibleModules.forEach(modulo => {
-      switch (modulo.nombre) {
-        case 'usuarios':
-          items.push({
-            name: "Usuarios",
+    // Solo administradores tienen acceso completo
+    if (userData.rol === 'administrador') {
+      // Usuarios
+      items.push({
+        name: "Usuarios",
+        icon: User,
+        current: currentPath.includes("/administracion/usuarios"),
+        subItems: [
+          {
+            name: "Todos",
+            href: "/administracion/usuarios",
             icon: User,
-            current: currentPath.includes("/administracion/usuarios"),
-            subItems: [
-              {
-                name: "Todos",
-                href: "/administracion/usuarios",
-                icon: User,
-                current: currentPath === "/administracion/usuarios"
-              },
-              {
-                name: "Cargos",
-                href: "/administracion/usuarios/cargos",
-                icon: FileText,
-                current: currentPath === "/administracion/usuarios/cargos"
-              },
-            ],
-          });
-          break;
-        case 'solicitudes':
-          items.push({
-            name: "Solicitudes",
+            current: currentPath === "/administracion/usuarios"
+          },
+          {
+            name: "Cargos",
+            href: "/administracion/usuarios/cargos",
             icon: FileText,
-            current: currentPath.includes("/administracion/solicitudes"),
-            subItems: [
-              {
-                name: "Certificación Laboral",
-                href: "/administracion/solicitudes/certificacion-laboral",
-                icon: Newspaper,
-                current: currentPath === "/administracion/solicitudes/certificacion-laboral"
-              },
-              {
-                name: "Vacaciones",
-                href: "/administracion/solicitudes/vacaciones",
-                icon: Calendar,
-                current: currentPath === "/administracion/solicitudes/vacaciones"
-              },
-              {
-                name: "Permisos",
-                href: "/administracion/solicitudes/permisos",
-                icon: FileText,
-                current: currentPath === "/administracion/solicitudes/permisos"
-              },
-            ],
-          });
-          break;
-        case 'comunicados':
-          items.push({
-            name: "Comunicados",
+            current: currentPath === "/administracion/usuarios/cargos"
+          },
+        ],
+      });
+      
+      // Solicitudes
+      items.push({
+        name: "Solicitudes",
+        icon: FileText,
+        current: currentPath.includes("/administracion/solicitudes"),
+        subItems: [
+          {
+            name: "Certificación Laboral",
+            href: "/administracion/solicitudes/certificacion-laboral",
             icon: Newspaper,
-            current: currentPath.includes("/administracion/comunicados"),
-            subItems: [
-              {
-                name: "Todos",
-                href: "/administracion/comunicados",
-                icon: FileText,
-                current: currentPath === "/administracion/comunicados"
-              },
-              {
-                name: "Añadir nuevo",
-                href: "/administracion/comunicados/nuevo",
-                icon: Plus,
-                current: currentPath === "/administracion/comunicados/nuevo"
-              },
-              {
-                name: "Categorías",
-                href: "/administracion/comunicados/categorias",
-                icon: FaFileAlt,
-                current: currentPath === "/administracion/comunicados/categorias"
-              },
-            ],
-          });
-          break;
-        case 'novedades':
-          items.push({
-            name: "Novedades",
+            current: currentPath === "/administracion/solicitudes/certificacion-laboral"
+          },
+          {
+            name: "Vacaciones",
+            href: "/administracion/solicitudes/vacaciones",
+            icon: Calendar,
+            current: currentPath === "/administracion/solicitudes/vacaciones"
+          },
+          {
+            name: "Permisos",
+            href: "/administracion/solicitudes/permisos",
             icon: FileText,
-            current: currentPath.includes("/administracion/novedades"),
-            subItems: [
-              {
-                name: "Incapacidades",
-                href: "/administracion/novedades/incapacidades",
-                icon: FaFileAlt,
-                current: currentPath === "/administracion/novedades/incapacidades"
-              },
-            ],
-          });
-          break;
-      }
-    });
+            current: currentPath === "/administracion/solicitudes/permisos"
+          },
+        ],
+      });
+      
+      // Comunicados
+      items.push({
+        name: "Comunicados",
+        icon: Newspaper,
+        current: currentPath.includes("/administracion/comunicados"),
+        subItems: [
+          {
+            name: "Todos",
+            href: "/administracion/comunicados",
+            icon: FileText,
+            current: currentPath === "/administracion/comunicados"
+          },
+          {
+            name: "Añadir nuevo",
+            href: "/administracion/comunicados/nuevo",
+            icon: Plus,
+            current: currentPath === "/administracion/comunicados/nuevo"
+          },
+          {
+            name: "Categorías",
+            href: "/administracion/comunicados/categorias",
+            icon: FaFileAlt,
+            current: currentPath === "/administracion/comunicados/categorias"
+          },
+        ],
+      });
+      
+      // Novedades
+      items.push({
+        name: "Novedades",
+        icon: FileText,
+        current: currentPath.includes("/administracion/novedades"),
+        subItems: [
+          {
+            name: "Incapacidades",
+            href: "/administracion/novedades/incapacidades",
+            icon: FaFileAlt,
+            current: currentPath === "/administracion/novedades/incapacidades"
+          },
+        ],
+      });
+    }
     
     // Siempre incluir Mis datos
     items.push({ 
@@ -168,7 +164,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
     });
     
     return items;
-  }, [permissionsLoading, userData, currentPath, getAccessibleModules]);
+  }, [permissionsLoading, userData, currentPath]);
   
   // Inicializar el estado de expansión basado en la ruta actual
   useEffect(() => {

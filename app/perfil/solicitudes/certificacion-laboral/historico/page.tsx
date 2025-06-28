@@ -119,7 +119,7 @@ export default function HistoricoCertificacionLaboral() {
       }
 
       const counts: Record<string, number> = {}
-      data?.forEach((comment) => {
+      data?.forEach((comment: any) => {
         counts[comment.solicitud_id] = (counts[comment.solicitud_id] || 0) + 1
       })
       setUnseenCounts(counts)

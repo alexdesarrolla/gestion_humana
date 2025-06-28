@@ -86,8 +86,8 @@ export default function AdminSolicitudesCertificacion() {
       // Extraer cargos únicos para el filtro
       const uniqueCargos = Array.from(
         new Set(
-          solicitudesData
-            .map((s) => s.usuario_nomina?.cargos?.nombre)
+          (solicitudesData || [])
+            .map((s: any) => s.usuario_nomina?.cargos?.nombre)
             .filter((c): c is string => Boolean(c))
         )
       )

@@ -93,7 +93,7 @@ export default function PerfilLayout({
       
       {/* Contenido principal */}
       <div className="flex-1 overflow-auto">
-        <main>
+        <main className="px-20 py-10 space-y-6">
           {children}
         </main>
       </div>

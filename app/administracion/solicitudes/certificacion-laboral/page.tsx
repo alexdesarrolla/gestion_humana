@@ -164,15 +164,16 @@ export default function AdminCertificacionLaboral() {
   }, [solicitudes, adminId])
 
   //
-  // 3️⃣ Realtime: suscripción a nuevos comentarios
+  // 3️⃣ Realtime: suscripción a nuevos comentarios y solicitudes
   //
   useEffect(() => {
     if (!adminId) return
 
-    const comentarioChannel = supabase
-      .channel("comentarios_admin_channel", {
+    const realtimeChannel = supabase
+      .channel("admin_certificacion_channel", {
         config: { broadcast: { ack: false } },
       })
+      // Suscripción a nuevos comentarios
       .on(
         "postgres_changes",
         {
@@ -190,12 +191,56 @@ export default function AdminCertificacionLaboral() {
           }
         }
       )
+      // Suscripción a nuevas solicitudes
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "solicitudes_certificacion",
+        },
+        (payload) => {
+          const nuevaSolicitud = payload.new as any
+          if (nuevaSolicitud.estado === "pendiente") {
+            // Recargar solicitudes para obtener datos completos con joins
+            fetchSolicitudes()
+          }
+        }
+      )
+      // Suscripción a cambios de estado en solicitudes
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "solicitudes_certificacion",
+        },
+        (payload) => {
+          const solicitudActualizada = payload.new as any
+          const solicitudAnterior = payload.old as any
+          
+          // Si cambió de pendiente a otro estado, remover de la lista
+          if (solicitudAnterior.estado === "pendiente" && solicitudActualizada.estado !== "pendiente") {
+            setSolicitudes((prev) => prev.filter((s) => s.id !== solicitudActualizada.id))
+            // Limpiar contador de comentarios no vistos
+            setUnseenCounts((prev) => {
+              const newCounts = { ...prev }
+              delete newCounts[solicitudActualizada.id]
+              return newCounts
+            })
+          }
+          // Si cambió de otro estado a pendiente, recargar lista
+          else if (solicitudAnterior.estado !== "pendiente" && solicitudActualizada.estado === "pendiente") {
+            fetchSolicitudes()
+          }
+        }
+      )
       .subscribe()
 
     return () => {
-      supabase.removeChannel(comentarioChannel)
+      supabase.removeChannel(realtimeChannel)
     }
-  }, [adminId, supabase])
+  }, [adminId, supabase, fetchSolicitudes])
 
   //
   // 4️⃣ Abrir modal de comentarios

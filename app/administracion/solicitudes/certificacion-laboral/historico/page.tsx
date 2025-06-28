@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
 // AdminSidebar removido - ya está en el layout
@@ -41,6 +41,7 @@ export default function AdminSolicitudesCertificacion() {
   const [cargos, setCargos] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const supabase = useMemo(() => createSupabaseClient(), [])
 
   // filtros
   const [searchTerm, setSearchTerm] = useState<string>("")
@@ -48,62 +49,116 @@ export default function AdminSolicitudesCertificacion() {
   const [selectedCargo, setSelectedCargo] = useState<string>("all")
   const searchTimeout = useRef<NodeJS.Timeout | null>(null)
 
-  // carga inicial
-  useEffect(() => {
-    const fetchSolicitudes = async () => {
-      setLoading(true)
-      try {
-        const supabase = createSupabaseClient()
-
-        // Obtener solicitudes de certificación con datos relacionados (solo resueltas)
-        const { data: solicitudesData, error: solicitudesError } = await supabase
-          .from("solicitudes_certificacion")
-          .select(`
-            *,
-            usuario_nomina:usuario_id(
-              colaborador,
-              cedula,
-              fecha_ingreso,
-              empresa_id,
-              empresas:empresa_id(nombre, razon_social, nit),
-              cargos:cargo_id(nombre)
-            ),
-            admin_nomina:admin_id(
-              colaborador
-            )
-          `)
-          .in("estado", ["aprobado", "rechazado"])
-          .order("fecha_solicitud", { ascending: false })
-
-        if (solicitudesError) throw solicitudesError
-        if (!solicitudesData) {
-          setSolicitudes([])
-          setFilteredSolicitudes([])
-          return
-        }
-
-        setSolicitudes(solicitudesData)
-        setFilteredSolicitudes(solicitudesData)
-
-        // Extraer cargos únicos para el filtro
-        const uniqueCargos = Array.from(
-          new Set(
-            solicitudesData
-              .map((s) => s.usuario_nomina?.cargos?.nombre)
-              .filter((c): c is string => Boolean(c))
+  // Función para cargar solicitudes históricas
+  const fetchSolicitudes = useCallback(async () => {
+    setLoading(true)
+    try {
+      // Obtener solicitudes de certificación con datos relacionados (solo resueltas)
+      const { data: solicitudesData, error: solicitudesError } = await supabase
+        .from("solicitudes_certificacion")
+        .select(`
+          *,
+          usuario_nomina:usuario_id(
+            colaborador,
+            cedula,
+            fecha_ingreso,
+            empresa_id,
+            empresas:empresa_id(nombre, razon_social, nit),
+            cargos:cargo_id(nombre)
+          ),
+          admin_nomina:admin_id(
+            colaborador
           )
-        )
-        setCargos(uniqueCargos)
-      } catch (err: any) {
-        console.error("Error al cargar solicitudes históricas:", err)
-        setError(err?.message || "Error al cargar las solicitudes")
-      } finally {
-        setLoading(false)
-      }
-    }
+        `)
+        .in("estado", ["aprobado", "rechazado"])
+        .order("fecha_solicitud", { ascending: false })
 
+      if (solicitudesError) throw solicitudesError
+      if (!solicitudesData) {
+        setSolicitudes([])
+        setFilteredSolicitudes([])
+        return
+      }
+
+      setSolicitudes(solicitudesData)
+      setFilteredSolicitudes(solicitudesData)
+
+      // Extraer cargos únicos para el filtro
+      const uniqueCargos = Array.from(
+        new Set(
+          solicitudesData
+            .map((s) => s.usuario_nomina?.cargos?.nombre)
+            .filter((c): c is string => Boolean(c))
+        )
+      )
+      setCargos(uniqueCargos)
+    } catch (err: any) {
+      console.error("Error al cargar solicitudes históricas:", err)
+      setError(err?.message || "Error al cargar las solicitudes")
+    } finally {
+      setLoading(false)
+    }
+  }, [supabase])
+
+  // Carga inicial
+  useEffect(() => {
     fetchSolicitudes()
-  }, [])
+  }, [fetchSolicitudes])
+
+  // Realtime: suscripción a cambios en solicitudes
+  useEffect(() => {
+    const realtimeChannel = supabase
+      .channel("historico_certificacion_channel", {
+        config: { broadcast: { ack: false } },
+      })
+      // Suscripción a cambios de estado en solicitudes
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "solicitudes_certificacion",
+        },
+        (payload) => {
+          const solicitudActualizada = payload.new as any
+          const solicitudAnterior = payload.old as any
+          
+          // Si cambió de pendiente a aprobado/rechazado, recargar lista
+          if (
+            solicitudAnterior.estado === "pendiente" && 
+            (solicitudActualizada.estado === "aprobado" || solicitudActualizada.estado === "rechazado")
+          ) {
+            fetchSolicitudes()
+          }
+          // Si se actualizó una solicitud ya resuelta (ej: cambio de motivo de rechazo)
+          else if (
+            (solicitudAnterior.estado === "aprobado" || solicitudAnterior.estado === "rechazado") &&
+            (solicitudActualizada.estado === "aprobado" || solicitudActualizada.estado === "rechazado")
+          ) {
+            // Actualizar la solicitud específica en el estado local
+            setSolicitudes((prev) => 
+              prev.map((s) => 
+                s.id === solicitudActualizada.id 
+                  ? { ...s, ...solicitudActualizada }
+                  : s
+              )
+            )
+            setFilteredSolicitudes((prev) => 
+              prev.map((s) => 
+                s.id === solicitudActualizada.id 
+                  ? { ...s, ...solicitudActualizada }
+                  : s
+              )
+            )
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(realtimeChannel)
+    }
+  }, [supabase, fetchSolicitudes])
 
   // aplicar filtros con debounce
   useEffect(() => {
@@ -163,7 +218,6 @@ export default function AdminSolicitudesCertificacion() {
   const rechazarSolicitud = async (id: string, motivo: string) => {
     try {
       setLoading(true)
-      const supabase = createSupabaseClient()
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return router.push("/login")
 

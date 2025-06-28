@@ -80,17 +80,17 @@ export default function HistoricoCertificacionLaboral() {
         .from("solicitudes_certificacion")
         .select(`
           *,
-          usuario_nomina!inner(
-            nombre,
+          usuario_nomina:usuario_id(
+            colaborador,
             cedula,
-            cargo,
             fecha_ingreso,
-            salario,
-            tipo_contrato
+            cargos:cargo_id(
+              nombre
+            )
           )
         `)
         .eq("usuario_id", userId)
-        .order("created_at", { ascending: false })
+        .order("fecha_solicitud", { ascending: false })
 
       if (error) throw error
       setSolicitudes(data || [])
@@ -108,20 +108,23 @@ export default function HistoricoCertificacionLaboral() {
     
     try {
       const { data, error } = await supabase
-        .from("comentarios_certificaciones")
+        .from("comentarios_certificacion")
         .select("solicitud_id")
-        .eq("visto_por_usuario", false)
+        .eq("visto_user", false)
         .neq("usuario_id", userId)
 
-      if (error) throw error
+      if (error) {
+        console.error("Error loading unseen counts:", error.message || error)
+        return
+      }
 
       const counts: Record<string, number> = {}
       data?.forEach((comment) => {
         counts[comment.solicitud_id] = (counts[comment.solicitud_id] || 0) + 1
       })
       setUnseenCounts(counts)
-    } catch (err) {
-      console.error("Error loading unseen counts:", err)
+    } catch (err: any) {
+      console.error("Error loading unseen counts:", err?.message || err)
     }
   }
 
@@ -140,7 +143,7 @@ export default function HistoricoCertificacionLaboral() {
         (sol) =>
           sol.dirigido_a?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           sol.ciudad?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          sol.usuario_nomina?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
+          sol.usuario_nomina?.colaborador?.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
@@ -152,7 +155,7 @@ export default function HistoricoCertificacionLaboral() {
     // Filtro por año
     if (selectedYear !== "all") {
       filtered = filtered.filter((sol) => {
-        const year = new Date(sol.created_at).getFullYear().toString()
+        const year = new Date(sol.fecha_solicitud).getFullYear().toString()
         return year === selectedYear
       })
     }
@@ -162,7 +165,7 @@ export default function HistoricoCertificacionLaboral() {
 
   // Obtener años únicos para el filtro
   const getUniqueYears = () => {
-    const years = solicitudes.map((sol) => new Date(sol.created_at).getFullYear())
+    const years = solicitudes.map((sol) => new Date(sol.fecha_solicitud).getFullYear())
     return [...new Set(years)].sort((a, b) => b - a)
   }
 
@@ -191,16 +194,21 @@ export default function HistoricoCertificacionLaboral() {
 
     // Marcar comentarios como vistos
     try {
-      await supabase
-        .from("comentarios_certificaciones")
-        .update({ visto_por_usuario: true })
+      const { error } = await supabase
+        .from("comentarios_certificacion")
+        .update({ visto_user: true })
         .eq("solicitud_id", solicitudId)
         .neq("usuario_id", userId)
 
+      if (error) {
+        console.error("Error marking comments as seen:", error.message || error)
+        return
+      }
+
       // Actualizar contador
       setUnseenCounts((prev) => ({ ...prev, [solicitudId]: 0 }))
-    } catch (err) {
-      console.error("Error marking comments as seen:", err)
+    } catch (err: any) {
+      console.error("Error marking comments as seen:", err?.message || err)
     }
   }
 
@@ -236,17 +244,17 @@ export default function HistoricoCertificacionLaboral() {
       {/* Página principal */}
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            onClick={() => router.back()}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" /> Volver
-          </Button>
+        <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">
             Histórico de Certificaciones Laborales
           </h1>
+          <Button
+            variant="outline"
+            onClick={() => router.back()}
+            className="flex items-center gap-2 bg-black text-white hover:bg-gray-800"
+          >
+            <ArrowLeft className="h-4 w-4" /> Volver a Solicitudes
+          </Button>
         </div>
 
         {/* Filtros */}
@@ -356,7 +364,7 @@ export default function HistoricoCertificacionLaboral() {
                     filteredSolicitudes.map((solicitud) => (
                       <TableRow key={solicitud.id}>
                         <TableCell>
-                          {new Date(solicitud.created_at).toLocaleDateString()}
+                          {new Date(solicitud.fecha_solicitud).toLocaleDateString()}
                         </TableCell>
                         <TableCell>{solicitud.dirigido_a}</TableCell>
                         <TableCell>{solicitud.ciudad}</TableCell>
@@ -367,13 +375,24 @@ export default function HistoricoCertificacionLaboral() {
                         <TableCell>
                           <div className="flex gap-2">
                             {solicitud.certificado_url && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => descargar(solicitud.certificado_url)}
-                              >
-                                <Download className="h-4 w-4" />
-                              </Button>
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => window.open(solicitud.certificado_url, '_blank')}
+                                  title="Ver PDF"
+                                >
+                                  📄
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => descargar(solicitud.certificado_url)}
+                                  title="Descargar PDF"
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                              </>
                             )}
                             <Button
                               size="sm"
@@ -399,39 +418,7 @@ export default function HistoricoCertificacionLaboral() {
           </CardContent>
         </Card>
 
-        {/* Resumen */}
-        {filteredSolicitudes.length > 0 && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
-                <div>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {filteredSolicitudes.length}
-                  </p>
-                  <p className="text-sm text-gray-600">Total mostradas</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-yellow-600">
-                    {filteredSolicitudes.filter((s) => s.estado === "pendiente").length}
-                  </p>
-                  <p className="text-sm text-gray-600">Pendientes</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-green-600">
-                    {filteredSolicitudes.filter((s) => s.estado === "aprobado").length}
-                  </p>
-                  <p className="text-sm text-gray-600">Aprobadas</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-red-600">
-                    {filteredSolicitudes.filter((s) => s.estado === "rechazado").length}
-                  </p>
-                  <p className="text-sm text-gray-600">Rechazadas</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+
       </div>
     </>
   )

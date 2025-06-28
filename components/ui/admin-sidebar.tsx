@@ -3,8 +3,8 @@ import * as React from "react"
 import { useState, useEffect } from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { type VariantProps, cva } from "class-variance-authority"
-import { PanelLeft, Menu, X, LogOut, User, Home, Info, FileText, Newspaper, Calendar, ChevronDown, Plus } from "lucide-react"
-import { FaUser, FaBuilding, FaFileAlt, FaCalendarAlt, FaIdCard } from 'react-icons/fa'
+import { PanelLeft, Menu, X, LogOut, User, Home, Info, FileText, Newspaper, Calendar, ChevronDown, Plus, BarChart3 } from "lucide-react"
+import { FaUser, FaBuilding, FaFileAlt, FaCalendarAlt, FaIdCard, FaChartPie } from 'react-icons/fa'
 import { useRouter } from "next/navigation"
 
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -63,6 +63,16 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
       icon: Home, 
       current: currentPath === "/administracion" 
     });
+    
+    // Estadísticas - disponible para administradores
+    if (userData.rol === 'administrador') {
+      items.push({ 
+        name: "Estadísticas", 
+        href: "/administracion/estadisticas", 
+        icon: FaChartPie, 
+        current: currentPath === "/administracion/estadisticas" 
+      });
+    }
     
     // Solo administradores tienen acceso completo
     if (userData.rol === 'administrador') {

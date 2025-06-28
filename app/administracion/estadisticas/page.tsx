@@ -7,6 +7,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { FaBuilding, FaUsers, FaChartPie, FaUser } from 'react-icons/fa'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
 
+interface Empresa {
+  id: number
+  nombre: string
+}
+
+interface Sede {
+  id: number
+  nombre: string
+}
+
 interface EmpresaStats {
   id: number
   nombre: string
@@ -46,7 +56,7 @@ export default function EstadisticasPage() {
         // Obtener estadísticas por empresa
         const { data: empresas } = await supabase
           .from('empresas')
-          .select('id, nombre')
+          .select('id, nombre') as { data: Empresa[] | null }
         
         if (empresas) {
           const empresasConStats: EmpresaStats[] = []
@@ -133,7 +143,7 @@ export default function EstadisticasPage() {
         // Obtener estadísticas por sedes
         const { data: sedes } = await supabase
           .from('sedes')
-          .select('id, nombre')
+          .select('id, nombre') as { data: Sede[] | null }
         
         if (sedes) {
           const sedesConStats: SedeStats[] = []

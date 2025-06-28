@@ -688,7 +688,6 @@ let incapacidadesCompletas: Array<{
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Solicitudes de Certificación Laboral</h2>
             <Button
-              variant="outline"
               size="sm"
               onClick={() => router.push('/administracion/solicitudes/certificacion-laboral')}
             >

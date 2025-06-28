@@ -231,10 +231,9 @@ export default function AdminSolicitudesCertificacion() {
           <div className="w-full mx-auto space-y-4">
             <div className="flex items-center justify-between">
               <h1 className="text-2xl font-bold">Histórico de Certificaciones</h1>
-              <Button 
-                variant="outline" 
+              <Button
                 onClick={handleVolver}
-                className="flex items-center gap-2 bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 hover:text-blue-700"
+                className="flex items-center gap-2"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Volver a Solicitudes

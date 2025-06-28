@@ -480,9 +480,12 @@ export default function AdminCertificacionLaboral() {
                 <h1 className="text-2xl font-bold">Solicitudes de Certificación Laboral</h1>
                 <p className="text-muted-foreground">Gestiona las solicitudes pendientes.</p>
               </div>
-              <Button onClick={() => setShowCreateModal(true)}>
-                <Plus className="h-4 w-4 mr-1" />Nueva solicitud
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={() => router.push('/administracion/solicitudes/certificacion-laboral/historico')}>Ver histórico</Button>
+                <Button onClick={() => setShowCreateModal(true)}>
+                  <Plus className="h-4 w-4 mr-1" />Nueva solicitud
+                </Button>
+              </div>
             </div>
 
             {error && (
@@ -569,7 +572,7 @@ export default function AdminCertificacionLaboral() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => openComments(sol.id, sol.usuario)}
+                                onClick={() => openComments(sol.id, sol.usuario_nomina)}
                               >
                                 <MessageSquare className="h-4 w-4" />
                               </Button>

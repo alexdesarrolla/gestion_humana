@@ -359,7 +359,7 @@ export default function NuevoComunicado() {
               </Alert>
             )}
 
-            <form onSubmit={e => handleSubmit(e, false)} className="space-y-6 md:pt-8">
+            <form onSubmit={e => handleSubmit(e, true)} className="space-y-6 md:pt-8">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Izquierda: Título y Contenido */}
                 <div className="md:col-span-2 flex flex-col space-y-6">
@@ -393,19 +393,11 @@ export default function NuevoComunicado() {
                   {/* Botones */}
                   <div className="flex flex-col sm:flex-row gap-4 pt-6 md:pt-8">
                     <Button
-                      type="submit"
-                      disabled={saving || uploadingImage || uploadingFiles}
-                      className="flex-1"
-                    >
-                      {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                      Guardar Borrador
-                    </Button>
-                    <Button
                       type="button"
                       variant="default"
                       onClick={e => handleSubmit(e, true)}
                       disabled={saving || uploadingImage || uploadingFiles}
-                      className="flex-1"
+                      className="w-full"
                     >
                       {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                       Publicar Comunicado

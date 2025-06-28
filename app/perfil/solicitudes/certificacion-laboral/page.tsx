@@ -226,12 +226,21 @@ export default function CertificacionLaboral() {
                 <h1 className="text-2xl font-bold">
                   Solicitudes de Certificación Laboral
                 </h1>
-                <Button
-                  onClick={() => setShowNewModal(true)}
-                  className="flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" /> Nueva solicitud
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => router.push('/perfil/solicitudes/certificacion-laboral/historico')}
+                    className="flex items-center gap-2"
+                  >
+                    <FileText className="h-4 w-4" /> Histórico
+                  </Button>
+                  <Button
+                    onClick={() => setShowNewModal(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" /> Nueva solicitud
+                  </Button>
+                </div>
               </div>
 
               {/* Alerts */}

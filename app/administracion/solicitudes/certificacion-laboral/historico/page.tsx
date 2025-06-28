@@ -24,7 +24,15 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Search, X } from "lucide-react"
+import { Search, X, ArrowLeft, FileDown, MessageSquare, AlertTriangle } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { ComentariosCertificacion } from "@/components/certificacion-laboral/certificacion-laboral"
 
 export default function AdminSolicitudesCertificacion() {
   const router = useRouter()
@@ -36,7 +44,7 @@ export default function AdminSolicitudesCertificacion() {
 
   // filtros
   const [searchTerm, setSearchTerm] = useState<string>("")
-  const [selectedEstado, setSelectedEstado] = useState<string>("all")
+  const [selectedEstado, setSelectedEstado] = useState<string>("resueltas")
   const [selectedCargo, setSelectedCargo] = useState<string>("all")
   const searchTimeout = useRef<NodeJS.Timeout | null>(null)
 
@@ -47,72 +55,41 @@ export default function AdminSolicitudesCertificacion() {
       try {
         const supabase = createSupabaseClient()
 
-        // 1. Obtener solicitudes de certificación
-        const { data: certs, error: certError } = await supabase
+        // Obtener solicitudes de certificación con datos relacionados (solo resueltas)
+        const { data: solicitudesData, error: solicitudesError } = await supabase
           .from("solicitudes_certificacion")
           .select(`
-            id,
-            usuario_id,
-            admin_id,
-            estado,
-            dirigido_a,
-            ciudad,
-            fecha_solicitud,
-            fecha_resolucion,
-            motivo_rechazo,
-            pdf_url,
-            salario_contrato
+            *,
+            usuario_nomina:usuario_id(
+              colaborador,
+              cedula,
+              fecha_ingreso,
+              empresa_id,
+              empresas:empresa_id(nombre, razon_social, nit),
+              cargos:cargo_id(nombre)
+            ),
+            admin_nomina:admin_id(
+              colaborador
+            )
           `)
+          .in("estado", ["aprobado", "rechazado"])
           .order("fecha_solicitud", { ascending: false })
 
-        if (certError) throw certError
-        if (!certs) {
+        if (solicitudesError) throw solicitudesError
+        if (!solicitudesData) {
           setSolicitudes([])
           setFilteredSolicitudes([])
           return
         }
 
-        // 2. Obtener datos de usuario y admin
-        const userIds = Array.from(new Set(certs.map((s) => s.usuario_id)))
-        const adminIds = Array.from(
-          new Set(certs.filter((s) => s.admin_id).map((s) => s.admin_id!))
-        )
+        setSolicitudes(solicitudesData)
+        setFilteredSolicitudes(solicitudesData)
 
-        const { data: usuariosData, error: usuariosError } = await supabase
-          .from("usuario_nomina")
-          .select(`
-            auth_user_id,
-            nombre,
-            cedula,
-            cargo,
-            empresa_id,
-            empresas:empresa_id(nombre)
-          `)
-          .in("auth_user_id", userIds)
-
-        if (usuariosError) throw usuariosError
-
-        const { data: adminsData, error: adminsError } = await supabase
-          .from("usuario_nomina")
-          .select("auth_user_id, nombre")
-          .in("auth_user_id", adminIds)
-
-        if (adminsError) throw adminsError
-
-        // 3. Combinar y extraer cargos únicos
-        const completas = certs.map((s) => {
-          const usuario = usuariosData?.find((u) => u.auth_user_id === s.usuario_id) || null
-          const admin = adminsData?.find((a) => a.auth_user_id === s.admin_id) || null
-          return { ...s, usuario, admin }
-        })
-
-        setSolicitudes(completas)
-        setFilteredSolicitudes(completas)
-
+        // Extraer cargos únicos para el filtro
         const uniqueCargos = Array.from(
           new Set(
-            usuariosData
-              .map((u) => u.cargo)
+            solicitudesData
+              .map((s) => s.usuario_nomina?.cargos?.nombre)
               .filter((c): c is string => Boolean(c))
           )
         )
@@ -138,24 +115,26 @@ export default function AdminSolicitudesCertificacion() {
       if (searchTerm) {
         const term = searchTerm.toLowerCase()
         result = result.filter((s) => {
-          const u = s.usuario
+          const u = s.usuario_nomina
           return (
-            u?.nombre.toLowerCase().includes(term) ||
+            u?.colaborador.toLowerCase().includes(term) ||
             u?.cedula.toLowerCase().includes(term) ||
-            u?.cargo.toLowerCase().includes(term) ||
+            u?.cargos?.nombre.toLowerCase().includes(term) ||
             u?.empresas?.nombre.toLowerCase().includes(term)
           )
         })
       }
 
       // estado
-      if (selectedEstado !== "all") {
+      if (selectedEstado === "resueltas") {
+        result = result.filter((s) => s.estado === "aprobado" || s.estado === "rechazado")
+      } else if (selectedEstado !== "all") {
         result = result.filter((s) => s.estado === selectedEstado)
       }
 
       // cargo
       if (selectedCargo !== "all") {
-        result = result.filter((s) => s.usuario?.cargo === selectedCargo)
+        result = result.filter((s) => s.usuario_nomina?.cargos?.nombre === selectedCargo)
       }
 
       setFilteredSolicitudes(result)
@@ -168,7 +147,7 @@ export default function AdminSolicitudesCertificacion() {
 
   const clearFilters = () => {
     setSearchTerm("")
-    setSelectedEstado("all")
+    setSelectedEstado("resueltas")
     setSelectedCargo("all")
   }
 
@@ -222,8 +201,27 @@ export default function AdminSolicitudesCertificacion() {
     }
   }
 
-  const aprobarSolicitud = async (id: string, usuario: any) => {
-    // Lógica de aprobación / generación de PDF...
+  const getEstadoBadge = (estado: string) => {
+    switch (estado) {
+      case "aprobado":
+        return <Badge className="bg-green-100 text-green-800">Aprobado</Badge>
+      case "rechazado":
+        return <Badge className="bg-red-100 text-red-800">Rechazado</Badge>
+      case "pendiente":
+        return <Badge className="bg-yellow-100 text-yellow-800">Pendiente</Badge>
+      default:
+        return <Badge variant="secondary">{estado}</Badge>
+    }
+  }
+
+  const handleVerPDF = (pdfUrl: string) => {
+    if (pdfUrl) {
+      window.open(pdfUrl, '_blank')
+    }
+  }
+
+  const handleVolver = () => {
+    router.push('/administracion/solicitudes/certificacion-laboral')
   }
 
   return (
@@ -231,7 +229,17 @@ export default function AdminSolicitudesCertificacion() {
       <div className="flex flex-col flex-1">
         <main className="flex-1 py-6">
           <div className="w-full mx-auto space-y-4">
-            <h1 className="text-2xl font-bold">Solicitudes de Certificación</h1>
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl font-bold">Histórico de Certificaciones</h1>
+              <Button 
+                variant="outline" 
+                onClick={handleVolver}
+                className="flex items-center gap-2 bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 hover:text-blue-700"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Volver a Solicitudes
+              </Button>
+            </div>
             {error && (
               <div className="text-red-600 bg-red-100 p-2 rounded">{error}</div>
             )}
@@ -275,10 +283,11 @@ export default function AdminSolicitudesCertificacion() {
                         <SelectValue placeholder="Todos los estados" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="resueltas">Resueltas</SelectItem>
                         <SelectItem value="all">Todos</SelectItem>
-                        <SelectItem value="pendiente">Pendiente</SelectItem>
                         <SelectItem value="aprobado">Aprobado</SelectItem>
                         <SelectItem value="rechazado">Rechazado</SelectItem>
+                        <SelectItem value="pendiente">Pendiente</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -319,46 +328,105 @@ export default function AdminSolicitudesCertificacion() {
                       <TableHead>Colaborador</TableHead>
                       <TableHead>Cédula</TableHead>
                       <TableHead>Cargo</TableHead>
+                      <TableHead>Estado</TableHead>
                       <TableHead>Dirigido a</TableHead>
                       <TableHead>Ciudad</TableHead>
-                      <TableHead>SyT</TableHead>
                       <TableHead>Fecha solicitud</TableHead>
+                      <TableHead>Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {loading ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-4">
+                        <TableCell colSpan={8} className="text-center py-4">
                           Cargando...
                         </TableCell>
                       </TableRow>
                     ) : filteredSolicitudes.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-4">
+                        <TableCell colSpan={8} className="text-center py-4">
                           No hay solicitudes.
                         </TableCell>
                       </TableRow>
                     ) : (
                       filteredSolicitudes.map((sol) => (
                         <TableRow key={sol.id}>
-                          <TableCell>{sol.usuario?.nombre}</TableCell>
-                          <TableCell>{sol.usuario?.cedula}</TableCell>
-                          <TableCell>{sol.usuario?.cargo}</TableCell>
+                          <TableCell>{sol.usuario_nomina?.colaborador}</TableCell>
+                          <TableCell>{sol.usuario_nomina?.cedula}</TableCell>
+                          <TableCell>{sol.usuario_nomina?.cargos?.nombre}</TableCell>
+                          <TableCell>{getEstadoBadge(sol.estado)}</TableCell>
                           <TableCell>{sol.dirigido_a}</TableCell>
                           <TableCell>{sol.ciudad}</TableCell>
                           <TableCell>
-                            <Badge
-                              variant={
-                                sol.salario_contrato === "Si"
-                                  ? "secondary"
-                                  : "destructive"
-                              }
-                            >
-                              {sol.salario_contrato || "No"}
-                            </Badge>
+                            {formatDate(sol.fecha_solicitud)}
                           </TableCell>
                           <TableCell>
-                            {formatDate(sol.fecha_solicitud)}
+                            <div className="flex items-center gap-2">
+                              {/* Botón ver comentarios */}
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex items-center gap-1"
+                                  >
+                                    <MessageSquare className="h-4 w-4" />
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                                  <DialogHeader>
+                                    <DialogTitle>Comentarios - {sol.usuario_nomina?.colaborador}</DialogTitle>
+                                  </DialogHeader>
+                                  <ComentariosCertificacion 
+                                     solicitudId={sol.id}
+                                   />
+                                </DialogContent>
+                              </Dialog>
+                              
+                              {/* Botón ver PDF si está aprobado */}
+                              {sol.estado === "aprobado" && sol.pdf_url && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleVerPDF(sol.pdf_url)}
+                                  className="flex items-center gap-1 bg-green-50 text-green-600 border-green-200 hover:bg-green-100 hover:text-green-700"
+                                  title="Descargar certificado"
+                                >
+                                  <FileDown className="h-4 w-4" />
+                                </Button>
+                              )}
+                              
+                              {/* Botón ver motivo de rechazo si está rechazado */}
+                              {sol.estado === "rechazado" && sol.motivo_rechazo && (
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="flex items-center gap-1 text-red-600 hover:text-red-700"
+                                    >
+                                      <AlertTriangle className="h-4 w-4" />
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent>
+                                    <DialogHeader>
+                                      <DialogTitle>Motivo de Rechazo</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="mt-4">
+                                      <p className="text-sm text-gray-600 mb-2">
+                                        <strong>Colaborador:</strong> {sol.usuario_nomina?.colaborador}
+                                      </p>
+                                      <p className="text-sm text-gray-600 mb-4">
+                                        <strong>Fecha de rechazo:</strong> {formatDate(sol.fecha_resolucion)}
+                                      </p>
+                                      <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                                        <p className="text-sm text-red-800">{sol.motivo_rechazo}</p>
+                                      </div>
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))

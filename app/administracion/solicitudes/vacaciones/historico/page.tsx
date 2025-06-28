@@ -42,6 +42,8 @@ export default function AdminSolicitudesVacaciones() {
   const [selectedEmpresa, setSelectedEmpresa] = useState<string>("all")
   const [showCommentsModal, setShowCommentsModal] = useState(false)
   const [selectedSolicitudId, setSelectedSolicitudId] = useState<string | null>(null)
+  const [showMotivoModal, setShowMotivoModal] = useState(false)
+  const [selectedMotivo, setSelectedMotivo] = useState<string>("")
 
   useEffect(() => {
     const fetchSolicitudes = async () => {
@@ -153,7 +155,6 @@ export default function AdminSolicitudesVacaciones() {
         const u = s.usuario
         return (
           u?.colaborador.toLowerCase().includes(term) ||
-          u?.cedula.toLowerCase().includes(term) ||
           u?.cargos?.nombre?.toLowerCase().includes(term) ||
           u?.empresas?.nombre.toLowerCase().includes(term)
         )
@@ -213,6 +214,11 @@ export default function AdminSolicitudesVacaciones() {
     setShowCommentsModal(true)
   }
 
+  const handleShowMotivo = (motivo: string) => {
+    setSelectedMotivo(motivo)
+    setShowMotivoModal(true)
+  }
+
   return (
     <div className="min-h-screen">
       <div className="flex flex-col flex-1">
@@ -239,7 +245,7 @@ export default function AdminSolicitudesVacaciones() {
                       <Input
                         id="search"
                         className="pl-8"
-                        placeholder="Buscar por nombre, cédula..."
+                        placeholder="Buscar por nombre, cargo, empresa..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                       />
@@ -308,7 +314,6 @@ export default function AdminSolicitudesVacaciones() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Colaborador</TableHead>
-                      <TableHead>Cédula</TableHead>
                       <TableHead>Cargo</TableHead>
                       <TableHead>Inicio</TableHead>
                       <TableHead>Fin</TableHead>
@@ -316,19 +321,19 @@ export default function AdminSolicitudesVacaciones() {
                       <TableHead>Solicitud</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead>Empresa</TableHead>
-                      <TableHead>Comentarios</TableHead>
+                      <TableHead>Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {loading ? (
                       <TableRow>
-                        <TableCell colSpan={10} className="text-center py-4">
+                        <TableCell colSpan={9} className="text-center py-4">
                           Cargando...
                         </TableCell>
                       </TableRow>
                     ) : filteredSolicitudes.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={10} className="text-center py-4">
+                        <TableCell colSpan={9} className="text-center py-4">
                           No hay solicitudes.
                         </TableCell>
                       </TableRow>
@@ -336,7 +341,6 @@ export default function AdminSolicitudesVacaciones() {
                       filteredSolicitudes.map((sol) => (
                         <TableRow key={sol.id}>
                           <TableCell>{sol.usuario?.colaborador}</TableCell>
-                          <TableCell>{sol.usuario?.cedula}</TableCell>
                           <TableCell>{sol.usuario?.cargos?.nombre || 'N/A'}</TableCell>
                           <TableCell>{formatDate(sol.fecha_inicio)}</TableCell>
                           <TableCell>{formatDate(sol.fecha_fin)}</TableCell>
@@ -372,12 +376,6 @@ export default function AdminSolicitudesVacaciones() {
                               {sol.estado.charAt(0).toUpperCase() +
                                 sol.estado.slice(1)}
                             </Badge>
-                            {sol.estado === "rechazado" &&
-                              sol.motivo_rechazo && (
-                                <div className="text-xs text-gray-500 mt-1">
-                                  Motivo: {sol.motivo_rechazo}
-                                </div>
-                              )}
                             {sol.admin && (
                               <div className="text-xs text-gray-500 mt-1">
                                 Por: {sol.admin.colaborador}
@@ -390,13 +388,24 @@ export default function AdminSolicitudesVacaciones() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleShowComments(sol.id)}
-                            >
-                              <MessageSquare className="h-4 w-4" />
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleShowComments(sol.id)}
+                              >
+                                <MessageSquare className="h-4 w-4" />
+                              </Button>
+                              {sol.estado === "rechazado" && sol.motivo_rechazo && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleShowMotivo(sol.motivo_rechazo)}
+                                >
+                                  Ver motivo
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
@@ -418,6 +427,18 @@ export default function AdminSolicitudesVacaciones() {
           {selectedSolicitudId && (
             <ComentariosVacaciones solicitudId={selectedSolicitudId} />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Motivo de Rechazo */}
+      <Dialog open={showMotivoModal} onOpenChange={setShowMotivoModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Motivo de rechazo</DialogTitle>
+          </DialogHeader>
+          <div className="p-4">
+            <p className="text-sm text-gray-700">{selectedMotivo}</p>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

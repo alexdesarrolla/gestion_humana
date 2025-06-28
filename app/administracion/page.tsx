@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
 import { FaUser, FaBuilding, FaUserCheck, FaUserTimes, FaUmbrellaBeach } from 'react-icons/fa';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2, XCircle } from 'lucide-react';
 
 export default function Administracion() {
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [solicitudesCertificacion, setSolicitudesCertificacion] = useState<any[]>([])
   const [solicitudesVacaciones, setSolicitudesVacaciones] = useState<any[]>([])

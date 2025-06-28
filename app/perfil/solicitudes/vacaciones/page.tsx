@@ -133,16 +133,37 @@ export default function SolicitudVacaciones() {
     checkAuth()
   }, [])
 
-  const formatDate = (date: string | Date) => {
-    const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' }
+  const formatDate = (date: string | Date | null | undefined) => {
+    if (!date) return 'Fecha no disponible'
     
-    // If it's a string in YYYY-MM-DD format, parse it manually to avoid timezone issues
-    if (typeof date === 'string' && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      const [year, month, day] = date.split('-').map(Number)
-      return new Date(year, month - 1, day).toLocaleDateString('es-CO', options)
+    try {
+      const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' }
+      
+      // If it's a string in YYYY-MM-DD format, parse it manually to avoid timezone issues
+      if (typeof date === 'string' && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = date.split('-').map(Number)
+        return new Date(year, month - 1, day).toLocaleDateString('es-CO', options)
+      }
+      
+      // Handle timestamp strings from PostgreSQL
+      if (typeof date === 'string') {
+        const parsedDate = new Date(date)
+        if (!isNaN(parsedDate.getTime())) {
+          return parsedDate.toLocaleDateString('es-CO', options)
+        }
+      }
+      
+      // Handle Date objects
+      if (date instanceof Date) {
+        return date.toLocaleDateString('es-CO', options)
+      }
+      
+      // Fallback for other string formats
+      return new Date(date + 'T00:00:00').toLocaleDateString('es-CO', options)
+    } catch (error) {
+      console.error('Error al formatear fecha:', date, error)
+      return 'Fecha inválida'
     }
-    
-    return new Date(date + 'T00:00:00').toLocaleDateString('es-CO', options)
   }
 
   const enviarSolicitud = async () => {
@@ -204,8 +225,21 @@ export default function SolicitudVacaciones() {
   const calcularDiasVacaciones = (fechaInicio: string | Date, fechaFin: string | Date) => {
     const inicio = typeof fechaInicio === 'string' ? new Date(fechaInicio) : fechaInicio
     const fin = typeof fechaFin === 'string' ? new Date(fechaFin) : fechaFin
-    const diferencia = fin.getTime() - inicio.getTime()
-    return Math.ceil(diferencia / (1000 * 3600 * 24)) + 1 // +1 para incluir el día de inicio
+    
+    let diasVacaciones = 0
+    const fechaActual = new Date(inicio)
+    
+    // Iterar día por día desde la fecha de inicio hasta la fecha de fin
+    while (fechaActual <= fin) {
+      // Solo contar si no es domingo (día 0)
+      if (fechaActual.getDay() !== 0) {
+        diasVacaciones++
+      }
+      // Avanzar al siguiente día
+      fechaActual.setDate(fechaActual.getDate() + 1)
+    }
+    
+    return diasVacaciones
   }
 
   const handleDateRangeSelect = (range: { from: Date | undefined; to: Date | undefined }) => {

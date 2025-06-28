@@ -48,6 +48,19 @@
   position: relative;
 }
 
+.rdp-day_sunday {
+  background-color: #fed7aa !important;
+  color: #ea580c !important;
+  border: 2px solid #fb923c !important;
+  font-weight: 600 !important;
+  position: relative;
+}
+
+.rdp-day_sunday:hover {
+  background-color: #fdba74 !important;
+  color: #c2410c !important;
+}
+
 .rdp-day_booked:hover {
   background-color: #dc2626 !important;
   color: white !important;

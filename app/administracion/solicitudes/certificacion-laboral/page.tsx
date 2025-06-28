@@ -99,12 +99,22 @@ export default function AdminCertificacionLaboral() {
   })
 
   // — Formatea fecha en español
-  const formatDate = (d: Date) =>
-    d.toLocaleDateString("es-CO", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
+  const formatDate = (d: Date | string | null | undefined) => {
+    if (!d) return 'Fecha no disponible'
+    try {
+      const date = typeof d === 'string' ? new Date(d + 'T00:00:00') : d
+      const formatted = date.toLocaleDateString("es-CO", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+      console.log('Fecha formateada:', d, '->', formatted)
+      return formatted
+    } catch (error) {
+      console.error('Error al formatear fecha:', d, error)
+      return 'Fecha inválida'
+    }
+  }
 
   //
   // 1️⃣ Cargar solicitudes pendientes
@@ -129,6 +139,12 @@ export default function AdminCertificacionLaboral() {
         .order("fecha_solicitud", { ascending: true })
 
       if (error) throw error
+      console.log('Solicitudes encontradas:', data?.length || 0)
+      console.log('Datos de solicitudes:', data)
+      if (data && data.length > 0) {
+        console.log('Primera solicitud fecha_solicitud:', data[0].fecha_solicitud)
+        console.log('Tipo de fecha_solicitud:', typeof data[0].fecha_solicitud)
+      }
       setSolicitudes(data || [])
     } catch (err: any) {
       console.error("Error en fetchSolicitudes:", err)
@@ -705,7 +721,7 @@ export default function AdminCertificacionLaboral() {
                               {sol.salario_contrato || "No"}
                             </Badge>
                           </TableCell>
-                          <TableCell>{formatDate(new Date(sol.fecha_solicitud))}</TableCell>
+                          <TableCell>{formatDate(sol.fecha_solicitud)}</TableCell>
                           <TableCell className="flex items-center gap-2">
                             <Button
                               variant="outline"

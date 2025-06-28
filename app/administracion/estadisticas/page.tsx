@@ -94,23 +94,26 @@ export default function EstadisticasPage() {
           setTotalEmpresas(empresas.length)
         }
         
-        // Obtener estadísticas por género
+        // Obtener estadísticas por género (solo usuarios activos)
         const { data: usuariosMujeres } = await supabase
           .from('usuario_nomina')
           .select('auth_user_id')
           .eq('rol', 'usuario')
-          .eq('genero', 'Femenino')
+          .eq('genero', 'F')
+          .eq('estado', 'activo')
         
         const { data: usuariosHombres } = await supabase
           .from('usuario_nomina')
           .select('auth_user_id')
           .eq('rol', 'usuario')
-          .eq('genero', 'Masculino')
+          .eq('genero', 'M')
+          .eq('estado', 'activo')
         
         const mujeres = usuariosMujeres?.length || 0
         const hombres = usuariosHombres?.length || 0
         const totalGenero = mujeres + hombres
         
+
         const generoData: GeneroStats[] = [
           {
             genero: 'Mujeres',
@@ -124,6 +127,7 @@ export default function EstadisticasPage() {
           }
         ]
         
+        console.log('Datos de género:', generoData)
         setGeneroStats(generoData)
         
         // Obtener estadísticas por sedes
@@ -283,27 +287,51 @@ export default function EstadisticasPage() {
               Distribución por Género
             </CardTitle>
             <CardDescription>
-              Cantidad de hombres y mujeres con porcentajes
+              Cantidad de usuarios activos por género con porcentajes
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart 
-                  data={generoStats} 
-                  layout="horizontal"
-                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis type="category" dataKey="genero" width={80} />
-                  <Tooltip formatter={(value: any, name: any, props: any) => [
-                    `${value} personas (${props.payload.porcentaje}%)`,
-                    props.payload.genero
-                  ]} />
-                  <Bar dataKey="cantidad" fill="#8884d8" />
-                </BarChart>
-              </ResponsiveContainer>
+              {generoStats.length === 0 ? (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-gray-500">No hay datos de género disponibles</p>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                   <BarChart 
+                     data={generoStats} 
+                     margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                   >
+                     <CartesianGrid strokeDasharray="3 3" />
+                     <XAxis 
+                       dataKey="genero" 
+                       tick={{ fontSize: 12 }}
+                       angle={-45}
+                       textAnchor="end"
+                       height={30}
+                     />
+                     <YAxis 
+                       domain={[0, 'dataMax + 10']}
+                       tickFormatter={(value) => value.toString()}
+                     />
+                     <Tooltip formatter={(value: any, name: any, props: any) => [
+                       `${value} personas (${props.payload.porcentaje}%)`,
+                       props.payload.genero
+                     ]} />
+                     <Bar 
+                       dataKey="cantidad" 
+                       radius={[4, 4, 0, 0]}
+                     >
+                       {generoStats.map((entry, index) => (
+                         <Cell 
+                           key={`cell-${index}`} 
+                           fill={entry.genero === 'Mujeres' ? '#ec4899' : '#8b5cf6'} 
+                         />
+                       ))}
+                     </Bar>
+                   </BarChart>
+                 </ResponsiveContainer>
+              )}
             </div>
           </CardContent>
         </Card>

@@ -211,12 +211,7 @@ export default function ComunicadosPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Sidebar />
-      <div className="md:pl-64 flex flex-col flex-1">
-        <main className="flex-1">
-          <div className="py-6">
-            <div className="max-w-[90%] mx-auto px-4 sm:px-6 md:px-8 space-y-6">
+    <div className="space-y-6">
               {/* Cabecera con estilo de usuarios */}
               <div className="flex justify-between items-center">
                 <div>
@@ -383,10 +378,6 @@ export default function ComunicadosPage() {
                   </div>
                 )}
               </div>
-            </div>
-          </div>
-        </main>
-      </div>
     </div>
   );
 }

@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
-import { AdminSidebar } from "@/components/ui/admin-sidebar"
+// AdminSidebar removido - ya está en el layout
 import AdminVacacionesCalendar from "@/components/vacaciones/AdminVacacionesCalendar"
 import {
   Table,
@@ -234,9 +234,7 @@ export default function AdminVacacionesPage() {
 
   return (
     <div className="flex min-h-screen bg-slate-50">
-      <AdminSidebar />
-
-      <div className="flex-1 md:pl-64">
+      <div className="flex-1">
         <div className="max-w-[95%] mx-auto py-8 space-y-8">
           <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold">Gestión de Vacaciones</h1>

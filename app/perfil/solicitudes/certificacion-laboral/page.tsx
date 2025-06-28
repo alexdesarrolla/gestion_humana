@@ -220,11 +220,7 @@ export default function CertificacionLaboral() {
 
       {/* --------------------------- */}
       {/* Página principal */}
-      <div className="min-h-screen bg-slate-50">
-        <Sidebar userName="Usuario" />
-        <div className="md:pl-64 flex flex-col flex-1">
-          <main className="flex-1 py-6">
-            <div className="max-w-[90%] mx-auto space-y-6">
+      <div className="space-y-6">
               {/* Header */}
               <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold">
@@ -421,9 +417,6 @@ export default function CertificacionLaboral() {
                 </DialogContent>
               </Dialog>
             </div>
-          </main>
-        </div>
-      </div>
     </>
   )
 }

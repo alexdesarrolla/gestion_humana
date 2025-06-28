@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
-import { AdminSidebar } from "@/components/ui/admin-sidebar"
+// AdminSidebar removido - ya está en el layout
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -152,8 +152,7 @@ export default function DetalleComunicadoPage() {
 
     return (
         <div className="min-h-screen bg-slate-50">
-            <AdminSidebar />
-            <div className="md:pl-64 flex flex-col flex-1">
+            <div className="flex flex-col flex-1">
                 <main className="flex-1 py-8 px-6">
                     <div className="max-w-[90%]  mx-auto">
                         <div className="mb-8">

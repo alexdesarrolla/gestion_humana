@@ -30,7 +30,9 @@ export function usePermissions() {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession()
       
       if (sessionError || !session) {
-        throw new Error('No hay sesión activa')
+        console.log('No hay sesión activa')
+        setUserData(null)
+        return
       }
 
       // Obtener datos del usuario
@@ -42,7 +44,8 @@ export function usePermissions() {
 
       if (userError) {
         console.error('Error al obtener datos del usuario:', userError)
-        throw new Error('Error al obtener datos del usuario')
+        setUserData(null)
+        return
       }
 
       setUserData(user)
@@ -51,6 +54,7 @@ export function usePermissions() {
     } catch (err) {
       console.error('Error en loadUserData:', err)
       setError(err instanceof Error ? err.message : 'Error desconocido')
+      setUserData(null)
     } finally {
       setLoading(false)
     }

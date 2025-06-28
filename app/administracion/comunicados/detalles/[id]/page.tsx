@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
-import { AdminSidebar } from "@/components/ui/admin-sidebar"
+// AdminSidebar removido - ya está en el layout
 import {
   Card,
   CardHeader,
@@ -191,8 +191,7 @@ export default function DetallesComunicadoPage() {
 
   return (
     <div className="flex min-h-screen bg-slate-50">
-      <AdminSidebar />
-      <div className="flex-1 p-6 md:pl-64">
+      <div className="flex-1 p-6">
         <div className="max-w-[90%] mx-auto">
           {/* Header */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">

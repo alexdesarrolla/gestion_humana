@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
-import { AdminSidebar } from "@/components/ui/admin-sidebar"
+// AdminSidebar removido - ya está en el layout
 import {
   Card,
   CardContent,
@@ -472,8 +472,7 @@ export default function AdminCertificacionLaboral() {
   //
   return (
     <div className="min-h-screen bg-slate-50">
-      <AdminSidebar userName="Administrador" />
-      <div className="md:pl-64 flex flex-col flex-1">
+      <div className="flex flex-col flex-1">
         <main className="py-6">
           <div className="max-w-[90%] mx-auto space-y-6">
             <div className="flex justify-between items-center">

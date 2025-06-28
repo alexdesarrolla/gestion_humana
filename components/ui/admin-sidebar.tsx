@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from "react"
+"use client"
+import * as React from "react"
+import { useState, useEffect } from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { type VariantProps, cva } from "class-variance-authority"
 import { PanelLeft, Menu, X, LogOut, User, Home, Info, FileText, Newspaper, Calendar, ChevronDown, Plus } from "lucide-react"

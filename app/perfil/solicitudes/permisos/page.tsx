@@ -311,14 +311,7 @@ export default function SolicitudPermisos() {
         </DialogContent>
       </Dialog>
 
-      <div className="min-h-screen bg-slate-50">
-        <Sidebar userName={userData?.colaborador || "Usuario"} />
-
-        {/* Main content */}
-        <div className="md:pl-64 flex flex-col flex-1">
-          <main className="flex-1">
-            <div className="py-6">
-              <div className="max-w-[90%] mx-auto px-4 sm:px-6 md:px-8">
+      <div className="space-y-6">
                 <div className="flex justify-between items-center ">
                   <h1 className="text-2xl font-bold tracking-tight">Solicitudes de Permisos</h1>
                   <Button onClick={() => setShowModal(true)} className="flex items-center gap-2">
@@ -569,10 +562,6 @@ export default function SolicitudPermisos() {
                   </Card>
                 </div>
               </div>
-            </div>
-          </main>
-        </div>
-      </div>
       {/* Modal de comentarios */}
       <Dialog open={showComentariosModal} onOpenChange={setShowComentariosModal}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">

@@ -4,7 +4,7 @@ import * as React from "react"
 import { useState } from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { type VariantProps, cva } from "class-variance-authority"
-import { PanelLeft, Menu, X, LogOut, Newspaper, Info, FileText, Calendar, Shield } from "lucide-react"
+import { PanelLeft, Menu, X, LogOut, Newspaper, Info, FileText, Calendar, Shield, ChevronDown } from "lucide-react"
 import { FaUser, FaFileAlt, FaCalendarAlt, FaSignOutAlt, FaIdCard } from 'react-icons/fa'
 
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -158,42 +158,8 @@ export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
     }
   }
 
-  // Crear submenús de administrador basados en rol
-  const adminSubItems = React.useMemo(() => {
-    if (!permissionsData || permissionsData.rol !== 'administrador') {
-      return []
-    }
-    
-    // Solo administradores tienen acceso a estas rutas
-    const adminModules = [
-      {
-        name: "Usuarios",
-        href: "/administracion/usuarios",
-        icon: Shield,
-        current: currentPath === "/administracion/usuarios"
-      },
-      {
-        name: "Solicitudes",
-        href: "/administracion/solicitudes",
-        icon: Shield,
-        current: currentPath.startsWith("/administracion/solicitudes")
-      },
-      {
-        name: "Comunicados",
-        href: "/administracion/comunicados",
-        icon: Shield,
-        current: currentPath.startsWith("/administracion/comunicados")
-      },
-      {
-        name: "Novedades",
-        href: "/administracion/novedades",
-        icon: Shield,
-        current: currentPath.startsWith("/administracion/novedades")
-      }
-    ]
-    
-    return adminModules
-  }, [permissionsData, currentPath])
+  // No incluir menús de administración en el perfil de usuario
+  // Este sidebar es solo para la sección de perfil de usuario
 
   const menuItems = [
     { name: "Mis datos", href: "/perfil", icon: Info, current: currentPath === "/perfil" },
@@ -243,14 +209,7 @@ export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
       href: "/perfil/comunicados",
       icon: Newspaper,
       current: currentPath === "/perfil/comunicados"
-    },
-    // Menú de administrador dinámico
-    ...(adminSubItems.length > 0 ? [{
-      name: "Administración",
-      icon: Shield,
-      current: false,
-      subItems: adminSubItems
-    }] : []),
+    }
     // Aquí se pueden agregar más secciones en el futuro
   ]
   
@@ -321,81 +280,72 @@ export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
               {menuItems.map((item) => (
                 <div key={item.name}>
                   {item.subItems ? (
-                    <button
-                      onClick={() => toggleMenu(menuItems.indexOf(item))}
-                      className={cn(
-                        "w-full text-left group flex items-center justify-between px-2 py-2 text-sm font-medium rounded-md",
-                        "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                      )}
-                    >
-                      <div className="flex items-center">
-                        <item.icon
-                          className={cn(
-                            "text-gray-400 group-hover:text-gray-500",
-                            "mr-3 flex-shrink-0 h-5 w-5",
-                          )}
-                          aria-hidden="true"
-                        />
-                        {item.name}
-                      </div>
-                      <svg
+                    <>
+                      <button
+                        onClick={() => toggleMenu(menuItems.indexOf(item))}
                         className={cn(
-                          "h-4 w-4 text-gray-400 transition-transform",
-                          expandedMenus[menuItems.indexOf(item)] ? "transform rotate-180" : ""
+                          item.current ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                          "group flex items-center justify-between w-full px-2 py-2 text-base font-medium rounded-md",
                         )}
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        aria-hidden="true"
                       >
-                        <path
-                          fillRule="evenodd"
-                          d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                          clipRule="evenodd"
+                        <div className="flex items-center">
+                          <item.icon
+                            className={cn(
+                              item.current ? "text-primary" : "text-gray-400 group-hover:text-gray-500",
+                              "mr-4 flex-shrink-0 h-6 w-6",
+                            )}
+                            aria-hidden="true"
+                          />
+                          {item.name}
+                        </div>
+                        <ChevronDown
+                          className={cn(
+                            "h-5 w-5 text-gray-400 transition-transform duration-200",
+                            expandedMenus[menuItems.indexOf(item)] ? "transform rotate-180" : ""
+                          )}
                         />
-                      </svg>
-                    </button>
+                      </button>
+                      {expandedMenus[menuItems.indexOf(item)] && (
+                        <div className="pl-8 mt-1 space-y-1">
+                          {item.subItems.map((subItem) => (
+                            <Link
+                              key={subItem.name}
+                              href={subItem.href}
+                              className={cn(
+                                subItem.current ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                                "group flex items-center px-2 py-2 text-sm font-medium rounded-md",
+                              )}
+                            >
+                              <subItem.icon
+                                className={cn(
+                                  subItem.current ? "text-primary" : "text-gray-400 group-hover:text-gray-500",
+                                  "mr-3 flex-shrink-0 h-5 w-5",
+                                )}
+                                aria-hidden="true"
+                              />
+                              {subItem.name}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <Link
                       href={item.href || "#"}
                       className={cn(
                         item.current ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
-                        "group flex items-center px-2 py-2 text-sm font-medium rounded-md",
+                        "group flex items-center px-2 py-2 text-base font-medium rounded-md",
                       )}
                     >
                       <item.icon
                         className={cn(
                           item.current ? "text-primary" : "text-gray-400 group-hover:text-gray-500",
-                          "mr-3 flex-shrink-0 h-5 w-5",
+                          "mr-4 flex-shrink-0 h-6 w-6",
                         )}
                         aria-hidden="true"
                       />
                       {item.name}
                     </Link>
-                  )}
-                  
-                  {item.subItems && expandedMenus[menuItems.indexOf(item)] && (
-                    <div className="ml-6 space-y-1 mt-1">
-                      {item.subItems.map((subItem) => (
-                        <Link
-                          key={subItem.name}
-                          href={subItem.href}
-                          className={cn(
-                            subItem.current ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
-                            "group flex items-center px-2 py-2 text-xs font-medium rounded-md",
-                          )}
-                        >
-                          <subItem.icon
-                            className={cn(
-                              subItem.current ? "text-primary" : "text-gray-400 group-hover:text-gray-500",
-                              "mr-3 flex-shrink-0 h-5 w-5",
-                            )}
-                            aria-hidden="true"
-                          />
-                          {subItem.name}
-                        </Link>
-                      ))}
-                    </div>
                   )}
                 </div>
               ))}
@@ -423,40 +373,55 @@ export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
             {menuItems.map((item) => (
               <div key={item.name}>
                 {item.subItems ? (
-                  <button
-                    onClick={() => toggleMenu(menuItems.indexOf(item))}
-                    className={cn(
-                      "w-full text-left group flex items-center justify-between px-2 py-2 text-sm font-medium rounded-md",
-                      "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                    )}
-                  >
-                    <div className="flex items-center">
-                      <item.icon
-                        className={cn(
-                          "text-gray-400 group-hover:text-gray-500",
-                          "mr-3 flex-shrink-0 h-5 w-5",
-                        )}
-                        aria-hidden="true"
-                      />
-                      {item.name}
-                    </div>
-                    <svg
+                  <>
+                    <button
+                      onClick={() => toggleMenu(menuItems.indexOf(item))}
                       className={cn(
-                        "h-4 w-4 text-gray-400 transition-transform",
-                        expandedMenus[menuItems.indexOf(item)] ? "transform rotate-180" : ""
+                        item.current ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                        "group flex items-center justify-between w-full px-2 py-2 text-sm font-medium rounded-md",
                       )}
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      aria-hidden="true"
                     >
-                      <path
-                        fillRule="evenodd"
-                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                        clipRule="evenodd"
+                      <div className="flex items-center">
+                        <item.icon
+                          className={cn(
+                            item.current ? "text-primary" : "text-gray-400 group-hover:text-gray-500",
+                            "mr-3 flex-shrink-0 h-5 w-5",
+                          )}
+                          aria-hidden="true"
+                        />
+                        {item.name}
+                      </div>
+                      <ChevronDown
+                        className={cn(
+                          "h-5 w-5 text-gray-400 transition-transform duration-200",
+                          expandedMenus[menuItems.indexOf(item)] ? "transform rotate-180" : ""
+                        )}
                       />
-                    </svg>
-                  </button>
+                    </button>
+                    {expandedMenus[menuItems.indexOf(item)] && (
+                      <div className="pl-8 mt-1 space-y-1">
+                        {item.subItems.map((subItem) => (
+                          <Link
+                            key={subItem.name}
+                            href={subItem.href}
+                            className={cn(
+                              subItem.current ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                              "group flex items-center px-2 py-2 text-sm font-medium rounded-md",
+                            )}
+                          >
+                            <subItem.icon
+                              className={cn(
+                                subItem.current ? "text-primary" : "text-gray-400 group-hover:text-gray-500",
+                                "mr-3 flex-shrink-0 h-5 w-5",
+                              )}
+                              aria-hidden="true"
+                            />
+                            {subItem.name}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <Link
                     href={item.href || "#"}
@@ -474,30 +439,6 @@ export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
                     />
                     {item.name}
                   </Link>
-                )}
-                
-                {item.subItems && expandedMenus[menuItems.indexOf(item)] && (
-                  <div className="ml-6 space-y-1 mt-1">
-                    {item.subItems.map((subItem) => (
-                      <Link
-                        key={subItem.name}
-                        href={subItem.href}
-                        className={cn(
-                          subItem.current ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
-                          "group flex items-center px-2 py-2 text-xs font-medium rounded-md",
-                        )}
-                      >
-                        <subItem.icon
-                          className={cn(
-                            subItem.current ? "text-primary" : "text-gray-400 group-hover:text-gray-500",
-                            "mr-3 flex-shrink-0 h-5 w-5",
-                          )}
-                          aria-hidden="true"
-                        />
-                        {subItem.name}
-                      </Link>
-                    ))}
-                  </div>
                 )}
               </div>
             ))}

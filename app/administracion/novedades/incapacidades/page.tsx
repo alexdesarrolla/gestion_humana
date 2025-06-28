@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
-import { AdminSidebar } from "@/components/ui/admin-sidebar"
+// AdminSidebar removido - ya está en el layout
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -402,8 +402,7 @@ export default function AdminNovedadesIncapacidades() {
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      <AdminSidebar />
-      <div className="max-w-[90%] mx-auto flex-1 p-8 md:pl-64">
+      <div className="max-w-[90%] mx-auto flex-1 p-8">
         <Card className="w-full">
           <CardHeader>
             <CardTitle className="text-2xl font-bold">Gestión de Incapacidades</CardTitle>

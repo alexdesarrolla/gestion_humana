@@ -331,15 +331,7 @@ export default function SolicitudVacaciones() {
           <div className="text-2xl font-semibold text-gray-700">Cargando...</div>
         </div>
       ) : (
-        <div className="min-h-screen bg-slate-50">
-          <Sidebar userName={userData?.colaborador} />
-
-          {/* Main content */}
-          <div className="md:pl-64 flex flex-col flex-1">
-            <main className="flex-1">
-              <div className="py-6">
-                <div className="max-w-[90%] mx-auto px-4 sm:px-6 md:px-8">
-                  <div className="space-y-6">
+        <div className="space-y-6">
                     <div className="flex justify-between items-center">
                       <div>
                         <h1 className="text-2xl font-bold tracking-tight">Solicitudes de Vacaciones</h1>
@@ -449,11 +441,6 @@ export default function SolicitudVacaciones() {
                         </Table>
                       </CardContent>
                     </Card>
-                  </div>
-                </div>
-              </div>
-            </main>
-          </div>
         </div>
       )}
     </>

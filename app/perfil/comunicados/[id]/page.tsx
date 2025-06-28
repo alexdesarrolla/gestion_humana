@@ -210,11 +210,7 @@ export default function DetalleComunicadoPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50">
-            <Sidebar />
-            <div className="md:pl-64 flex flex-col flex-1">
-                <main className="flex-1 py-8 px-6">
-                    <div className="max-w-[90%] mx-auto">
+        <div className="space-y-6">
                         <div className="mb-8 flex justify-between items-center">
                             <Button 
                                 variant="outline" 
@@ -433,8 +429,6 @@ export default function DetalleComunicadoPage() {
 
 
                     </div>
-                </main>
-            </div>
         </div>
     )
 }

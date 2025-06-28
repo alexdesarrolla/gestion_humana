@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
-import { Sidebar } from "@/components/ui/sidebar"
+// Sidebar removido - ya está en el layout
 import { Card, CardContent, CardHeader, CardDescription, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"

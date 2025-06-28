@@ -227,10 +227,10 @@ export default function AdminSolicitudesCertificacion() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen">
       <div className="flex flex-col flex-1">
         <main className="flex-1 py-6">
-          <div className="max-w-[90%] mx-auto space-y-4">
+          <div className="w-full mx-auto space-y-4">
             <h1 className="text-2xl font-bold">Solicitudes de Certificación</h1>
             {error && (
               <div className="text-red-600 bg-red-100 p-2 rounded">{error}</div>

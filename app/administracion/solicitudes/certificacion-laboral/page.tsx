@@ -471,10 +471,10 @@ export default function AdminCertificacionLaboral() {
   // Renderizar UI
   //
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen">
       <div className="flex flex-col flex-1">
-        <main className="py-6">
-          <div className="max-w-[90%] mx-auto space-y-6">
+        <main>
+          <div className="w-full mx-auto space-y-6">
             <div className="flex justify-between items-center">
               <div>
                 <h1 className="text-2xl font-bold">Solicitudes de Certificación Laboral</h1>

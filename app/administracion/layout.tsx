@@ -98,7 +98,7 @@ export default function AdministracionLayout({
       
       {/* Contenido principal */}
       <div className="flex-1 overflow-auto">
-        <main className="p-6">
+        <main className="space-y-6">
           {children}
         </main>
       </div>

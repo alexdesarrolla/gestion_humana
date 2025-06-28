@@ -233,9 +233,9 @@ export default function AdminVacacionesPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen">
       <div className="flex-1">
-        <div className="max-w-[95%] mx-auto py-8 space-y-8">
+        <div className="w-full mx-auto space-y-6">
           <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold">Gestión de Vacaciones</h1>
             <Button 

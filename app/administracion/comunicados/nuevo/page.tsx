@@ -331,8 +331,8 @@ export default function NuevoComunicado() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <div className="max-w-[90%] mx-auto flex-1 p-8">
+    <div className="flex min-h-screen">
+      <div className="w-full mx-auto flex-1">
         <Card className="shadow-md">
           <CardHeader className="bg-primary/5 pb-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

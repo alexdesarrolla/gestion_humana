@@ -203,8 +203,8 @@ export default function Cargos() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <div className="max-w-[90%] mx-auto flex-1 p-8">
+    <div className="flex min-h-screen">
+      <div className="w-full mx-auto flex-1">
         <Card className="shadow-md">
           <CardHeader className="bg-primary/5 pb-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -226,16 +226,16 @@ export default function Cargos() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent className="p-6 space-y-6">
             {error && (
-              <Alert className="mb-6 bg-red-50 text-red-800 border-red-200">
+              <Alert className="bg-red-50 text-red-800 border-red-200">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
             
             {success && (
-              <Alert className="mb-6 bg-green-50 text-green-800 border-green-200">
+              <Alert className="bg-green-50 text-green-800 border-green-200">
                 <AlertDescription>{success}</AlertDescription>
               </Alert>
             )}

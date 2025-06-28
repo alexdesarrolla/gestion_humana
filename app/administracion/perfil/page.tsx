@@ -62,39 +62,37 @@ export default function Perfil() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen">
       {/* Main content */}
       <div className="flex flex-col flex-1">
         <main className="flex-1">
-          <div className="py-6">
-            <div className="max-w-[90%] mx-auto px-4 sm:px-6 md:px-8">
-              <div className="space-y-6">
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight">Mis Datos</h1>
-                  <p className="text-muted-foreground">Visualiza tu información personal, laboral y de afiliaciones.</p>
-                </div>
+          <div className="w-full mx-auto">
+            <div className="space-y-6">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">Mis Datos</h1>
+                <p className="text-muted-foreground">Visualiza tu información personal, laboral y de afiliaciones.</p>
+              </div>
 
-                <div className="divide-y divide-border rounded-md border">
-                  {loading ? (
-                    <div className="p-6 space-y-6">
-                      <div className="flex items-center space-x-4">
-                        <Skeleton className="h-12 w-12 rounded-full" />
-                        <div className="space-y-2">
-                          <Skeleton className="h-4 w-[250px]" />
-                          <Skeleton className="h-4 w-[200px]" />
-                        </div>
-                      </div>
+              <div className="divide-y divide-border rounded-md border">
+                {loading ? (
+                  <div className="p-6 space-y-6">
+                    <div className="flex items-center space-x-4">
+                      <Skeleton className="h-12 w-12 rounded-full" />
                       <div className="space-y-2">
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-[250px]" />
+                        <Skeleton className="h-4 w-[200px]" />
                       </div>
                     </div>
-                  ) : (
-                    <ProfileCard userData={userData} />
-                  )}
-                </div>
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-full" />
+                    </div>
+                  </div>
+                ) : (
+                  <ProfileCard userData={userData} />
+                )}
               </div>
             </div>
           </div>

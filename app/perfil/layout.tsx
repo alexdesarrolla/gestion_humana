@@ -87,11 +87,13 @@ export default function PerfilLayout({
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <Sidebar userName={userData?.colaborador || 'Usuario'} />
+      <div className="w-64 bg-white shadow-sm border-r border-gray-200 flex-shrink-0">
+        <Sidebar userName={userData?.colaborador || 'Usuario'} />
+      </div>
       
       {/* Contenido principal */}
-      <div className="flex-1 md:pl-64 overflow-auto">
-        <main className="p-6">
+      <div className="flex-1 overflow-auto">
+        <main>
           {children}
         </main>
       </div>

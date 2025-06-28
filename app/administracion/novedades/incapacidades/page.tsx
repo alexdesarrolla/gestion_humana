@@ -401,8 +401,8 @@ export default function AdminNovedadesIncapacidades() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <div className="max-w-[90%] mx-auto flex-1 p-8">
+    <div className="flex min-h-screen">
+      <div className="w-full mx-auto flex-1">
         <Card className="w-full">
           <CardHeader>
             <CardTitle className="text-2xl font-bold">Gestión de Incapacidades</CardTitle>
@@ -410,22 +410,22 @@ export default function AdminNovedadesIncapacidades() {
               Visualiza y gestiona las incapacidades registradas.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-6">
             {error && (
-              <Alert variant="destructive" className="mb-4">
+              <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
             {success && (
-              <Alert className="mb-4 bg-green-100 text-green-800 border-green-200">
+              <Alert className="bg-green-100 text-green-800 border-green-200">
                 <CheckCircle2 className="h-4 w-4" />
                 <AlertDescription>{success}</AlertDescription>
               </Alert>
             )}
 
             {/* Filtros */}  
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="flex flex-col md:flex-row gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
                 <Input

@@ -640,9 +640,9 @@ let incapacidadesCompletas: Array<{
       </div>
 
       {/* Tarjetas informativas principales */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-2">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
             <FaUserCheck className="mr-2 text-green-600" /> Usuarios activos
           </h3>
           <div className="flex items-center">
@@ -650,8 +650,8 @@ let incapacidadesCompletas: Array<{
             <span className="ml-2 text-sm text-gray-500">usuarios</span>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-2">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
             <FaUserTimes className="mr-2 text-red-600" /> Usuarios Inactivos
           </h3>
           <div className="flex items-center">
@@ -659,8 +659,8 @@ let incapacidadesCompletas: Array<{
             <span className="ml-2 text-sm text-gray-500">usuarios</span>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-2">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
             <FaBuilding className="mr-2 text-blue-600" /> Empresas registradas
           </h3>
           <div className="flex items-center">
@@ -668,8 +668,8 @@ let incapacidadesCompletas: Array<{
             <span className="ml-2 text-sm text-gray-500">empresas</span>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-2">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
             <FaUmbrellaBeach className="mr-2 text-orange-600" /> Usuarios de vacaciones
           </h3>
           <div className="flex items-center">
@@ -682,8 +682,8 @@ let incapacidadesCompletas: Array<{
       {/* Grid de Solicitudes - 2x2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Tabla de Solicitudes de Certificación */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex justify-between items-center mb-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4">
+          <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Solicitudes de Certificación Laboral</h2>
             <Button
               variant="outline"
@@ -729,8 +729,8 @@ let incapacidadesCompletas: Array<{
         </div>
 
         {/* Tabla de Solicitudes de Vacaciones */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex justify-between items-center mb-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4">
+          <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Solicitudes de Vacaciones</h2>
             <Button
               variant="outline"
@@ -774,8 +774,8 @@ let incapacidadesCompletas: Array<{
         </div>
 
         {/* Tabla de Solicitudes de Permisos */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex justify-between items-center mb-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4">
+          <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Solicitudes de Permisos</h2>
             <Button
               variant="outline"
@@ -813,8 +813,8 @@ let incapacidadesCompletas: Array<{
         </div>
 
         {/* Tabla de Notificaciones de Incapacidades */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex justify-between items-center mb-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4">
+          <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Notificaciones de Incapacidades</h2>
             <Button
               variant="outline"

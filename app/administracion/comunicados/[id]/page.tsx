@@ -151,10 +151,10 @@ export default function DetalleComunicadoPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen">
             <div className="flex flex-col flex-1">
-                <main className="flex-1 py-8 px-6">
-                    <div className="max-w-[90%]  mx-auto">
+                <main className="flex-1 py-8">
+                    <div className="w-full mx-auto">
                         <div className="mb-8">
                             <Button 
                                 variant="outline" 

@@ -265,8 +265,8 @@ export default function Comunicados() {
     });
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <div className="max-w-[90%] mx-auto flex-1 p-8">
+    <div className="flex min-h-screen">
+      <div className="w-full mx-auto flex-1">
         <Card className="shadow-md">
           <CardHeader className="bg-primary/5 pb-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -294,8 +294,8 @@ export default function Comunicados() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <CardContent className="p-6 space-y-6">
+            <div className="flex flex-col md:flex-row gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
                 <Input

@@ -823,12 +823,12 @@ export default function Usuarios() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen">
       {/* Main content */}
       <div className="flex flex-col flex-1">
         <main className="flex-1">
           <div className="py-6">
-            <div className="max-w-[90%] mx-auto px-4 sm:px-6 md:px-8">
+            <div className="w-full mx-auto">
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <div>
@@ -843,7 +843,7 @@ export default function Usuarios() {
 
                 {/* Filtros */}
                 <Card>
-                  <CardContent className="p-4">
+                  <CardContent className="p-6 space-y-4">
                     <div className="flex flex-col md:flex-row gap-4 items-end">
                       <div className="flex-1">
                         <label className="text-sm font-medium mb-1 block">Buscar</label>

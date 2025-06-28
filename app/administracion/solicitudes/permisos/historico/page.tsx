@@ -167,10 +167,10 @@ export default function AdminPermisosHistorico() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen">
       <div className="flex flex-col flex-1">
         <main className="flex-1 py-6">
-          <div className="max-w-[90%] mx-auto space-y-6">
+          <div className="w-full mx-auto space-y-6">
             {/* Título */}
             <div className="flex justify-between items-center">
               <div>

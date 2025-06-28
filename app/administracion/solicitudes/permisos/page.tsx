@@ -717,10 +717,10 @@ export default function AdminSolicitudesPermisos() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen">
       <div className="flex flex-col flex-1">
-        <main className="flex-1 py-6">
-          <div className="max-w-[90%] mx-auto space-y-6">
+        <main className="flex-1">
+          <div className="w-full mx-auto space-y-6">
             {/* Título y Descripción */}
             <div className="flex justify-between items-center">
               <div>
@@ -746,7 +746,7 @@ export default function AdminSolicitudesPermisos() {
 
             {/* Filtros */}
             <Card>
-              <CardContent className="p-4">
+              <CardContent className="p-6 space-y-4">
                 <div className="flex flex-col md:flex-row gap-4 items-end">
                   {/* Buscar */}
                   <div className="w-full md:w-1/3">

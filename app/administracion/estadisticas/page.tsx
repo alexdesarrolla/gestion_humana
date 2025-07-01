@@ -611,7 +611,7 @@ export default function EstadisticasPage() {
         <div className="mt-4 flex items-center gap-4">
           <label className="text-sm font-medium text-gray-700">Filtrar por empresa:</label>
           <Select value={empresaSeleccionada} onValueChange={handleEmpresaChange}>
-            <SelectTrigger className="w-64">
+            <SelectTrigger className="w-64 bg-white border-gray-300 shadow-sm">
               <SelectValue placeholder="Seleccionar empresa" />
             </SelectTrigger>
             <SelectContent>

@@ -70,7 +70,7 @@ export default function AdministracionLayout({
 
   if (loading) {
     return (
-      <div className="flex h-screen bg-gray-50">
+      <div className="flex h-screen bg-transparent">
         <div className="w-64 bg-white shadow-sm border-r border-gray-200">
           <div className="p-4">
             <div className="h-8 bg-gray-200 rounded animate-pulse mb-4"></div>
@@ -97,8 +97,26 @@ export default function AdministracionLayout({
       </div>
       
       {/* Contenido principal */}
-      <div className="flex-1 overflow-auto">
-        <main className="px-20 py-10 space-y-6">
+      <div 
+        className="flex-1 overflow-auto relative"
+        style={{
+          backgroundImage: 'url("http://localhost:3000/fondosecciones.webp")',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          backgroundAttachment: 'fixed'
+        }}
+      >
+        {/* Overlay con blur */}
+        <div 
+          className="absolute inset-0"
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(2px)',
+            WebkitBackdropFilter: 'blur(2px)'
+          }}
+        ></div>
+        <main className="relative px-20 py-10 space-y-6 z-10">
           {children}
         </main>
       </div>

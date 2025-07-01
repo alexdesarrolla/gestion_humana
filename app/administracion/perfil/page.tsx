@@ -25,44 +25,42 @@ export default function Perfil() {
         return
       }
 
-      // Obtener datos del usuario desde la tabla usuario_nomina con relaciones
-      const { data: userData, error: userError } = await supabase
-        .from("usuario_nomina")
-        .select(`
-          *,
-          empresas:empresa_id(nombre),
-          sedes:sede_id(nombre),
-          eps:eps_id(nombre),
-          afp:afp_id(nombre),
-          cesantias:cesantias_id(nombre),
-          caja_de_compensacion:caja_de_compensacion_id(nombre),
-          cargos:cargo_id(id, nombre)
-        `)
-        .eq("auth_user_id", session.user.id)
-        .single()
+      try {
+        // Optimización: obtener datos del usuario con todas las relaciones en una sola consulta
+        // Esta consulta ya está optimizada con joins, no necesita Promise.all adicional
+        const { data: userData, error: userError } = await supabase
+          .from("usuario_nomina")
+          .select(`
+            *,
+            empresas:empresa_id(nombre),
+            sedes:sede_id(nombre),
+            eps:eps_id(nombre),
+            afp:afp_id(nombre),
+            cesantias:cesantias_id(nombre),
+            caja_de_compensacion:caja_de_compensacion_id(nombre),
+            cargos:cargo_id(id, nombre)
+          `)
+          .eq("auth_user_id", session.user.id)
+          .single()
 
-      if (userError) {
-        console.error("Error al obtener datos del usuario:", userError)
-        return
+        if (userError) {
+          console.error("Error al obtener datos del usuario:", userError)
+          return
+        }
+
+        setUserData(userData)
+      } catch (error) {
+        console.error("Error inesperado:", error)
+      } finally {
+        setLoading(false)
       }
-
-      setUserData(userData)
-      setLoading(false)
     }
 
     checkAuth()
   }, [router])
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex flex-col justify-center items-center">
-        <div className="text-2xl font-semibold text-gray-700">Cargando...</div>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-transparent">
       {/* Main content */}
       <div className="flex flex-col flex-1">
         <main className="flex-1">
@@ -73,7 +71,7 @@ export default function Perfil() {
                 <p className="text-muted-foreground">Visualiza tu información personal, laboral y de afiliaciones.</p>
               </div>
 
-              <div className="divide-y divide-border rounded-md border">
+              <div className="divide-y divide-border rounded-md border bg-white">
                 {loading ? (
                   <div className="p-6 space-y-6">
                     <div className="flex items-center space-x-4">

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createSupabaseClient } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FaBuilding, FaUsers, FaBriefcase, FaMapMarkerAlt, FaUser, FaSearch, FaHeartbeat, FaShieldAlt, FaHandHoldingUsd, FaChartLine } from 'react-icons/fa'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, ComposedChart, Line } from 'recharts'
 
@@ -106,21 +107,31 @@ export default function EstadisticasPage() {
   
   const [totalUsuarios, setTotalUsuarios] = useState(0)
   const [totalEmpresas, setTotalEmpresas] = useState(0)
+  
+  // Estados para filtro por empresa
+  const [empresasDisponibles, setEmpresasDisponibles] = useState<Empresa[]>([])
+  const [empresaSeleccionada, setEmpresaSeleccionada] = useState<string>('todas')
 
   // Filtrar cargos basandose en el termino de busqueda
   const filteredCargosStats = cargosStats.filter(cargo =>
     cargo.nombre.toLowerCase().includes(searchCargo.toLowerCase())
   )
 
-  useEffect(() => {
-    const loadEstadisticas = async () => {
-      const supabase = createSupabaseClient()
+  const loadEstadisticas = async (empresaFiltro: string = 'todas') => {
+    const supabase = createSupabaseClient()
+    
+    try {
+      // Obtener lista de empresas disponibles
+      const { data: empresas } = await supabase
+        .from('empresas')
+        .select('id, nombre') as { data: Empresa[] | null }
       
-      try {
-        // Obtener estadisticas por empresa
-        const { data: empresas } = await supabase
-          .from('empresas')
-          .select('id, nombre') as { data: Empresa[] | null }
+      if (empresas) {
+        setEmpresasDisponibles(empresas)
+      }
+      
+      // Construir filtro de empresa si es necesario
+      const empresaFilter = empresaFiltro !== 'todas' ? empresaFiltro : null
         
         if (empresas) {
           const empresasConStats: EmpresaStats[] = []
@@ -169,19 +180,27 @@ export default function EstadisticasPage() {
         }
         
         // Obtener estadisticas por genero (solo usuarios activos)
-        const { data: usuariosMujeres } = await supabase
+        let queryMujeres = supabase
           .from('usuario_nomina')
           .select('auth_user_id')
           .eq('rol', 'usuario')
           .eq('genero', 'F')
           .eq('estado', 'activo')
         
-        const { data: usuariosHombres } = await supabase
+        let queryHombres = supabase
           .from('usuario_nomina')
           .select('auth_user_id')
           .eq('rol', 'usuario')
           .eq('genero', 'M')
           .eq('estado', 'activo')
+        
+        if (empresaFilter) {
+          queryMujeres = queryMujeres.eq('empresa_id', empresaFilter)
+          queryHombres = queryHombres.eq('empresa_id', empresaFilter)
+        }
+        
+        const { data: usuariosMujeres } = await queryMujeres
+        const { data: usuariosHombres } = await queryHombres
         
         const mujeres = usuariosMujeres?.length || 0
         const hombres = usuariosHombres?.length || 0
@@ -213,11 +232,17 @@ export default function EstadisticasPage() {
           const sedesConStats: SedeStats[] = []
           
           for (const sede of sedes) {
-            const { data: usuariosSede } = await supabase
+            let querySede = supabase
               .from('usuario_nomina')
               .select('auth_user_id')
               .eq('sede_id', sede.id)
               .eq('rol', 'usuario')
+            
+            if (empresaFilter) {
+              querySede = querySede.eq('empresa_id', empresaFilter)
+            }
+            
+            const { data: usuariosSede } = await querySede
             
             sedesConStats.push({
               id: sede.id,
@@ -239,13 +264,18 @@ export default function EstadisticasPage() {
           let totalUsuariosCargos = 0
           
           for (const cargo of cargos) {
-            const { data: usuariosCargo } = await supabase
+            let queryCargo = supabase
               .from('usuario_nomina')
               .select('auth_user_id')
               .eq('cargo_id', cargo.id)
               .eq('rol', 'usuario')
               .eq('estado', 'activo')
             
+            if (empresaFilter) {
+              queryCargo = queryCargo.eq('empresa_id', empresaFilter)
+            }
+            
+            const { data: usuariosCargo } = await queryCargo
             const cantidadCargo = usuariosCargo?.length || 0
             totalUsuariosCargos += cantidadCargo
             
@@ -279,13 +309,18 @@ export default function EstadisticasPage() {
           let totalUsuariosEps = 0
           
           for (const epsItem of eps) {
-            const { data: usuariosEps } = await supabase
+            let queryEps = supabase
               .from('usuario_nomina')
               .select('auth_user_id')
               .eq('eps_id', epsItem.id)
               .eq('rol', 'usuario')
               .eq('estado', 'activo')
             
+            if (empresaFilter) {
+              queryEps = queryEps.eq('empresa_id', empresaFilter)
+            }
+            
+            const { data: usuariosEps } = await queryEps
             const cantidadEps = usuariosEps?.length || 0
             totalUsuariosEps += cantidadEps
             
@@ -318,13 +353,18 @@ export default function EstadisticasPage() {
           let totalUsuariosAfp = 0
           
           for (const afpItem of afp) {
-            const { data: usuariosAfp } = await supabase
+            let queryAfp = supabase
               .from('usuario_nomina')
               .select('auth_user_id')
               .eq('afp_id', afpItem.id)
               .eq('rol', 'usuario')
               .eq('estado', 'activo')
             
+            if (empresaFilter) {
+              queryAfp = queryAfp.eq('empresa_id', empresaFilter)
+            }
+            
+            const { data: usuariosAfp } = await queryAfp
             const cantidadAfp = usuariosAfp?.length || 0
             totalUsuariosAfp += cantidadAfp
             
@@ -357,13 +397,18 @@ export default function EstadisticasPage() {
           let totalUsuariosCesantias = 0
           
           for (const cesantiasItem of cesantias) {
-            const { data: usuariosCesantias } = await supabase
+            let queryCesantias = supabase
               .from('usuario_nomina')
               .select('auth_user_id')
               .eq('cesantias_id', cesantiasItem.id)
               .eq('rol', 'usuario')
               .eq('estado', 'activo')
             
+            if (empresaFilter) {
+              queryCesantias = queryCesantias.eq('empresa_id', empresaFilter)
+            }
+            
+            const { data: usuariosCesantias } = await queryCesantias
             const cantidadCesantias = usuariosCesantias?.length || 0
             totalUsuariosCesantias += cantidadCesantias
             
@@ -396,13 +441,18 @@ export default function EstadisticasPage() {
           let totalUsuariosCajaCompensacion = 0
           
           for (const cajaItem of cajaCompensacion) {
-            const { data: usuariosCaja } = await supabase
+            let queryCaja = supabase
               .from('usuario_nomina')
               .select('auth_user_id')
               .eq('caja_de_compensacion_id', cajaItem.id)
               .eq('rol', 'usuario')
               .eq('estado', 'activo')
             
+            if (empresaFilter) {
+              queryCaja = queryCaja.eq('empresa_id', empresaFilter)
+            }
+            
+            const { data: usuariosCaja } = await queryCaja
             const cantidadCaja = usuariosCaja?.length || 0
             totalUsuariosCajaCompensacion += cantidadCaja
             
@@ -426,12 +476,18 @@ export default function EstadisticasPage() {
         }
         
         // Obtener estadisticas de retiros
-        const { data: retiros } = await supabase
+        let queryRetiros = supabase
           .from('usuario_nomina')
           .select('motivo_retiro, fecha_retiro')
           .eq('estado', 'inactivo')
           .not('motivo_retiro', 'is', null)
           .not('fecha_retiro', 'is', null)
+        
+        if (empresaFilter) {
+          queryRetiros = queryRetiros.eq('empresa_id', empresaFilter)
+        }
+        
+        const { data: retiros } = await queryRetiros
         
         if (retiros && retiros.length > 0) {
           const retirosGrouped = retiros.reduce((acc: any, retiro: any) => {
@@ -458,15 +514,27 @@ export default function EstadisticasPage() {
           setRetirosStats(retirosArray)
         }
         
-      } catch (error) {
-        console.error('Error al cargar estadisticas:', error)
-      } finally {
-        setLoading(false)
-      }
+    } catch (error) {
+      console.error('Error al cargar estadisticas:', error)
+    } finally {
+      setLoading(false)
     }
-    
+  }
+  
+  useEffect(() => {
     loadEstadisticas()
   }, [])
+  
+  useEffect(() => {
+    if (empresasDisponibles.length > 0) {
+      setLoading(true)
+      loadEstadisticas(empresaSeleccionada)
+    }
+  }, [empresaSeleccionada])
+  
+  const handleEmpresaChange = (value: string) => {
+    setEmpresaSeleccionada(value)
+  }
 
   if (loading) {
     return (
@@ -497,11 +565,39 @@ export default function EstadisticasPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Estadisticas</h1>
         <p className="text-gray-600">Analisis de datos del sistema</p>
-      </div>
-      
-      {/* Fila 1: Distribucion por Empresas y Distribucion por Genero */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* 1. Grafico de empresas - Tabla y Pie chart */}
+        
+        {/* Filtro por empresa */}
+        <div className="mt-4 flex items-center gap-4">
+          <label className="text-sm font-medium text-gray-700">Filtrar por empresa:</label>
+          <Select value={empresaSeleccionada} onValueChange={handleEmpresaChange}>
+            <SelectTrigger className="w-64">
+              <SelectValue placeholder="Seleccionar empresa" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas las empresas</SelectItem>
+              {empresasDisponibles.map((empresa) => (
+                <SelectItem key={empresa.id} value={empresa.id}>
+                  {empresa.nombre}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+         
+         {/* Indicador de empresa seleccionada */}
+         {empresaSeleccionada !== 'todas' && (
+           <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+             <p className="text-sm text-blue-800">
+               <span className="font-medium">Mostrando estadísticas para:</span> {empresasDisponibles.find(e => e.id === empresaSeleccionada)?.nombre}
+             </p>
+           </div>
+         )}
+       </div>
+       
+       {/* Fila 1: Distribucion por Empresas y Distribucion por Genero */}
+      <div className={`grid gap-6 mb-6 ${empresaSeleccionada === 'todas' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
+        {/* 1. Grafico de empresas - Tabla y Pie chart - Solo mostrar cuando no hay filtro */}
+        {empresaSeleccionada === 'todas' && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -578,6 +674,7 @@ export default function EstadisticasPage() {
             </div>
           </CardContent>
         </Card>
+        )}
         
         {/* 2. Grafico de genero - Barras horizontales */}
         <Card>

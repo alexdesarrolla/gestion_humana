@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { AlertCircle, ArrowLeft, Plus, Edit, Trash2 } from "lucide-react"
 
@@ -240,26 +241,42 @@ export default function CategoriasComunicados() {
               </Alert>
             )}
             
-            {loading ? (
-              <div className="flex justify-center items-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              </div>
-            ) : categorias.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                No hay categorías definidas. Cree una nueva categoría para comenzar.
-              </div>
-            ) : (
-              <div className="overflow-x-auto overflow-y-hidden">
-                <Table>
-                  <TableHeader>
+            <div className="overflow-x-auto overflow-y-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[200px]">Nombre</TableHead>
+                    <TableHead>Descripción</TableHead>
+                    <TableHead className="text-right w-[120px]">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    // Skeleton loader para categorías
+                    Array.from({ length: 3 }).map((_, index) => (
+                      <TableRow key={index}>
+                        <TableCell>
+                          <Skeleton className="h-4 w-[150px]" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-[200px]" />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Skeleton className="h-8 w-8 rounded" />
+                            <Skeleton className="h-8 w-8 rounded" />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : categorias.length === 0 ? (
                     <TableRow>
-                      <TableHead className="w-[200px]">Nombre</TableHead>
-                      <TableHead>Descripción</TableHead>
-                      <TableHead className="text-right w-[120px]">Acciones</TableHead>
+                      <TableCell colSpan={3} className="text-center py-8 text-gray-500">
+                        No hay categorías definidas. Cree una nueva categoría para comenzar.
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {categorias.map((categoria) => (
+                  ) : (
+                    categorias.map((categoria) => (
                       <TableRow key={categoria.id}>
                         <TableCell className="font-medium">{categoria.nombre}</TableCell>
                         <TableCell>{categoria.descripcion || "--"}</TableCell>
@@ -283,11 +300,11 @@ export default function CategoriasComunicados() {
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
         

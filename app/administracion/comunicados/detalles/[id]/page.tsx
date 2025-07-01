@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   BookOpenCheckIcon,
   BarChart3Icon,
@@ -58,51 +59,40 @@ export default function DetallesComunicadoPage() {
     try {
       const supabase = createSupabaseClient()
 
-      // 1) Título
-      const { data: comData, error: comErr } = await supabase
-        .from("comunicados")
-        .select("titulo")
-        .eq("id", comunicadoId)
-        .single()
-      if (comErr) throw comErr
-      const titulo = comData?.titulo as string
+      // Ejecutar consultas iniciales en paralelo
+      const [comResult, cargosResult, lecturasResult] = await Promise.all([
+        // 1) Título del comunicado
+        supabase
+          .from("comunicados")
+          .select("titulo")
+          .eq("id", comunicadoId)
+          .single(),
+        // 2) Cargos destinatarios del comunicado
+        supabase
+          .from("comunicados_cargos")
+          .select("cargo_id")
+          .eq("comunicado_id", comunicadoId),
+        // 3) Lecturas del comunicado
+        supabase
+          .from("comunicados_leidos")
+          .select(`
+            usuario_id,
+            leido_at,
+            usuario_nomina:usuario_id (colaborador)
+          `)
+          .eq("comunicado_id", comunicadoId)
+          .order("leido_at", { ascending: false })
+      ])
 
-      // 2) Obtener cargos destinatarios del comunicado
-      const { data: cargosData, error: cargosErr } = await supabase
-        .from("comunicados_cargos")
-        .select("cargo_id")
-        .eq("comunicado_id", comunicadoId)
-      if (cargosErr) throw cargosErr
-      const cargoIds = (cargosData || []).map((r) => r.cargo_id)
+      if (comResult.error) throw comResult.error
+      if (cargosResult.error) throw cargosResult.error
+      if (lecturasResult.error) throw lecturasResult.error
 
-      // 3) Calcular total destinatarios basado en los cargos
-      let totalDest = 0
-      if (cargoIds.length > 0) {
-        const { count } = await supabase
-          .from("usuario_nomina")
-          .select("*", { head: true, count: "exact" })
-          .in("cargo_id", cargoIds)
-        totalDest = count || 0
-      }
+      const titulo = comResult.data?.titulo as string
+      const cargoIds = (cargosResult.data || []).map((r) => r.cargo_id)
       
-      setComunicadoInfo({
-        titulo: titulo,
-        total_destinatarios: totalDest,
-      })
-
-      // 4) Obtener lecturas
-      const { data: lecturasData, error: leErr } = await supabase
-        .from("comunicados_leidos")
-        .select(`
-          usuario_id,
-          leido_at,
-          usuario_nomina:usuario_id (colaborador)
-        `)
-        .eq("comunicado_id", comunicadoId)
-        .order("leido_at", { ascending: false })
-      if (leErr) throw leErr
-      const leData = lecturasData || []
-      // Convertir explícitamente los datos al tipo Lectura
+      // Procesar lecturas
+      const leData = lecturasResult.data || []
       const lecturas: Lectura[] = leData.map(item => ({
           usuario_id: item.usuario_id as string,
           usuario_nomina: item.usuario_nomina && typeof item.usuario_nomina === 'object' ? {
@@ -112,23 +102,41 @@ export default function DetallesComunicadoPage() {
         }))
       setUsuariosLeidos(lecturas)
 
-      // 5) Obtener todos los destinatarios basados en los cargos
+      // Ejecutar consultas dependientes en paralelo si hay cargos
       if (cargoIds.length > 0) {
-        const { data: recData = [], error: recErr } = await supabase
-          .from("usuario_nomina")
-          .select("auth_user_id, colaborador")
-          .in("cargo_id", cargoIds)
-        
-        if (recErr) throw recErr
+        const [countResult, destinatariosResult] = await Promise.all([
+          // Contar total destinatarios
+          supabase
+            .from("usuario_nomina")
+            .select("*", { head: true, count: "exact" })
+            .in("cargo_id", cargoIds),
+          // Obtener destinatarios
+          supabase
+            .from("usuario_nomina")
+            .select("auth_user_id, colaborador")
+            .in("cargo_id", cargoIds)
+        ])
 
-        // Asegurarse de que recData sea un array antes de mapearlo
-        const destinatariosData = Array.isArray(recData) ? recData.map((u) => ({
-          usuario_id: u.auth_user_id as string,
-          colaborador: u.colaborador as string | undefined,
-        })) : []
+        const totalDest = countResult.count || 0
         
-        setDestinatarios(destinatariosData)
+        setComunicadoInfo({
+          titulo: titulo,
+          total_destinatarios: totalDest,
+        })
+
+        if (!destinatariosResult.error) {
+          const destinatariosData = Array.isArray(destinatariosResult.data) ? destinatariosResult.data.map((u) => ({
+            usuario_id: u.auth_user_id as string,
+            colaborador: u.colaborador as string | undefined,
+          })) : []
+          
+          setDestinatarios(destinatariosData)
+        }
       } else {
+        setComunicadoInfo({
+          titulo: titulo,
+          total_destinatarios: 0,
+        })
         setDestinatarios([])
       }
     } catch (err: any) {
@@ -308,9 +316,19 @@ export default function DetallesComunicadoPage() {
                 </CardHeader>
                 <CardContent className="p-0">
                   {loading ? (
-                    <div className="flex justify-center p-8">
-                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                    </div>
+                    // Skeleton loader para lecturas
+                    Array.from({ length: 5 }).map((_, index) => (
+                      <div key={index} className="flex justify-between items-center p-4">
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="h-9 w-9 rounded-full" />
+                          <Skeleton className="h-4 w-[180px]" />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Skeleton className="h-4 w-4" />
+                          <Skeleton className="h-4 w-[120px]" />
+                        </div>
+                      </div>
+                    ))
                   ) : filteredLeidos.length === 0 ? (
                     <div className="text-center py-8">
                       <BookOpenCheckIcon className="h-12 w-12 opacity-20 mx-auto mb-3" />
@@ -377,9 +395,13 @@ export default function DetallesComunicadoPage() {
                 </CardHeader>
                 <CardContent className="p-0">
                   {loading ? (
-                    <div className="flex justify-center p-8">
-                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-destructive border-t-transparent" />
-                    </div>
+                    // Skeleton loader para faltantes
+                    Array.from({ length: 5 }).map((_, index) => (
+                      <div key={index} className="flex items-center gap-3 p-4">
+                        <Skeleton className="h-9 w-9 rounded-full" />
+                        <Skeleton className="h-4 w-[180px]" />
+                      </div>
+                    ))
                   ) : filteredFaltantes.length === 0 ? (
                     <div className="text-center py-8">
                       <UserRoundX className="h-12 w-12 opacity-20 mx-auto mb-3" />

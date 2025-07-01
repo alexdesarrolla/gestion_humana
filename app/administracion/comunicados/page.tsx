@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search,
   Plus,
@@ -160,27 +161,29 @@ export default function Comunicados() {
         return;
       }
 
-      // Cargar categorías
-      const { data: categoriasData, error: categoriasError } = await supabase
-        .from("categorias_comunicados")
-        .select("*")
-        .order("nombre", { ascending: true });
+      // Cargar categorías y comunicados en paralelo
+      const [categoriasResult, comunicadosResult] = await Promise.all([
+        supabase
+          .from("categorias_comunicados")
+          .select("*")
+          .order("nombre", { ascending: true }),
+        supabase
+          .from("comunicados")
+          .select(`
+            *,
+            categorias_comunicados:categoria_id(nombre),
+            usuario_nomina:autor_id(colaborador)
+          `)
+          .order("fecha_publicacion", { ascending: false })
+      ]);
 
-      if (!categoriasError) setCategorias(categoriasData || []);
+      if (!categoriasResult.error) {
+        setCategorias(categoriasResult.data || []);
+      }
 
-      // Cargar comunicados
-      const { data: comunicadosData, error: comunicadosError } = await supabase
-        .from("comunicados")
-        .select(`
-          *,
-          categorias_comunicados:categoria_id(nombre),
-          usuario_nomina:autor_id(colaborador)
-        `)
-        .order("fecha_publicacion", { ascending: false });
-
-      if (!comunicadosError) {
-        setComunicados(comunicadosData || []);
-        setFilteredComunicados(comunicadosData || []);
+      if (!comunicadosResult.error) {
+        setComunicados(comunicadosResult.data || []);
+        setFilteredComunicados(comunicadosResult.data || []);
       }
 
       setLoading(false);
@@ -324,94 +327,123 @@ export default function Comunicados() {
               </Select>
             </div>
 
-            {loading ? (
-              <div className="flex justify-center items-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              </div>
-            ) : filteredComunicados.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                No se encontraron comunicados
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[300px]">
+                      <div
+                        className="flex items-center cursor-pointer"
+                        onClick={() => requestSort("titulo")}
+                      >
+                        Título
+                        {sortConfig?.key === "titulo" &&
+                          (sortConfig.direction === "asc" ? (
+                            <ChevronUp className="ml-1 h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="ml-1 h-4 w-4" />
+                          ))}
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div
+                        className="flex items-center cursor-pointer"
+                        onClick={() => requestSort("categoria")}
+                      >
+                        Categoría
+                        {sortConfig?.key === "categoria" &&
+                          (sortConfig.direction === "asc" ? (
+                            <ChevronUp className="ml-1 h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="ml-1 h-4 w-4" />
+                          ))}
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div
+                        className="flex items-center cursor-pointer"
+                        onClick={() => requestSort("fecha")}
+                      >
+                        Fecha
+                        {sortConfig?.key === "fecha" &&
+                          (sortConfig.direction === "asc" ? (
+                            <ChevronUp className="ml-1 h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="ml-1 h-4 w-4" />
+                          ))}
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div
+                        className="flex items-center cursor-pointer"
+                        onClick={() => requestSort("autor")}
+                      >
+                        Autor/Área
+                        {sortConfig?.key === "autor" &&
+                          (sortConfig.direction === "asc" ? (
+                            <ChevronUp className="ml-1 h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="ml-1 h-4 w-4" />
+                          ))}
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div
+                        className="flex items-center cursor-pointer"
+                        onClick={() => requestSort("estado")}
+                      >
+                        Estado
+                        {sortConfig?.key === "estado" &&
+                          (sortConfig.direction === "asc" ? (
+                            <ChevronUp className="ml-1 h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="ml-1 h-4 w-4" />
+                          ))}
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    // Skeleton loader para las filas
+                    Array.from({ length: 5 }).map((_, index) => (
+                      <TableRow key={index}>
+                        <TableCell>
+                          <Skeleton className="h-4 w-[250px]" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-[100px]" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-[80px]" />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <Skeleton className="h-4 w-[120px]" />
+                            <Skeleton className="h-3 w-[80px]" />
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-6 w-[80px] rounded-full" />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Skeleton className="h-8 w-8 rounded" />
+                            <Skeleton className="h-8 w-8 rounded" />
+                            <Skeleton className="h-8 w-8 rounded" />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : filteredComunicados.length === 0 ? (
                     <TableRow>
-                      <TableHead className="w-[300px]">
-                        <div
-                          className="flex items-center cursor-pointer"
-                          onClick={() => requestSort("titulo")}
-                        >
-                          Título
-                          {sortConfig?.key === "titulo" &&
-                            (sortConfig.direction === "asc" ? (
-                              <ChevronUp className="ml-1 h-4 w-4" />
-                            ) : (
-                              <ChevronDown className="ml-1 h-4 w-4" />
-                            ))}
-                        </div>
-                      </TableHead>
-                      <TableHead>
-                        <div
-                          className="flex items-center cursor-pointer"
-                          onClick={() => requestSort("categoria")}
-                        >
-                          Categoría
-                          {sortConfig?.key === "categoria" &&
-                            (sortConfig.direction === "asc" ? (
-                              <ChevronUp className="ml-1 h-4 w-4" />
-                            ) : (
-                              <ChevronDown className="ml-1 h-4 w-4" />
-                            ))}
-                        </div>
-                      </TableHead>
-                      <TableHead>
-                        <div
-                          className="flex items-center cursor-pointer"
-                          onClick={() => requestSort("fecha")}
-                        >
-                          Fecha
-                          {sortConfig?.key === "fecha" &&
-                            (sortConfig.direction === "asc" ? (
-                              <ChevronUp className="ml-1 h-4 w-4" />
-                            ) : (
-                              <ChevronDown className="ml-1 h-4 w-4" />
-                            ))}
-                        </div>
-                      </TableHead>
-                      <TableHead>
-                        <div
-                          className="flex items-center cursor-pointer"
-                          onClick={() => requestSort("autor")}
-                        >
-                          Autor/Área
-                          {sortConfig?.key === "autor" &&
-                            (sortConfig.direction === "asc" ? (
-                              <ChevronUp className="ml-1 h-4 w-4" />
-                            ) : (
-                              <ChevronDown className="ml-1 h-4 w-4" />
-                            ))}
-                        </div>
-                      </TableHead>
-                      <TableHead>
-                        <div
-                          className="flex items-center cursor-pointer"
-                          onClick={() => requestSort("estado")}
-                        >
-                          Estado
-                          {sortConfig?.key === "estado" &&
-                            (sortConfig.direction === "asc" ? (
-                              <ChevronUp className="ml-1 h-4 w-4" />
-                            ) : (
-                              <ChevronDown className="ml-1 h-4 w-4" />
-                            ))}
-                        </div>
-                      </TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
+                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                        No se encontraron comunicados
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredComunicados.map((c) => (
+                  ) : (
+                    filteredComunicados.map((c) => (
                       <TableRow key={c.id}>
                         <TableCell className="font-medium">{c.titulo}</TableCell>
                         <TableCell>
@@ -481,11 +513,11 @@ export default function Comunicados() {
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
 
             {/* Modal de confirmación de eliminación */}
             <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

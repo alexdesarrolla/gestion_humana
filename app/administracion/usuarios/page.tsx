@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { PermissionsManager } from "@/components/ui/permissions-manager"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function Usuarios() {
   const router = useRouter()
@@ -119,107 +120,124 @@ export default function Usuarios() {
         return
       }
 
-      // Obtener lista de usuarios con rol 'usuario' incluyendo todas las relaciones
-      const { data: usuarios, error: usuariosError } = await supabase
-        .from("usuario_nomina")
-        .select(`
-          *,
-          empresas:empresa_id(id, nombre),
-          sedes:sede_id(id, nombre),
-          eps:eps_id(id, nombre),
-          afp:afp_id(id, nombre),
-          cesantias:cesantias_id(id, nombre),
-          caja_de_compensacion:caja_de_compensacion_id(id, nombre),
-          cargos:cargo_id(id, nombre)
-        `)
-        .eq("rol", "usuario")
+      try {
+        // Ejecutar todas las consultas en paralelo para mejorar el rendimiento
+        const today = new Date().toISOString().split('T')[0]
+        
+        const [
+          { data: usuarios, error: usuariosError },
+          { data: todasEmpresas },
+          { data: sedesData },
+          { data: epsData },
+          { data: afpsData },
+          { data: cajasData },
+          { data: cesantiasData },
+          { data: vacacionesActivas },
+          { data: cargosData, error: cargosError }
+        ] = await Promise.all([
+          // Usuarios con relaciones optimizadas
+          supabase
+            .from("usuario_nomina")
+            .select(`
+              id, auth_user_id, colaborador, correo_electronico, telefono, rol, estado, genero, cedula,
+              fecha_ingreso, empresa_id, cargo_id, sede_id, fecha_nacimiento, edad, rh, eps_id, afp_id,
+              cesantias_id, caja_de_compensacion_id, direccion_residencia,
+              empresas:empresa_id(id, nombre),
+              sedes:sede_id(id, nombre),
+              eps:eps_id(id, nombre),
+              afp:afp_id(id, nombre),
+              cesantias:cesantias_id(id, nombre),
+              caja_de_compensacion:caja_de_compensacion_id(id, nombre),
+              cargos:cargo_id(id, nombre)
+            `)
+            .eq("rol", "usuario"),
+          // Empresas
+          supabase
+            .from("empresas")
+            .select("id, nombre")
+            .order("nombre"),
+          // Sedes
+          supabase
+            .from("sedes")
+            .select("id, nombre")
+            .order("nombre"),
+          // EPS
+          supabase
+            .from("eps")
+            .select("id, nombre")
+            .order("nombre"),
+          // AFP
+          supabase
+            .from("afp")
+            .select("id, nombre")
+            .order("nombre"),
+          // Cajas de compensación
+          supabase
+            .from("caja_de_compensacion")
+            .select("id, nombre")
+            .order("nombre"),
+          // Cesantías
+          supabase
+            .from("cesantias")
+            .select("id, nombre")
+            .order("nombre"),
+          // Vacaciones activas
+          supabase
+            .from("solicitudes_vacaciones")
+            .select("usuario_id")
+            .eq("estado", "aprobado")
+            .lte("fecha_inicio", today)
+            .gte("fecha_fin", today),
+          // Cargos
+          supabase
+            .from("cargos")
+            .select("id, nombre")
+            .order("nombre")
+        ])
 
-      if (usuariosError) {
-        console.error("Error al obtener usuarios:", usuariosError)
-        setLoading(false)
-        return
-      }
-
-      // Obtener todas las empresas para el formulario de agregar usuario
-      const { data: todasEmpresas } = await supabase
-        .from("empresas")
-        .select("id, nombre")
-        .order("nombre")
-
-      // Obtener sedes, EPS, AFP y cajas de compensación para formularios
-      const { data: sedesData } = await supabase
-        .from("sedes")
-        .select("id, nombre")
-        .order("nombre")
-
-      const { data: epsData } = await supabase
-        .from("eps")
-        .select("id, nombre")
-        .order("nombre")
-
-      const { data: afpsData } = await supabase
-        .from("afp")
-        .select("id, nombre")
-        .order("nombre")
-
-      const { data: cajasData } = await supabase
-        .from("caja_de_compensacion")
-        .select("id, nombre")
-        .order("nombre")
-
-      const { data: cesantiasData } = await supabase
-        .from("cesantias")
-        .select("id, nombre")
-        .order("nombre")
-
-      setSedes(sedesData || [])
-      setEps(epsData || [])
-      setAfps(afpsData || [])
-      setCesantias(cesantiasData || [])
-      setCajaDeCompensacionOptions(cajasData || [])
-
-      // Obtener vacaciones activas para todos los usuarios
-      const today = new Date().toISOString().split('T')[0]
-      const { data: vacacionesActivas } = await supabase
-        .from("solicitudes_vacaciones")
-        .select("usuario_id")
-        .eq("estado", "aprobado")
-        .lte("fecha_inicio", today)
-        .gte("fecha_fin", today)
-
-      // Agregar información de vacaciones a cada usuario
-      const usuariosConVacaciones = usuarios?.map(user => ({
-        ...user,
-        enVacaciones: user.auth_user_id ? vacacionesActivas?.some(vacacion => vacacion.usuario_id === user.auth_user_id) || false : false
-      })) || []
-
-      setUsers(usuariosConVacaciones)
-      setFilteredUsers(usuariosConVacaciones)
-
-      // Extraer empresas únicas para filtros
-      const uniqueEmpresas = Array.from(new Set(usuariosConVacaciones?.map(user => {
-        // Verificar si empresas existe y tiene la propiedad nombre
-        if (user.empresas && typeof user.empresas === 'object' && 'nombre' in user.empresas) {
-          return (user.empresas as any).nombre
+        if (usuariosError) {
+          console.error("Error al obtener usuarios:", usuariosError)
+          setLoading(false)
+          return
         }
-        return null
-      }).filter(Boolean)))
-      setEmpresas(todasEmpresas || [])
-      setEmpresasFilter(uniqueEmpresas)
 
-      // Cargar cargos desde la tabla cargos
-      const { data: cargosData, error: cargosError } = await supabase
-        .from("cargos")
-        .select("id, nombre")
-        .order("nombre")
-      
-      if (cargosError) {
-        console.error("Error al cargar cargos:", cargosError)
-      } else {
+        if (cargosError) {
+          console.error("Error al cargar cargos:", cargosError)
+        }
+
+        // Establecer datos de formularios
+        setSedes(sedesData || [])
+        setEps(epsData || [])
+        setAfps(afpsData || [])
+        setCesantias(cesantiasData || [])
+        setCajaDeCompensacionOptions(cajasData || [])
         setCargos(cargosData || [])
-      }
+        setEmpresas(todasEmpresas || [])
 
-      setLoading(false)
+        // Agregar información de vacaciones a cada usuario
+        const usuariosConVacaciones = usuarios?.map(user => ({
+          ...user,
+          enVacaciones: user.auth_user_id ? vacacionesActivas?.some(vacacion => vacacion.usuario_id === user.auth_user_id) || false : false
+        })) || []
+
+        setUsers(usuariosConVacaciones)
+        setFilteredUsers(usuariosConVacaciones)
+
+        // Extraer empresas únicas para filtros
+        const uniqueEmpresas = Array.from(new Set(usuariosConVacaciones?.map(user => {
+          // Verificar si empresas existe y tiene la propiedad nombre
+          if (user.empresas && typeof user.empresas === 'object' && 'nombre' in user.empresas) {
+            return (user.empresas as any).nombre
+          }
+          return null
+        }).filter(Boolean)))
+        setEmpresasFilter(uniqueEmpresas)
+
+        setLoading(false)
+      } catch (error) {
+        console.error("Error al cargar datos:", error)
+        setLoading(false)
+      }
     }
 
     checkAuth()
@@ -491,137 +509,132 @@ export default function Usuarios() {
   }
 
   const fetchUsers = async () => {
-    const supabase = createSupabaseClient()
-    
-    // Obtener lista de todos los usuarios incluyendo todas las relaciones
-    const { data: usuarios, error: usuariosError } = await supabase
-      .from("usuario_nomina")
-      .select(`
-        *,
-        empresas:empresa_id(id, nombre),
-        sedes:sede_id(id, nombre),
-        eps:eps_id(id, nombre),
-        afp:afp_id(id, nombre),
-        cesantias:cesantias_id(id, nombre),
-        caja_de_compensacion:caja_de_compensacion_id(id, nombre),
-        cargos:cargo_id(id, nombre)
-      `)
-      .eq("rol", "usuario")
-
-    if (usuariosError) {
-      console.error("Error al obtener usuarios:", usuariosError)
-      return
-    }
-    
-    // Log temporal para obtener auth_user_id
-    console.log('🔑 Auth User IDs disponibles:', usuarios?.map(u => ({ 
-      nombre: u.colaborador, 
-      auth_user_id: u.auth_user_id 
-    })))
-    
-    // Obtener vacaciones activas para todos los usuarios
-    const today = new Date().toISOString().split('T')[0]
-    console.log('🔍 Buscando vacaciones para fecha:', today)
-    
-    const { data: vacacionesActivas, error: vacacionesError } = await supabase
-      .from("solicitudes_vacaciones")
-      .select("usuario_id")
-      .eq("estado", "aprobado")
-      .lte("fecha_inicio", today)
-      .gte("fecha_fin", today)
-    
-    console.log('📊 Vacaciones activas encontradas:', vacacionesActivas)
-    console.log('❌ Error en vacaciones activas:', vacacionesError)
-
-    // Obtener todas las vacaciones aprobadas para calcular el estado completo
-    const { data: todasLasVacaciones, error: todasVacacionesError } = await supabase
-      .from("solicitudes_vacaciones")
-      .select("usuario_id, fecha_inicio, fecha_fin")
-      .eq("estado", "aprobado")
-      .order("fecha_inicio", { ascending: true })
-    
-    console.log('📋 Todas las vacaciones aprobadas:', todasLasVacaciones)
-    console.log('❌ Error en todas las vacaciones:', todasVacacionesError)
-
-    // Agregar información completa de vacaciones a cada usuario
-    const usuariosConVacaciones = usuarios?.map(user => {
-      let estadoVacaciones = "sin_vacaciones"
-      let rangoVacaciones = null
-      const enVacaciones = user.auth_user_id ? vacacionesActivas?.some(vacacion => vacacion.usuario_id === user.auth_user_id) || false : false
+    try {
+      const supabase = createSupabaseClient()
+      const today = new Date().toISOString().split('T')[0]
       
-      console.log(`👤 Procesando usuario: ${user.colaborador}, auth_user_id: ${user.auth_user_id}, enVacaciones: ${enVacaciones}`)
+      // Ejecutar consultas en paralelo para mejorar el rendimiento
+      const [
+        { data: usuarios, error: usuariosError },
+        { data: vacacionesActivas, error: vacacionesError },
+        { data: todasLasVacaciones, error: todasVacacionesError }
+      ] = await Promise.all([
+        // Usuarios con relaciones optimizadas
+        supabase
+          .from("usuario_nomina")
+          .select(`
+            id, auth_user_id, colaborador, correo_electronico, telefono, rol, estado, genero, cedula,
+            fecha_ingreso, empresa_id, cargo_id, sede_id, fecha_nacimiento, edad, rh, eps_id, afp_id,
+            cesantias_id, caja_de_compensacion_id, direccion_residencia,
+            empresas:empresa_id(id, nombre),
+            sedes:sede_id(id, nombre),
+            eps:eps_id(id, nombre),
+            afp:afp_id(id, nombre),
+            cesantias:cesantias_id(id, nombre),
+            caja_de_compensacion:caja_de_compensacion_id(id, nombre),
+            cargos:cargo_id(id, nombre)
+          `)
+          .eq("rol", "usuario"),
+        // Vacaciones activas
+        supabase
+          .from("solicitudes_vacaciones")
+          .select("usuario_id")
+          .eq("estado", "aprobado")
+          .lte("fecha_inicio", today)
+          .gte("fecha_fin", today),
+        // Todas las vacaciones aprobadas
+        supabase
+          .from("solicitudes_vacaciones")
+          .select("usuario_id, fecha_inicio, fecha_fin")
+          .eq("estado", "aprobado")
+          .order("fecha_inicio", { ascending: true })
+      ])
+
+      if (usuariosError) {
+        console.error("Error al obtener usuarios:", usuariosError)
+        return
+      }
       
-      if (user.auth_user_id && todasLasVacaciones) {
-        const anoActual = new Date().getFullYear()
-        const vacacionesEsteAno = todasLasVacaciones
-          .filter((vacacion: any) => vacacion.usuario_id === user.auth_user_id)
-          .filter((vacacion: any) => {
-            const fechaInicio = new Date(vacacion.fecha_inicio)
-            return fechaInicio.getFullYear() === anoActual
-          })
+      if (vacacionesError) {
+        console.error("Error en vacaciones activas:", vacacionesError)
+      }
+      
+      if (todasVacacionesError) {
+        console.error("Error en todas las vacaciones:", todasVacacionesError)
+      }
+
+      // Agregar información completa de vacaciones a cada usuario
+      const usuariosConVacaciones = usuarios?.map(user => {
+        let estadoVacaciones = "sin_vacaciones"
+        let rangoVacaciones = null
+        const enVacaciones = user.auth_user_id ? vacacionesActivas?.some(vacacion => vacacion.usuario_id === user.auth_user_id) || false : false
         
-        if (vacacionesEsteAno.length > 0) {
-          const hoy = new Date()
+        if (user.auth_user_id && todasLasVacaciones) {
+          const anoActual = new Date().getFullYear()
+          const vacacionesEsteAno = todasLasVacaciones
+            .filter((vacacion: any) => vacacion.usuario_id === user.auth_user_id)
+            .filter((vacacion: any) => {
+              const fechaInicio = new Date(vacacion.fecha_inicio)
+              return fechaInicio.getFullYear() === anoActual
+            })
           
-          // Buscar vacaciones actuales primero
-          const vacacionActual = vacacionesEsteAno.find((v: any) => {
-            const fechaInicio = new Date(v.fecha_inicio)
-            const fechaFin = new Date(v.fecha_fin)
-            return fechaInicio <= hoy && fechaFin >= hoy
-          })
-          
-          if (vacacionActual) {
-            // Está actualmente de vacaciones
-            estadoVacaciones = "en_vacaciones"
-            rangoVacaciones = {
-              inicio: vacacionActual.fecha_inicio,
-              fin: vacacionActual.fecha_fin
-            }
-          } else {
-            // Buscar vacaciones futuras
-            const vacacionFutura = vacacionesEsteAno.find((v: any) => {
+          if (vacacionesEsteAno.length > 0) {
+            const hoy = new Date()
+            
+            // Buscar vacaciones actuales primero
+            const vacacionActual = vacacionesEsteAno.find((v: any) => {
               const fechaInicio = new Date(v.fecha_inicio)
-              return fechaInicio > hoy
+              const fechaFin = new Date(v.fecha_fin)
+              return fechaInicio <= hoy && fechaFin >= hoy
             })
             
-            if (vacacionFutura) {
-              // Tiene vacaciones pendientes
-              estadoVacaciones = "pendientes"
+            if (vacacionActual) {
+              // Está actualmente de vacaciones
+              estadoVacaciones = "en_vacaciones"
               rangoVacaciones = {
-                inicio: vacacionFutura.fecha_inicio,
-                fin: vacacionFutura.fecha_fin
+                inicio: vacacionActual.fecha_inicio,
+                fin: vacacionActual.fecha_fin
               }
             } else {
-              // Ya tomó vacaciones este año (todas las fechas de fin son pasadas)
-              const vacacionPasada = vacacionesEsteAno[vacacionesEsteAno.length - 1] // La más reciente
-              estadoVacaciones = "ya_tomo"
-              rangoVacaciones = {
-                inicio: vacacionPasada.fecha_inicio,
-                fin: vacacionPasada.fecha_fin
+              // Buscar vacaciones futuras
+              const vacacionFutura = vacacionesEsteAno.find((v: any) => {
+                const fechaInicio = new Date(v.fecha_inicio)
+                return fechaInicio > hoy
+              })
+              
+              if (vacacionFutura) {
+                // Tiene vacaciones pendientes
+                estadoVacaciones = "pendientes"
+                rangoVacaciones = {
+                  inicio: vacacionFutura.fecha_inicio,
+                  fin: vacacionFutura.fecha_fin
+                }
+              } else {
+                // Ya tomó vacaciones este año (todas las fechas de fin son pasadas)
+                const vacacionPasada = vacacionesEsteAno[vacacionesEsteAno.length - 1] // La más reciente
+                estadoVacaciones = "ya_tomo"
+                rangoVacaciones = {
+                  inicio: vacacionPasada.fecha_inicio,
+                  fin: vacacionPasada.fecha_fin
+                }
               }
             }
           }
         }
-      }
-      
-      const resultado = {
-        ...user,
-        enVacaciones,
-        estadoVacaciones,
-        rangoVacaciones
-      }
-      
-      console.log(`✅ Usuario ${user.colaborador} procesado:`, {
-        estadoVacaciones,
-        rangoVacaciones,
-        enVacaciones
-      })
-      
-      return resultado
-    }) || []
+        
+        return {
+          ...user,
+          enVacaciones,
+          estadoVacaciones,
+          rangoVacaciones
+        }
+      }) || []
 
-    setUsers(usuariosConVacaciones)
-    setFilteredUsers(usuariosConVacaciones)
+      setUsers(usuariosConVacaciones)
+      setFilteredUsers(usuariosConVacaciones)
+    } catch (error) {
+      console.error('Error al cargar usuarios:', error)
+    }
   }
 
   const handleAddUserSubmit = async (e: React.FormEvent) => {
@@ -816,8 +829,103 @@ export default function Usuarios() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex flex-col justify-center items-center">
-        <div className="text-2xl font-semibold text-gray-700">Cargando...</div>
+      <div className="min-h-screen">
+        <div className="flex flex-col flex-1">
+          <main className="flex-1">
+            <div className="py-6">
+              <div className="w-full mx-auto">
+                <div className="space-y-6">
+                  {/* Header skeleton */}
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <Skeleton className="h-8 w-64 mb-2" />
+                      <Skeleton className="h-4 w-48" />
+                    </div>
+                    <Skeleton className="h-10 w-32" />
+                  </div>
+
+                  {/* Filters skeleton */}
+                  <Card>
+                    <CardContent className="p-6 space-y-4">
+                      <div className="flex flex-col md:flex-row gap-4 items-end">
+                        <div className="flex-1">
+                          <Skeleton className="h-4 w-16 mb-1" />
+                          <Skeleton className="h-10 w-full" />
+                        </div>
+                        <div className="w-full md:w-48">
+                          <Skeleton className="h-4 w-16 mb-1" />
+                          <Skeleton className="h-10 w-full" />
+                        </div>
+                        <div className="w-full md:w-48">
+                          <Skeleton className="h-4 w-16 mb-1" />
+                          <Skeleton className="h-10 w-full" />
+                        </div>
+                        <div className="w-full md:w-48">
+                          <Skeleton className="h-4 w-16 mb-1" />
+                          <Skeleton className="h-10 w-full" />
+                        </div>
+                        <div className="w-full md:w-48">
+                          <Skeleton className="h-4 w-16 mb-1" />
+                          <Skeleton className="h-10 w-full" />
+                        </div>
+                        <Skeleton className="h-10 w-32" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Table skeleton */}
+                  <div className="rounded-md border bg-white">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead><Skeleton className="h-4 w-16" /></TableHead>
+                            <TableHead><Skeleton className="h-4 w-20" /></TableHead>
+                            <TableHead><Skeleton className="h-4 w-16" /></TableHead>
+                            <TableHead><Skeleton className="h-4 w-20" /></TableHead>
+                            <TableHead><Skeleton className="h-4 w-16" /></TableHead>
+                            <TableHead><Skeleton className="h-4 w-16" /></TableHead>
+                            <TableHead><Skeleton className="h-4 w-20" /></TableHead>
+                            <TableHead><Skeleton className="h-4 w-20" /></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {Array.from({ length: 10 }).map((_, index) => (
+                            <TableRow key={index}>
+                              <TableCell><Skeleton className="h-10 w-10 rounded-full" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                              <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
+                              <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                              <TableCell><Skeleton className="h-8 w-16" /></TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    {/* Pagination skeleton */}
+                    <div className="flex items-center justify-between px-6 py-4 border-t">
+                      <Skeleton className="h-4 w-32" />
+                      <div className="flex items-center space-x-2">
+                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-8" />
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Skeleton className="h-4 w-20" />
+                        <Skeleton className="h-8 w-16" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
       </div>
     )
   }

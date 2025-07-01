@@ -120,8 +120,31 @@ export default function Perfil() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex flex-col justify-center items-center">
-        <div className="text-2xl font-semibold text-gray-700">Cargando...</div>
+      <div className="space-y-6">
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg p-6 shadow-sm">
+          <div className="h-8 bg-gray-200/60 rounded animate-pulse mb-2"></div>
+          <div className="h-4 bg-gray-200/40 rounded animate-pulse w-3/4"></div>
+        </div>
+        
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg border shadow-sm">
+          <div className="p-6 space-y-6">
+            <div className="flex items-center space-x-4">
+              <div className="h-12 w-12 bg-gray-200/60 rounded-full animate-pulse"></div>
+              <div className="space-y-2 flex-1">
+                <div className="h-4 bg-gray-200/60 rounded animate-pulse w-1/2"></div>
+                <div className="h-4 bg-gray-200/40 rounded animate-pulse w-1/3"></div>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="h-4 bg-gray-200/60 rounded animate-pulse w-1/3"></div>
+                  <div className="h-4 bg-gray-200/40 rounded animate-pulse w-2/3"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -133,26 +156,8 @@ export default function Perfil() {
         <p className="text-muted-foreground">Visualiza tu información personal, laboral y de afiliaciones.</p>
       </div>
 
-      <div className="divide-y divide-border rounded-md border">
-        {loading ? (
-          <div className="p-6 space-y-6">
-            <div className="flex items-center space-x-4">
-              <Skeleton className="h-12 w-12 rounded-full" />
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-[250px]" />
-                <Skeleton className="h-4 w-[200px]" />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-            </div>
-          </div>
-        ) : (
-          <ProfileCard userData={userData} />
-        )}
+      <div className="bg-white/80 backdrop-blur-sm divide-y divide-border rounded-md border shadow-sm">
+        <ProfileCard userData={userData} />
       </div>
     </div>
   )

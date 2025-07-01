@@ -360,9 +360,44 @@ export default function SolicitudVacaciones() {
         </DialogContent>
       </Dialog>
 
-      {loading && !userData ? (
-        <div className="min-h-screen bg-gray-100 flex flex-col justify-center items-center">
-          <div className="text-2xl font-semibold text-gray-700">Cargando...</div>
+      {loading ? (
+        <div className="space-y-6">
+          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-6 shadow-sm">
+            <div className="flex justify-between items-center">
+              <div className="space-y-2">
+                <div className="h-8 bg-gray-200/60 rounded animate-pulse w-64"></div>
+                <div className="h-4 bg-gray-200/40 rounded animate-pulse w-80"></div>
+              </div>
+              <div className="h-10 bg-gray-200/40 rounded animate-pulse w-40"></div>
+            </div>
+          </div>
+          
+          <div className="bg-white/80 backdrop-blur-sm rounded-lg border shadow-sm">
+            <div className="p-6">
+              <div className="space-y-4">
+                <div className="h-6 bg-gray-200/60 rounded animate-pulse w-40"></div>
+                <div className="h-4 bg-gray-200/40 rounded animate-pulse w-72"></div>
+              </div>
+            </div>
+            <div className="border-t">
+              <div className="p-4">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-7 gap-4">
+                    {[...Array(7)].map((_, i) => (
+                      <div key={i} className="h-4 bg-gray-200/60 rounded animate-pulse"></div>
+                    ))}
+                  </div>
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="grid grid-cols-7 gap-4">
+                      {[...Array(7)].map((_, j) => (
+                        <div key={j} className="h-4 bg-gray-200/40 rounded animate-pulse"></div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       ) : (
         <div className="space-y-6">
@@ -392,7 +427,7 @@ export default function SolicitudVacaciones() {
                       </Alert>
                     )}
 
-                    <Card>
+                    <Card className="bg-white/80 backdrop-blur-sm shadow-sm">
                       <CardHeader>
                         <CardTitle>Mis solicitudes</CardTitle>
                         <CardDescription>

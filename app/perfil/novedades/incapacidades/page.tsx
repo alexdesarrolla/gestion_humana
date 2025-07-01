@@ -248,9 +248,41 @@ export default function IncapacidadesUsuario() {
 
   return (
     <>
-      {!userData && loading ? (
-        <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-          Cargando…
+      {loading ? (
+        <div className="space-y-6">
+          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-6 shadow-sm">
+            <div className="flex justify-between items-center">
+              <div className="h-8 bg-gray-200/60 rounded animate-pulse w-48"></div>
+              <div className="h-10 bg-gray-200/40 rounded animate-pulse w-24"></div>
+            </div>
+          </div>
+          
+          <div className="bg-white/80 backdrop-blur-sm rounded-lg border shadow-sm">
+            <div className="p-6">
+              <div className="space-y-4">
+                <div className="h-6 bg-gray-200/60 rounded animate-pulse w-32"></div>
+                <div className="h-4 bg-gray-200/40 rounded animate-pulse w-64"></div>
+              </div>
+            </div>
+            <div className="border-t">
+              <div className="p-4">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-5 gap-4">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="h-4 bg-gray-200/60 rounded animate-pulse"></div>
+                    ))}
+                  </div>
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="grid grid-cols-5 gap-4">
+                      {[...Array(5)].map((_, j) => (
+                        <div key={j} className="h-4 bg-gray-200/40 rounded animate-pulse"></div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       ) : (
         <div className="space-y-6">
@@ -274,7 +306,7 @@ export default function IncapacidadesUsuario() {
                   </Alert>
                 )}
 
-                <Card>
+                <Card className="bg-white/80 backdrop-blur-sm shadow-sm">
                   <CardHeader>
                     <CardTitle>Historial</CardTitle>
                     <CardDescription>Documentos de incapacidad</CardDescription>

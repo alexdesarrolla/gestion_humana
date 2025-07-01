@@ -258,7 +258,7 @@ export default function HistoricoCertificacionLaboral() {
         </div>
 
         {/* Filtros */}
-        <Card>
+        <Card className="bg-white/80 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Search className="h-5 w-5" />
@@ -332,12 +332,27 @@ export default function HistoricoCertificacionLaboral() {
         )}
 
         {/* Tabla de solicitudes */}
-        <Card>
+        <Card className="bg-white/80 backdrop-blur-sm">
           <CardContent className="p-0">
             {loading ? (
-              <div className="p-8 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-                <p className="mt-2 text-gray-600">Cargando histórico...</p>
+              <div className="p-4">
+                {/* Table Header Skeleton */}
+                <div className="space-y-3">
+                  <div className="grid grid-cols-6 gap-4">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div key={i} className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                    ))}
+                  </div>
+                  
+                  {/* Table Rows Skeleton */}
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="grid grid-cols-6 gap-4 py-3 border-b">
+                      {Array.from({ length: 6 }).map((_, j) => (
+                        <div key={j} className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
               <Table>

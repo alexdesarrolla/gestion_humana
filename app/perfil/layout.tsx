@@ -65,35 +65,72 @@ export default function PerfilLayout({
 
   if (loading) {
     return (
-      <div className="flex h-screen bg-gray-50">
-        <div className="w-64 bg-white shadow-sm border-r border-gray-200">
+      <div className="flex h-screen bg-transparent">
+        <div className="w-64 bg-white/80 backdrop-blur-sm shadow-sm border-r border-gray-200/50">
           <div className="p-4">
-            <div className="h-8 bg-gray-200 rounded animate-pulse mb-4"></div>
+            <div className="h-8 bg-gray-200/60 rounded animate-pulse mb-4"></div>
             <div className="space-y-2">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                <div key={i} className="h-10 bg-gray-200/60 rounded animate-pulse"></div>
               ))}
             </div>
           </div>
         </div>
-        <div className="flex-1 p-6">
-          <div className="h-8 bg-gray-200 rounded animate-pulse mb-4"></div>
-          <div className="h-64 bg-gray-200 rounded animate-pulse"></div>
+        <div 
+          className="flex-1 relative"
+          style={{
+            backgroundImage: 'url("/fondosecciones.webp")',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            backgroundAttachment: 'fixed'
+          }}
+        >
+          <div 
+            className="absolute inset-0"
+            style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              backdropFilter: 'blur(2px)',
+              WebkitBackdropFilter: 'blur(2px)'
+            }}
+          ></div>
+          <div className="relative z-10 p-6">
+            <div className="h-8 bg-white/60 rounded animate-pulse mb-4"></div>
+            <div className="h-64 bg-white/60 rounded animate-pulse"></div>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-transparent">
       {/* Sidebar */}
       <div className="w-64 bg-white shadow-sm border-r border-gray-200 flex-shrink-0">
         <Sidebar userName={userData?.colaborador || 'Usuario'} />
       </div>
       
       {/* Contenido principal */}
-      <div className="flex-1 overflow-auto">
-        <main className="px-20 py-10 space-y-6">
+      <div 
+        className="flex-1 overflow-auto relative"
+        style={{
+          backgroundImage: 'url("/fondosecciones.webp")',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          backgroundAttachment: 'fixed'
+        }}
+      >
+        {/* Overlay con blur */}
+        <div 
+          className="absolute inset-0"
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(2px)',
+            WebkitBackdropFilter: 'blur(2px)'
+          }}
+        ></div>
+        <main className="relative px-20 py-10 space-y-6 z-10">
           {children}
         </main>
       </div>

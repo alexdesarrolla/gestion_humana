@@ -100,7 +100,7 @@ export default function AdministracionLayout({
       <div 
         className="flex-1 overflow-auto relative"
         style={{
-          backgroundImage: 'url("http://localhost:3000/fondosecciones.webp")',
+          backgroundImage: 'url("/fondosecciones.webp")',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',

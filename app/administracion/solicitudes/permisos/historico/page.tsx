@@ -24,8 +24,9 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { Search, X, FileDown } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Search, X, FileDown } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton";
 
 type SolicitudPermiso = {
   id: string;
@@ -67,7 +68,7 @@ export default function AdminPermisosHistorico() {
         const supabase = createSupabaseClient();
 
         // 2) Traer solicitudes tipadas
-        const { data: solData, error: solError } = await supabase
+        const solicitudesPromise = supabase
           .from("solicitudes_permisos")
           .select(`
             id,
@@ -83,6 +84,8 @@ export default function AdminPermisosHistorico() {
             hora_fin
           `)
           .order("fecha_solicitud", { ascending: false });
+
+        const [{ data: solData, error: solError }] = await Promise.all([solicitudesPromise]);
         if (solError) throw solError;
         if (!solData) {
           setSolicitudes([]);
@@ -90,12 +93,14 @@ export default function AdminPermisosHistorico() {
           return;
         }
 
-        // 3) Traer colaboradores tipados
+        // 3) Traer colaboradores tipados en paralelo
         const userIds = Array.from(new Set(solData.map((s: any) => s.usuario_id)));
-        const { data: usersData, error: usersError } = await supabase
+        const usersPromise = supabase
           .from("usuario_nomina")
           .select("auth_user_id, colaborador, cedula")
           .in("auth_user_id", userIds);
+
+        const [{ data: usersData, error: usersError }] = await Promise.all([usersPromise]);
         if (usersError) throw usersError;
 
         // 4) Combinar en SolicitudPermiso[]
@@ -260,85 +265,93 @@ export default function AdminPermisosHistorico() {
                   </Alert>
                 )}
 
-                {loading ? (
-                  <p className="text-center py-10">Cargando historial...</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Colaborador</TableHead>
-                          <TableHead>Cédula</TableHead>
-                          <TableHead>Tipo</TableHead>
-                          <TableHead>Fecha Inicio</TableHead>
-                          <TableHead>Fecha Fin</TableHead>
-                          <TableHead>Estado</TableHead>
-                          <TableHead className="text-right">
-                            Acciones
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredSolicitudes.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={7} className="text-center py-6">
-                              No se encontraron solicitudes.
-                            </TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Colaborador</TableHead>
+                        <TableHead>Cédula</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Fecha Inicio</TableHead>
+                        <TableHead>Fecha Fin</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead className="text-right">
+                          Acciones
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {loading ? (
+                        Array.from({ length: 5 }).map((_, index) => (
+                          <TableRow key={index}>
+                            <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                            <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
+                            <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
                           </TableRow>
-                        ) : (
-                          filteredSolicitudes.map((s) => (
-                            <TableRow key={s.id}>
-                              <TableCell>
-                                {s.usuario?.colaborador ?? s.usuario_id}
-                              </TableCell>
-                              <TableCell>
-                                {s.usuario?.cedula ?? "-"}
-                              </TableCell>
-                              <TableCell>
-                                {humanType(s.tipo_permiso)}
-                              </TableCell>
-                              <TableCell>
-                                {formatDate(s.fecha_inicio)}
-                              </TableCell>
-                              <TableCell>
-                                {formatDate(s.fecha_fin)}
-                              </TableCell>
-                              <TableCell>
-                                <Badge
-                                  variant={
-                                    s.estado === "aprobado"
-                                      ? "secondary"
-                                      : s.estado === "rechazado"
-                                      ? "destructive"
-                                      : "default"
+                        ))
+                      ) : filteredSolicitudes.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-6">
+                            No se encontraron solicitudes.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredSolicitudes.map((s) => (
+                          <TableRow key={s.id}>
+                            <TableCell>
+                              {s.usuario?.colaborador ?? s.usuario_id}
+                            </TableCell>
+                            <TableCell>
+                              {s.usuario?.cedula ?? "-"}
+                            </TableCell>
+                            <TableCell>
+                              {humanType(s.tipo_permiso)}
+                            </TableCell>
+                            <TableCell>
+                              {formatDate(s.fecha_inicio)}
+                            </TableCell>
+                            <TableCell>
+                              {formatDate(s.fecha_fin)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={
+                                  s.estado === "aprobado"
+                                    ? "secondary"
+                                    : s.estado === "rechazado"
+                                    ? "destructive"
+                                    : "default"
+                                }
+                              >
+                                {s.estado}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {s.pdf_url ? (
+                                <Button
+                                  size="sm"
+                                  onClick={() =>
+                                    window.open(s.pdf_url!, "_blank")
                                   }
                                 >
-                                  {s.estado}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {s.pdf_url ? (
-                                  <Button
-                                    size="sm"
-                                    onClick={() =>
-                                      window.open(s.pdf_url!, "_blank")
-                                    }
-                                  >
-                                    <FileDown className="h-4 w-4 mr-1" /> Ver PDF
-                                  </Button>
-                                ) : (
-                                  <span className="text-xs text-gray-500">
-                                    Sin PDF
-                                  </span>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
+                                  <FileDown className="h-4 w-4 mr-1" /> Ver PDF
+                                </Button>
+                              ) : (
+                                <span className="text-xs text-gray-500">
+                                  Sin PDF
+                                </span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           </div>

@@ -21,6 +21,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CheckCircle2, XCircle, AlertCircle, Loader2, MessageSquare } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
+import { Skeleton } from "@/components/ui/skeleton"
 import { ComentariosVacaciones } from "@/components/vacaciones/comentarios-vacaciones"
 
 interface SolicitudVacacion {
@@ -58,42 +59,47 @@ export default function AdminVacacionesPage() {
   // Carga solicitudes pendientes
   const fetchSolicitudesPendientes = async () => {
     try {
-      const { data, error } = await supabase
-        .from("solicitudes_vacaciones")
-        .select(`
-          id,
-          usuario_id,
-          estado,
-          fecha_inicio,
-          fecha_fin,
-          fecha_solicitud
-        `)
-        .eq("estado", "pendiente")
-        .order("fecha_solicitud", { ascending: true })
-
-      if (error) throw error
-
-      if (data && data.length > 0) {
-        // Obtener datos de usuarios
-        const userIds = data.map(s => s.usuario_id)
-        const { data: usuariosData, error: usuariosError } = await supabase
-          .from("usuario_nomina")
+      // Ejecutar consultas en paralelo para mejor rendimiento
+      const [solicitudesResult] = await Promise.all([
+        supabase
+          .from("solicitudes_vacaciones")
           .select(`
-            auth_user_id,
-            colaborador,
-            cedula,
-            cargo_id,
-            empresa_id,
-            empresas:empresa_id(nombre),
-            cargos:cargo_id(nombre)
+            id,
+            usuario_id,
+            estado,
+            fecha_inicio,
+            fecha_fin,
+            fecha_solicitud
           `)
-          .in("auth_user_id", userIds)
+          .eq("estado", "pendiente")
+          .order("fecha_solicitud", { ascending: true })
+      ])
 
-        if (usuariosError) throw usuariosError
+      if (solicitudesResult.error) throw solicitudesResult.error
+
+      if (solicitudesResult.data && solicitudesResult.data.length > 0) {
+        // Obtener datos de usuarios en paralelo
+        const userIds = solicitudesResult.data.map(s => s.usuario_id)
+        const [usuariosResult] = await Promise.all([
+          supabase
+            .from("usuario_nomina")
+            .select(`
+              auth_user_id,
+              colaborador,
+              cedula,
+              cargo_id,
+              empresa_id,
+              empresas:empresa_id(nombre),
+              cargos:cargo_id(nombre)
+            `)
+            .in("auth_user_id", userIds)
+        ])
+
+        if (usuariosResult.error) throw usuariosResult.error
 
         // Combinar datos
-        const solicitudesCompletas = data.map(s => {
-          const usuario = usuariosData?.find(u => u.auth_user_id === s.usuario_id)
+        const solicitudesCompletas = solicitudesResult.data.map(s => {
+          const usuario = usuariosResult.data?.find(u => u.auth_user_id === s.usuario_id)
           return {
             id: s.id as string,
             usuario_id: s.usuario_id as string,
@@ -223,10 +229,61 @@ export default function AdminVacacionesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p>Cargando calendario y solicitudes…</p>
+      <div className="flex min-h-screen">
+        <div className="flex-1">
+          <div className="w-full mx-auto space-y-6">
+            {/* Header Skeleton */}
+            <div className="flex justify-between items-center">
+              <Skeleton className="h-9 w-64" />
+              <Skeleton className="h-10 w-32" />
+            </div>
+
+            {/* Calendar Skeleton */}
+            <div className="space-y-4">
+              <Skeleton className="h-8 w-48" />
+              <div className="grid grid-cols-7 gap-2">
+                {Array.from({ length: 35 }).map((_, i) => (
+                  <Skeleton key={i} className="h-20 w-full" />
+                ))}
+              </div>
+            </div>
+
+            {/* Solicitudes Pendientes Skeleton */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-5 w-5 rounded-full" />
+                  <Skeleton className="h-6 w-48" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        {Array.from({ length: 10 }).map((_, i) => (
+                          <TableHead key={i}>
+                            <Skeleton className="h-4 w-20" />
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <TableRow key={i}>
+                          {Array.from({ length: 10 }).map((_, j) => (
+                            <TableCell key={j}>
+                              <Skeleton className="h-4 w-16" />
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     )

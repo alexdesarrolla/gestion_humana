@@ -24,6 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Search, X, ArrowLeft, FileDown, MessageSquare, AlertTriangle } from "lucide-react"
 import {
   Dialog,
@@ -390,11 +391,23 @@ export default function AdminSolicitudesCertificacion() {
                   </TableHeader>
                   <TableBody>
                     {loading ? (
-                      <TableRow>
-                        <TableCell colSpan={8} className="text-center py-4">
-                          Cargando...
-                        </TableCell>
-                      </TableRow>
+                      Array.from({ length: 5 }).map((_, index) => (
+                        <TableRow key={index}>
+                          <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                          <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-36" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Skeleton className="h-8 w-8" />
+                              <Skeleton className="h-8 w-8" />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
                     ) : filteredSolicitudes.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={8} className="text-center py-4">

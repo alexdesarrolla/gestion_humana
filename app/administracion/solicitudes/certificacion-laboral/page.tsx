@@ -48,6 +48,7 @@ import {
   SelectItem,
 } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Skeleton } from "@/components/ui/skeleton"
 import { ComentariosCertificacion } from "@/components/certificacion-laboral/certificacion-laboral"
 
 export default function AdminCertificacionLaboral() {
@@ -63,7 +64,7 @@ export default function AdminCertificacionLaboral() {
   }, [supabase.auth])
 
   // — Estados generales
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [solicitudes, setSolicitudes] = useState<any[]>([])
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -686,16 +687,38 @@ export default function AdminCertificacionLaboral() {
 
             <Card>
               <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Colaborador</TableHead>
-                      <TableHead>Cédula</TableHead>
-                      <TableHead>Cargo</TableHead>
-                      <TableHead>Dirigido a</TableHead>
-                      <TableHead>Ciudad</TableHead>
-                      <TableHead>SyT</TableHead>
-                      <TableHead>Fecha</TableHead>
+                {loading && solicitudes.length === 0 ? (
+                  <div className="space-y-4 p-6">
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-[250px]" />
+                      <Skeleton className="h-4 w-[200px]" />
+                    </div>
+                    <div className="space-y-3">
+                      {[...Array(5)].map((_, i) => (
+                        <div key={i} className="flex space-x-4">
+                          <Skeleton className="h-4 w-[120px]" />
+                          <Skeleton className="h-4 w-[100px]" />
+                          <Skeleton className="h-4 w-[100px]" />
+                          <Skeleton className="h-4 w-[120px]" />
+                          <Skeleton className="h-4 w-[80px]" />
+                          <Skeleton className="h-4 w-[60px]" />
+                          <Skeleton className="h-4 w-[100px]" />
+                          <Skeleton className="h-8 w-[80px]" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Colaborador</TableHead>
+                        <TableHead>Cédula</TableHead>
+                        <TableHead>Cargo</TableHead>
+                        <TableHead>Dirigido a</TableHead>
+                        <TableHead>Ciudad</TableHead>
+                        <TableHead>SyT</TableHead>
+                        <TableHead>Fecha</TableHead>
                       <TableHead>Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -766,6 +789,7 @@ export default function AdminCertificacionLaboral() {
                     )}
                   </TableBody>
                 </Table>
+                )}
               </CardContent>
             </Card>
           </div>

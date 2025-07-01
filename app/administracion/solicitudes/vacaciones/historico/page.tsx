@@ -24,6 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Search, X, MessageSquare } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ComentariosVacaciones } from "@/components/vacaciones/comentarios-vacaciones"
@@ -52,7 +53,7 @@ export default function AdminSolicitudesVacaciones() {
         const supabase = createSupabaseClient()
 
         // 1. Obtener solicitudes de vacaciones
-        const { data, error: fetchError } = await supabase
+        const solicitudesPromise = supabase
           .from("solicitudes_vacaciones")
           .select(
             `
@@ -69,6 +70,8 @@ export default function AdminSolicitudesVacaciones() {
           )
           .order("fecha_solicitud", { ascending: false })
 
+        const [{ data, error: fetchError }] = await Promise.all([solicitudesPromise])
+
         if (fetchError) throw fetchError
         if (!data) {
           setSolicitudes([])
@@ -76,13 +79,13 @@ export default function AdminSolicitudesVacaciones() {
           return
         }
 
-        // 2. Obtener datos de usuarios y admins
+        // 2. Obtener datos de usuarios y admins en paralelo
         const userIds = Array.from(new Set(data.map((s) => s.usuario_id)))
         const adminIds = Array.from(
           new Set(data.filter((s) => s.admin_id).map((s) => s.admin_id!))
         )
 
-        const { data: usuariosData, error: usuariosError } = await supabase
+        const usuariosPromise = supabase
           .from("usuario_nomina")
           .select(
             `
@@ -97,13 +100,17 @@ export default function AdminSolicitudesVacaciones() {
           )
           .in("auth_user_id", userIds)
 
-        if (usuariosError) throw usuariosError
-
-        const { data: adminsData, error: adminsError } = await supabase
+        const adminsPromise = supabase
           .from("usuario_nomina")
           .select("auth_user_id, colaborador")
           .in("auth_user_id", adminIds)
 
+        const [
+          { data: usuariosData, error: usuariosError },
+          { data: adminsData, error: adminsError }
+        ] = await Promise.all([usuariosPromise, adminsPromise])
+
+        if (usuariosError) throw usuariosError
         if (adminsError) throw adminsError
 
         // 3. Combinar y extraer empresas
@@ -310,28 +317,45 @@ export default function AdminSolicitudesVacaciones() {
             {/* tabla */}
             <Card>
               <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Colaborador</TableHead>
-                      <TableHead>Cargo</TableHead>
-                      <TableHead>Inicio</TableHead>
-                      <TableHead>Fin</TableHead>
-                      <TableHead>Días</TableHead>
-                      <TableHead>Solicitud</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead>Empresa</TableHead>
-                      <TableHead>Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loading ? (
+                {loading ? (
+                  <div className="space-y-4 p-6">
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-[300px]" />
+                      <Skeleton className="h-4 w-[250px]" />
+                    </div>
+                    <div className="space-y-3">
+                      {[...Array(8)].map((_, i) => (
+                        <div key={i} className="flex space-x-4">
+                          <Skeleton className="h-4 w-[120px]" />
+                          <Skeleton className="h-4 w-[100px]" />
+                          <Skeleton className="h-4 w-[80px]" />
+                          <Skeleton className="h-4 w-[80px]" />
+                          <Skeleton className="h-4 w-[60px]" />
+                          <Skeleton className="h-4 w-[100px]" />
+                          <Skeleton className="h-6 w-[80px]" />
+                          <Skeleton className="h-4 w-[100px]" />
+                          <Skeleton className="h-8 w-[80px]" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-4">
-                          Cargando...
-                        </TableCell>
+                        <TableHead>Colaborador</TableHead>
+                        <TableHead>Cargo</TableHead>
+                        <TableHead>Inicio</TableHead>
+                        <TableHead>Fin</TableHead>
+                        <TableHead>Días</TableHead>
+                        <TableHead>Solicitud</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead>Empresa</TableHead>
+                        <TableHead>Acciones</TableHead>
                       </TableRow>
-                    ) : filteredSolicitudes.length === 0 ? (
+                    </TableHeader>
+                    <TableBody>
+                      { filteredSolicitudes.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={9} className="text-center py-4">
                           No hay solicitudes.
@@ -412,6 +436,7 @@ export default function AdminSolicitudesVacaciones() {
                     )}
                   </TableBody>
                 </Table>
+                )}
               </CardContent>
             </Card>
           </div>

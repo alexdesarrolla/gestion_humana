@@ -7,6 +7,7 @@ import { FaUser, FaBuilding, FaUserCheck, FaUserTimes, FaUmbrellaBeach } from 'r
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, XCircle } from 'lucide-react';
 
 export default function Administracion() {
@@ -643,42 +644,69 @@ let incapacidadesCompletas: Array<{
 
       {/* Tarjetas informativas principales */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-2">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-            <FaUserCheck className="mr-2 text-green-600" /> Usuarios activos
-          </h3>
-          <div className="flex items-center">
-            <span className="text-3xl font-bold text-green-600">{stats.activeUsers}</span>
-            <span className="ml-2 text-sm text-gray-500">usuarios</span>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-2">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-            <FaUserTimes className="mr-2 text-red-600" /> Usuarios Inactivos
-          </h3>
-          <div className="flex items-center">
-            <span className="text-3xl font-bold text-red-600">{stats.inactiveUsers}</span>
-            <span className="ml-2 text-sm text-gray-500">usuarios</span>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-2">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-            <FaBuilding className="mr-2 text-blue-600" /> Empresas registradas
-          </h3>
-          <div className="flex items-center">
-            <span className="text-3xl font-bold text-blue-600">{stats.totalCompanies}</span>
-            <span className="ml-2 text-sm text-gray-500">empresas</span>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-2">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-            <FaUmbrellaBeach className="mr-2 text-orange-600" /> Usuarios de vacaciones
-          </h3>
-          <div className="flex items-center">
-            <span className="text-3xl font-bold text-orange-600">{stats.vacationUsers}</span>
-            <span className="ml-2 text-sm text-gray-500">usuarios</span>
-          </div>
-        </div>
+        {/* Usuarios Activos */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Usuarios Activos</CardTitle>
+            <FaUserCheck className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold">{stats.activeUsers}</p>
+                <p className="text-xs text-muted-foreground">usuarios activos</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Usuarios Inactivos */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Usuarios Inactivos</CardTitle>
+            <FaUserTimes className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold">{stats.inactiveUsers}</p>
+                <p className="text-xs text-muted-foreground">usuarios inactivos</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Empresas Registradas */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Empresas Registradas</CardTitle>
+            <FaBuilding className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold">{stats.totalCompanies}</p>
+                <p className="text-xs text-muted-foreground">empresas registradas</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Usuarios de Vacaciones */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Usuarios de Vacaciones</CardTitle>
+            <FaUmbrellaBeach className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold">{stats.vacationUsers}</p>
+                <p className="text-xs text-muted-foreground">usuarios de vacaciones</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Grid de Solicitudes - 2x2 */}
@@ -703,8 +731,8 @@ let incapacidadesCompletas: Array<{
               </TableRow>
             </TableHeader>
             <TableBody>
-              {solicitudesCertificacion.map((solicitud) => (
-                <TableRow key={solicitud.id}>
+              {solicitudesCertificacion.map((solicitud, index) => (
+                <TableRow key={solicitud.id || `certificacion-${index}`}>
                   <TableCell>{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</TableCell>
                   <TableCell>{solicitud.usuario_nomina?.colaborador}</TableCell>
                   <TableCell>
@@ -750,8 +778,8 @@ let incapacidadesCompletas: Array<{
               </TableRow>
             </TableHeader>
             <TableBody>
-              {solicitudesVacaciones.map((solicitud) => (
-                <TableRow key={solicitud.id}>
+              {solicitudesVacaciones.map((solicitud, index) => (
+                <TableRow key={solicitud.id || `vacacion-${index}`}>
                   <TableCell>{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</TableCell>
                   <TableCell>{solicitud.usuario?.colaborador}</TableCell>
                   <TableCell>
@@ -795,8 +823,8 @@ let incapacidadesCompletas: Array<{
               </TableRow>
             </TableHeader>
             <TableBody>
-              {solicitudesPermisos.map((solicitud) => (
-                <TableRow key={solicitud.id}>
+              {solicitudesPermisos.map((solicitud, index) => (
+                <TableRow key={solicitud.id || `permiso-${index}`}>
                   <TableCell>{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</TableCell>
                   <TableCell>{solicitud.usuario?.colaborador}</TableCell>
                   <TableCell>{solicitud.tipo_permiso}</TableCell>
@@ -834,8 +862,8 @@ let incapacidadesCompletas: Array<{
               </TableRow>
             </TableHeader>
             <TableBody>
-              {notificacionesIncapacidades.map((incapacidad) => (
-                <TableRow key={incapacidad.id}>
+              {notificacionesIncapacidades.map((incapacidad, index) => (
+                <TableRow key={incapacidad.id || `incapacidad-${index}`}>
                   <TableCell>{new Date(incapacidad.fecha_subida).toLocaleDateString()}</TableCell>
                   <TableCell>{incapacidad.usuario?.colaborador}</TableCell>
                   <TableCell>

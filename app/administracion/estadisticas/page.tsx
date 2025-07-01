@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createSupabaseClient } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 import { FaBuilding, FaUsers, FaBriefcase, FaMapMarkerAlt, FaUser, FaSearch, FaHeartbeat, FaShieldAlt, FaHandHoldingUsd, FaChartLine } from 'react-icons/fa'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, ComposedChart, Line } from 'recharts'
 
@@ -87,6 +88,15 @@ interface RetiroStats {
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF7C7C']
 
+// Función debounce para optimizar las llamadas a la API
+function debounce<T extends (...args: any[]) => any>(func: T, delay: number): (...args: Parameters<T>) => void {
+  let timeoutId: NodeJS.Timeout
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeoutId)
+    timeoutId = setTimeout(() => func(...args), delay)
+  }
+}
+
 export default function EstadisticasPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -111,6 +121,7 @@ export default function EstadisticasPage() {
   // Estados para filtro por empresa
   const [empresasDisponibles, setEmpresasDisponibles] = useState<Empresa[]>([])
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState<string>('todas')
+  const [isLoading, setIsLoading] = useState(true)
 
   // Filtrar cargos basandose en el termino de busqueda
   const filteredCargosStats = cargosStats.filter(cargo =>
@@ -119,94 +130,248 @@ export default function EstadisticasPage() {
 
   const loadEstadisticas = async (empresaFiltro: string = 'todas') => {
     const supabase = createSupabaseClient()
+    setIsLoading(true)
     
     try {
-      // Obtener lista de empresas disponibles
-      const { data: empresas } = await supabase
-        .from('empresas')
-        .select('id, nombre') as { data: Empresa[] | null }
-      
-      if (empresas) {
-        setEmpresasDisponibles(empresas)
-      }
-      
       // Construir filtro de empresa si es necesario
       const empresaFilter = empresaFiltro !== 'todas' ? empresaFiltro : null
+      
+      // Crear todas las consultas en paralelo
+      const queries = []
+      
+      // 1. Obtener empresas disponibles
+      queries.push(
+        supabase
+          .from('empresas')
+          .select('id, nombre')
+      )
+      
+      // 2. Estadísticas de empresas (solo si no hay filtro específico)
+      if (!empresaFilter) {
+        queries.push(
+          supabase
+            .from('usuario_nomina')
+            .select('empresa_id, rol, estado')
+        )
+      } else {
+        queries.push(Promise.resolve({ data: null }))
+      }
+      
+      // 3. Estadísticas de género - optimizada con una sola consulta
+      let generoQuery = supabase
+        .from('usuario_nomina')
+        .select('genero')
+        .eq('rol', 'usuario')
+        .eq('estado', 'activo')
+        .in('genero', ['F', 'M'])
+      
+      if (empresaFilter) {
+        generoQuery = generoQuery.eq('empresa_id', empresaFilter)
+      }
+      queries.push(generoQuery)
+      
+      // 4. Estadísticas de sedes
+      let sedesQuery = supabase
+        .from('usuario_nomina')
+        .select('sede_id')
+        .eq('rol', 'usuario')
+      
+      if (empresaFilter) {
+        sedesQuery = sedesQuery.eq('empresa_id', empresaFilter)
+      }
+      queries.push(sedesQuery)
+      
+      // 5. Obtener lista de sedes
+      queries.push(
+        supabase
+          .from('sedes')
+          .select('id, nombre')
+      )
+      
+      // 6. Estadísticas de cargos
+      let cargosQuery = supabase
+        .from('usuario_nomina')
+        .select('cargo_id')
+        .eq('rol', 'usuario')
+        .eq('estado', 'activo')
+      
+      if (empresaFilter) {
+        cargosQuery = cargosQuery.eq('empresa_id', empresaFilter)
+      }
+      queries.push(cargosQuery)
+      
+      // 7. Obtener lista de cargos
+      queries.push(
+        supabase
+          .from('cargos')
+          .select('id, nombre')
+      )
+      
+      // 8. Estadísticas de EPS
+      let epsQuery = supabase
+        .from('usuario_nomina')
+        .select('eps_id')
+        .eq('rol', 'usuario')
+        .eq('estado', 'activo')
+      
+      if (empresaFilter) {
+        epsQuery = epsQuery.eq('empresa_id', empresaFilter)
+      }
+      queries.push(epsQuery)
+      
+      // 9. Obtener lista de EPS
+      queries.push(
+        supabase
+          .from('eps')
+          .select('id, nombre')
+      )
+      
+      // 10. Estadísticas de AFP
+      let afpQuery = supabase
+        .from('usuario_nomina')
+        .select('afp_id')
+        .eq('rol', 'usuario')
+        .eq('estado', 'activo')
+      
+      if (empresaFilter) {
+        afpQuery = afpQuery.eq('empresa_id', empresaFilter)
+      }
+      queries.push(afpQuery)
+      
+      // 11. Obtener lista de AFP
+      queries.push(
+        supabase
+          .from('afp')
+          .select('id, nombre')
+      )
+      
+      // 12. Estadísticas de Cesantías
+      let cesantiasQuery = supabase
+        .from('usuario_nomina')
+        .select('cesantias_id')
+        .eq('rol', 'usuario')
+        .eq('estado', 'activo')
+      
+      if (empresaFilter) {
+        cesantiasQuery = cesantiasQuery.eq('empresa_id', empresaFilter)
+      }
+      queries.push(cesantiasQuery)
+      
+      // 13. Obtener lista de Cesantías
+      queries.push(
+        supabase
+          .from('cesantias')
+          .select('id, nombre')
+      )
+      
+      // 14. Estadísticas de Caja de Compensación
+      let cajaQuery = supabase
+        .from('usuario_nomina')
+        .select('caja_de_compensacion_id')
+        .eq('rol', 'usuario')
+        .eq('estado', 'activo')
+      
+      if (empresaFilter) {
+        cajaQuery = cajaQuery.eq('empresa_id', empresaFilter)
+      }
+      queries.push(cajaQuery)
+      
+      // 15. Obtener lista de Caja de Compensación
+      queries.push(
+        supabase
+          .from('caja_de_compensacion')
+          .select('id, nombre')
+      )
+      
+      // 16. Estadísticas de retiros
+      let retirosQuery = supabase
+        .from('usuario_nomina')
+        .select('motivo_retiro, fecha_retiro')
+        .eq('estado', 'inactivo')
+        .not('motivo_retiro', 'is', null)
+        .not('fecha_retiro', 'is', null)
+      
+      if (empresaFilter) {
+        retirosQuery = retirosQuery.eq('empresa_id', empresaFilter)
+      }
+      queries.push(retirosQuery)
+      
+      // Ejecutar todas las consultas en paralelo
+      const [
+        empresasResult,
+        empresasDataResult,
+        generoResult,
+        sedesDataResult,
+        sedesListResult,
+        cargosDataResult,
+        cargosListResult,
+        epsDataResult,
+        epsListResult,
+        afpDataResult,
+        afpListResult,
+        cesantiasDataResult,
+        cesantiasListResult,
+        cajaDataResult,
+        cajaListResult,
+        retirosResult
+      ] = await Promise.all(queries)
+      
+      // Procesar resultados
+      
+      // 1. Empresas disponibles
+      if (empresasResult.data) {
+        setEmpresasDisponibles(empresasResult.data as Empresa[])
+      }
+      
+      // 2. Estadísticas de empresas
+      if (empresasDataResult.data && empresasResult.data) {
+        const empresasConStats: EmpresaStats[] = []
+        let totalUsuariosGlobal = 0
         
-        if (empresas) {
-          const empresasConStats: EmpresaStats[] = []
-          let totalUsuariosGlobal = 0
+        for (const empresa of empresasResult.data) {
+          const empresaTyped = empresa as Empresa
+          const usuariosEmpresa = empresasDataResult.data.filter((u: any) => 
+            u.empresa_id === empresaTyped.id && u.rol === 'usuario'
+          )
+          const usuariosActivos = usuariosEmpresa.filter((u: any) => u.estado === 'activo')
           
-          for (const empresa of empresas) {
-            // Contar usuarios totales por empresa
-            const { data: usuariosTotales } = await supabase
-              .from('usuario_nomina')
-              .select('auth_user_id')
-              .eq('empresa_id', empresa.id)
-              .eq('rol', 'usuario')
-            
-            // Contar usuarios activos por empresa
-            const { data: usuariosActivos } = await supabase
-              .from('usuario_nomina')
-              .select('auth_user_id')
-              .eq('empresa_id', empresa.id)
-              .eq('rol', 'usuario')
-              .eq('estado', 'activo')
-            
-            const totalEmpresa = usuariosTotales?.length || 0
-            const activosEmpresa = usuariosActivos?.length || 0
-            totalUsuariosGlobal += totalEmpresa
-            
-            empresasConStats.push({
-              id: empresa.id,
-              nombre: empresa.nombre,
-              usuarios_activos: activosEmpresa,
-              usuarios_totales: totalEmpresa,
-              porcentaje: 0 // Se calculara despues
-            })
-          }
+          const totalEmpresa = usuariosEmpresa.length
+          const activosEmpresa = usuariosActivos.length
+          totalUsuariosGlobal += totalEmpresa
           
-          // Calcular porcentajes y ordenar por cantidad de usuarios activos (mayor a menor)
-          const empresasConPorcentajes = empresasConStats
-            .map(empresa => ({
-              ...empresa,
-              porcentaje: totalUsuariosGlobal > 0 ? Math.round((empresa.usuarios_totales / totalUsuariosGlobal) * 100) : 0
-            }))
-            .sort((a, b) => b.usuarios_activos - a.usuarios_activos)
-          
-          setEmpresasStats(empresasConPorcentajes)
-          setTotalUsuarios(totalUsuariosGlobal)
-          setTotalEmpresas(empresas.length)
+          empresasConStats.push({
+            id: empresaTyped.id,
+            nombre: empresaTyped.nombre,
+            usuarios_activos: activosEmpresa,
+            usuarios_totales: totalEmpresa,
+            porcentaje: 0
+          })
         }
         
-        // Obtener estadisticas por genero (solo usuarios activos)
-        let queryMujeres = supabase
-          .from('usuario_nomina')
-          .select('auth_user_id')
-          .eq('rol', 'usuario')
-          .eq('genero', 'F')
-          .eq('estado', 'activo')
+        const empresasConPorcentajes = empresasConStats
+          .map(empresa => ({
+            ...empresa,
+            porcentaje: totalUsuariosGlobal > 0 ? Math.round((empresa.usuarios_totales / totalUsuariosGlobal) * 100) : 0
+          }))
+          .sort((a, b) => b.usuarios_activos - a.usuarios_activos)
         
-        let queryHombres = supabase
-          .from('usuario_nomina')
-          .select('auth_user_id')
-          .eq('rol', 'usuario')
-          .eq('genero', 'M')
-          .eq('estado', 'activo')
+        setEmpresasStats(empresasConPorcentajes)
+        setTotalUsuarios(totalUsuariosGlobal)
+        setTotalEmpresas(empresasResult.data.length)
+      }
+      
+      // 3. Estadísticas de género - optimizada
+      if (generoResult.data) {
+        const generoCount = generoResult.data.reduce((acc: any, user: any) => {
+          const genero = user.genero
+          acc[genero] = (acc[genero] || 0) + 1
+          return acc
+        }, {})
         
-        if (empresaFilter) {
-          queryMujeres = queryMujeres.eq('empresa_id', empresaFilter)
-          queryHombres = queryHombres.eq('empresa_id', empresaFilter)
-        }
+        const totalGenero = generoResult.data.length
+        const mujeres = generoCount['F'] || 0
+        const hombres = generoCount['M'] || 0
         
-        const { data: usuariosMujeres } = await queryMujeres
-        const { data: usuariosHombres } = await queryHombres
-        
-        const mujeres = usuariosMujeres?.length || 0
-        const hombres = usuariosHombres?.length || 0
-        const totalGenero = mujeres + hombres
-        
-
         const generoData: GeneroStats[] = [
           {
             genero: 'Mujeres',
@@ -220,306 +385,182 @@ export default function EstadisticasPage() {
           }
         ]
         
-        console.log('Datos de genero:', generoData)
         setGeneroStats(generoData)
+      }
+      
+      // 4. Estadísticas de sedes
+      if (sedesDataResult.data && sedesListResult.data) {
+        const sedesCount = sedesDataResult.data.reduce((acc: any, user: any) => {
+          const sedeId = user.sede_id
+          acc[sedeId] = (acc[sedeId] || 0) + 1
+          return acc
+        }, {})
         
-        // Obtener estadisticas por sedes
-        const { data: sedes } = await supabase
-          .from('sedes')
-          .select('id, nombre') as { data: Sede[] | null }
+        const sedesConStats: SedeStats[] = sedesListResult.data.map((sede: any) => ({
+          id: sede.id,
+          nombre: sede.nombre,
+          cantidad: sedesCount[sede.id] || 0
+        }))
         
-        if (sedes) {
-          const sedesConStats: SedeStats[] = []
-          
-          for (const sede of sedes) {
-            let querySede = supabase
-              .from('usuario_nomina')
-              .select('auth_user_id')
-              .eq('sede_id', sede.id)
-              .eq('rol', 'usuario')
-            
-            if (empresaFilter) {
-              querySede = querySede.eq('empresa_id', empresaFilter)
+        setSedesStats(sedesConStats)
+      }
+      
+      // 5. Estadísticas de cargos
+      if (cargosDataResult.data && cargosListResult.data) {
+        const cargosCount = cargosDataResult.data.reduce((acc: any, user: any) => {
+          const cargoId = user.cargo_id
+          acc[cargoId] = (acc[cargoId] || 0) + 1
+          return acc
+        }, {})
+        
+        const totalUsuariosCargos = cargosDataResult.data.length
+        
+        const cargosConStats: CargoStats[] = cargosListResult.data
+          .map((cargo: any) => ({
+            id: cargo.id,
+            nombre: cargo.nombre,
+            cantidad: cargosCount[cargo.id] || 0,
+            porcentaje: totalUsuariosCargos > 0 ? Math.round(((cargosCount[cargo.id] || 0) / totalUsuariosCargos) * 100) : 0
+          }))
+          .filter((cargo: any) => cargo.cantidad > 0)
+          .sort((a: any, b: any) => b.cantidad - a.cantidad)
+        
+        setCargosStats(cargosConStats)
+      }
+      
+      // 6. Estadísticas de EPS
+      if (epsDataResult.data && epsListResult.data) {
+        const epsCount = epsDataResult.data.reduce((acc: any, user: any) => {
+          const epsId = user.eps_id
+          acc[epsId] = (acc[epsId] || 0) + 1
+          return acc
+        }, {})
+        
+        const totalUsuariosEps = epsDataResult.data.length
+        
+        const epsConStats: EpsStats[] = epsListResult.data
+          .map((eps: any) => ({
+            id: eps.id,
+            nombre: eps.nombre,
+            cantidad: epsCount[eps.id] || 0,
+            porcentaje: totalUsuariosEps > 0 ? Math.round(((epsCount[eps.id] || 0) / totalUsuariosEps) * 100) : 0
+          }))
+          .filter((eps: any) => eps.cantidad > 0)
+          .sort((a: any, b: any) => b.cantidad - a.cantidad)
+        
+        setEpsStats(epsConStats)
+      }
+      
+      // 7. Estadísticas de AFP
+      if (afpDataResult.data && afpListResult.data) {
+        const afpCount = afpDataResult.data.reduce((acc: any, user: any) => {
+          const afpId = user.afp_id
+          acc[afpId] = (acc[afpId] || 0) + 1
+          return acc
+        }, {})
+        
+        const totalUsuariosAfp = afpDataResult.data.length
+        
+        const afpConStats: AfpStats[] = afpListResult.data
+          .map((afp: any) => ({
+            id: afp.id,
+            nombre: afp.nombre,
+            cantidad: afpCount[afp.id] || 0,
+            porcentaje: totalUsuariosAfp > 0 ? Math.round(((afpCount[afp.id] || 0) / totalUsuariosAfp) * 100) : 0
+          }))
+          .filter((afp: any) => afp.cantidad > 0)
+          .sort((a: any, b: any) => b.cantidad - a.cantidad)
+        
+        setAfpStats(afpConStats)
+      }
+      
+      // 8. Estadísticas de Cesantías
+      if (cesantiasDataResult.data && cesantiasListResult.data) {
+        const cesantiasCount = cesantiasDataResult.data.reduce((acc: any, user: any) => {
+          const cesantiasId = user.cesantias_id
+          acc[cesantiasId] = (acc[cesantiasId] || 0) + 1
+          return acc
+        }, {})
+        
+        const totalUsuariosCesantias = cesantiasDataResult.data.length
+        
+        const cesantiasConStats: CesantiasStats[] = cesantiasListResult.data
+          .map((cesantias: any) => ({
+            id: cesantias.id,
+            nombre: cesantias.nombre,
+            cantidad: cesantiasCount[cesantias.id] || 0,
+            porcentaje: totalUsuariosCesantias > 0 ? Math.round(((cesantiasCount[cesantias.id] || 0) / totalUsuariosCesantias) * 100) : 0
+          }))
+          .filter((cesantias: any) => cesantias.cantidad > 0)
+          .sort((a: any, b: any) => b.cantidad - a.cantidad)
+        
+        setCesantiasStats(cesantiasConStats)
+      }
+      
+      // 9. Estadísticas de Caja de Compensación
+      if (cajaDataResult.data && cajaListResult.data) {
+        const cajaCount = cajaDataResult.data.reduce((acc: any, user: any) => {
+          const cajaId = user.caja_de_compensacion_id
+          acc[cajaId] = (acc[cajaId] || 0) + 1
+          return acc
+        }, {})
+        
+        const totalUsuariosCaja = cajaDataResult.data.length
+        
+        const cajaConStats: CajaCompensacionStats[] = cajaListResult.data
+          .map((caja: any) => ({
+            id: caja.id,
+            nombre: caja.nombre,
+            cantidad: cajaCount[caja.id] || 0,
+            porcentaje: totalUsuariosCaja > 0 ? Math.round(((cajaCount[caja.id] || 0) / totalUsuariosCaja) * 100) : 0
+          }))
+          .filter((caja: any) => caja.cantidad > 0)
+          .sort((a: any, b: any) => b.cantidad - a.cantidad)
+        
+        setCajaCompensacionStats(cajaConStats)
+      }
+      
+      // 10. Estadísticas de retiros
+      if (retirosResult.data && retirosResult.data.length > 0) {
+        const retirosGrouped = retirosResult.data.reduce((acc: any, retiro: any) => {
+          const motivo = retiro.motivo_retiro
+          if (!acc[motivo]) {
+            acc[motivo] = {
+              cantidad: 0,
+              fechas: []
             }
-            
-            const { data: usuariosSede } = await querySede
-            
-            sedesConStats.push({
-              id: sede.id,
-              nombre: sede.nombre,
-              cantidad: usuariosSede?.length || 0
-            })
           }
-          
-          setSedesStats(sedesConStats)
-        }
+          acc[motivo].cantidad += 1
+          acc[motivo].fechas.push(retiro.fecha_retiro)
+          return acc
+        }, {})
         
-        // Obtener estadisticas por cargos
-        const { data: cargos } = await supabase
-          .from('cargos')
-          .select('id, nombre') as { data: Cargo[] | null }
+        const retirosArray = Object.keys(retirosGrouped)
+          .map(motivo => ({
+            motivo,
+            cantidad: retirosGrouped[motivo].cantidad,
+            fecha: retirosGrouped[motivo].fechas[retirosGrouped[motivo].fechas.length - 1]
+          }))
+          .sort((a: any, b: any) => b.cantidad - a.cantidad)
         
-        if (cargos) {
-          const cargosConStats: CargoStats[] = []
-          let totalUsuariosCargos = 0
-          
-          for (const cargo of cargos) {
-            let queryCargo = supabase
-              .from('usuario_nomina')
-              .select('auth_user_id')
-              .eq('cargo_id', cargo.id)
-              .eq('rol', 'usuario')
-              .eq('estado', 'activo')
-            
-            if (empresaFilter) {
-              queryCargo = queryCargo.eq('empresa_id', empresaFilter)
-            }
-            
-            const { data: usuariosCargo } = await queryCargo
-            const cantidadCargo = usuariosCargo?.length || 0
-            totalUsuariosCargos += cantidadCargo
-            
-            cargosConStats.push({
-              id: cargo.id,
-              nombre: cargo.nombre,
-              cantidad: cantidadCargo,
-              porcentaje: 0 // Se calculara despues
-            })
-          }
-          
-          // Calcular porcentajes y ordenar por cantidad (mayor a menor)
-          const cargosConPorcentajes = cargosConStats
-            .map(cargo => ({
-              ...cargo,
-              porcentaje: totalUsuariosCargos > 0 ? Math.round((cargo.cantidad / totalUsuariosCargos) * 100) : 0
-            }))
-            .sort((a, b) => b.cantidad - a.cantidad)
-            .filter(cargo => cargo.cantidad > 0) // Solo mostrar cargos con usuarios
-          
-          setCargosStats(cargosConPorcentajes)
-        }
-        
-        // Obtener estadisticas de EPS
-        const { data: eps } = await supabase
-          .from('eps')
-          .select('id, nombre') as { data: any[] | null }
-        
-        if (eps) {
-          const epsConStats: EpsStats[] = []
-          let totalUsuariosEps = 0
-          
-          for (const epsItem of eps) {
-            let queryEps = supabase
-              .from('usuario_nomina')
-              .select('auth_user_id')
-              .eq('eps_id', epsItem.id)
-              .eq('rol', 'usuario')
-              .eq('estado', 'activo')
-            
-            if (empresaFilter) {
-              queryEps = queryEps.eq('empresa_id', empresaFilter)
-            }
-            
-            const { data: usuariosEps } = await queryEps
-            const cantidadEps = usuariosEps?.length || 0
-            totalUsuariosEps += cantidadEps
-            
-            epsConStats.push({
-              id: epsItem.id,
-              nombre: epsItem.nombre,
-              cantidad: cantidadEps,
-              porcentaje: 0
-            })
-          }
-          
-          const epsConPorcentajes = epsConStats
-            .map(eps => ({
-              ...eps,
-              porcentaje: totalUsuariosEps > 0 ? Math.round((eps.cantidad / totalUsuariosEps) * 100) : 0
-            }))
-            .sort((a, b) => b.cantidad - a.cantidad)
-            .filter(eps => eps.cantidad > 0)
-          
-          setEpsStats(epsConPorcentajes)
-        }
-        
-        // Obtener estadisticas de AFP
-        const { data: afp } = await supabase
-          .from('afp')
-          .select('id, nombre') as { data: any[] | null }
-        
-        if (afp) {
-          const afpConStats: AfpStats[] = []
-          let totalUsuariosAfp = 0
-          
-          for (const afpItem of afp) {
-            let queryAfp = supabase
-              .from('usuario_nomina')
-              .select('auth_user_id')
-              .eq('afp_id', afpItem.id)
-              .eq('rol', 'usuario')
-              .eq('estado', 'activo')
-            
-            if (empresaFilter) {
-              queryAfp = queryAfp.eq('empresa_id', empresaFilter)
-            }
-            
-            const { data: usuariosAfp } = await queryAfp
-            const cantidadAfp = usuariosAfp?.length || 0
-            totalUsuariosAfp += cantidadAfp
-            
-            afpConStats.push({
-              id: afpItem.id,
-              nombre: afpItem.nombre,
-              cantidad: cantidadAfp,
-              porcentaje: 0
-            })
-          }
-          
-          const afpConPorcentajes = afpConStats
-            .map(afp => ({
-              ...afp,
-              porcentaje: totalUsuariosAfp > 0 ? Math.round((afp.cantidad / totalUsuariosAfp) * 100) : 0
-            }))
-            .sort((a, b) => b.cantidad - a.cantidad)
-            .filter(afp => afp.cantidad > 0)
-          
-          setAfpStats(afpConPorcentajes)
-        }
-        
-        // Obtener estadisticas de Cesantias
-        const { data: cesantias } = await supabase
-          .from('cesantias')
-          .select('id, nombre') as { data: any[] | null }
-        
-        if (cesantias) {
-          const cesantiasConStats: CesantiasStats[] = []
-          let totalUsuariosCesantias = 0
-          
-          for (const cesantiasItem of cesantias) {
-            let queryCesantias = supabase
-              .from('usuario_nomina')
-              .select('auth_user_id')
-              .eq('cesantias_id', cesantiasItem.id)
-              .eq('rol', 'usuario')
-              .eq('estado', 'activo')
-            
-            if (empresaFilter) {
-              queryCesantias = queryCesantias.eq('empresa_id', empresaFilter)
-            }
-            
-            const { data: usuariosCesantias } = await queryCesantias
-            const cantidadCesantias = usuariosCesantias?.length || 0
-            totalUsuariosCesantias += cantidadCesantias
-            
-            cesantiasConStats.push({
-              id: cesantiasItem.id,
-              nombre: cesantiasItem.nombre,
-              cantidad: cantidadCesantias,
-              porcentaje: 0
-            })
-          }
-          
-          const cesantiasConPorcentajes = cesantiasConStats
-            .map(cesantias => ({
-              ...cesantias,
-              porcentaje: totalUsuariosCesantias > 0 ? Math.round((cesantias.cantidad / totalUsuariosCesantias) * 100) : 0
-            }))
-            .sort((a, b) => b.cantidad - a.cantidad)
-            .filter(cesantias => cesantias.cantidad > 0)
-          
-          setCesantiasStats(cesantiasConPorcentajes)
-        }
-        
-        // Obtener estadisticas de Caja de Compensacion
-        const { data: cajaCompensacion } = await supabase
-          .from('caja_de_compensacion')
-          .select('id, nombre') as { data: any[] | null }
-        
-        if (cajaCompensacion) {
-          const cajaCompensacionConStats: CajaCompensacionStats[] = []
-          let totalUsuariosCajaCompensacion = 0
-          
-          for (const cajaItem of cajaCompensacion) {
-            let queryCaja = supabase
-              .from('usuario_nomina')
-              .select('auth_user_id')
-              .eq('caja_de_compensacion_id', cajaItem.id)
-              .eq('rol', 'usuario')
-              .eq('estado', 'activo')
-            
-            if (empresaFilter) {
-              queryCaja = queryCaja.eq('empresa_id', empresaFilter)
-            }
-            
-            const { data: usuariosCaja } = await queryCaja
-            const cantidadCaja = usuariosCaja?.length || 0
-            totalUsuariosCajaCompensacion += cantidadCaja
-            
-            cajaCompensacionConStats.push({
-              id: cajaItem.id,
-              nombre: cajaItem.nombre,
-              cantidad: cantidadCaja,
-              porcentaje: 0
-            })
-          }
-          
-          const cajaCompensacionConPorcentajes = cajaCompensacionConStats
-            .map(caja => ({
-              ...caja,
-              porcentaje: totalUsuariosCajaCompensacion > 0 ? Math.round((caja.cantidad / totalUsuariosCajaCompensacion) * 100) : 0
-            }))
-            .sort((a, b) => b.cantidad - a.cantidad)
-            .filter(caja => caja.cantidad > 0)
-          
-          setCajaCompensacionStats(cajaCompensacionConPorcentajes)
-        }
-        
-        // Obtener estadisticas de retiros
-        let queryRetiros = supabase
-          .from('usuario_nomina')
-          .select('motivo_retiro, fecha_retiro')
-          .eq('estado', 'inactivo')
-          .not('motivo_retiro', 'is', null)
-          .not('fecha_retiro', 'is', null)
-        
-        if (empresaFilter) {
-          queryRetiros = queryRetiros.eq('empresa_id', empresaFilter)
-        }
-        
-        const { data: retiros } = await queryRetiros
-        
-        if (retiros && retiros.length > 0) {
-          const retirosGrouped = retiros.reduce((acc: any, retiro: any) => {
-            const motivo = retiro.motivo_retiro
-            if (!acc[motivo]) {
-              acc[motivo] = {
-                cantidad: 0,
-                fechas: []
-              }
-            }
-            acc[motivo].cantidad += 1
-            acc[motivo].fechas.push(retiro.fecha_retiro)
-            return acc
-          }, {})
-          
-          const retirosArray = Object.keys(retirosGrouped)
-            .map(motivo => ({
-              motivo,
-              cantidad: retirosGrouped[motivo].cantidad,
-              fecha: retirosGrouped[motivo].fechas[retirosGrouped[motivo].fechas.length - 1] // Ultima fecha de retiro para ese motivo
-            }))
-            .sort((a: any, b: any) => b.cantidad - a.cantidad)
-          
-          setRetirosStats(retirosArray)
-        }
-        
+        setRetirosStats(retirosArray)
+      }
+      
     } catch (error) {
       console.error('Error al cargar estadisticas:', error)
     } finally {
       setLoading(false)
+      setIsLoading(false)
     }
   }
+  
+  // Debounced version of loadEstadisticas
+  const debouncedLoadEstadisticas = useCallback(
+    debounce((empresaFiltro: string) => {
+      loadEstadisticas(empresaFiltro)
+    }, 300),
+    []
+  )
   
   useEffect(() => {
     loadEstadisticas()
@@ -528,9 +569,9 @@ export default function EstadisticasPage() {
   useEffect(() => {
     if (empresasDisponibles.length > 0) {
       setLoading(true)
-      loadEstadisticas(empresaSeleccionada)
+      debouncedLoadEstadisticas(empresaSeleccionada)
     }
-  }, [empresaSeleccionada])
+  }, [empresaSeleccionada, debouncedLoadEstadisticas])
   
   const handleEmpresaChange = (value: string) => {
     setEmpresaSeleccionada(value)
@@ -594,7 +635,114 @@ export default function EstadisticasPage() {
          )}
        </div>
        
-       {/* Fila 1: Distribucion por Empresas y Distribucion por Genero */}
+       {/* Tarjetas de resumen */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {/* Total Empresas */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Empresas</CardTitle>
+            <FaBuilding className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-4 w-32" />
+                </div>
+                <Skeleton className="h-4 w-4" />
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold">{totalEmpresas}</p>
+                  <p className="text-xs text-muted-foreground">Empresas registradas</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Total Usuarios */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Usuarios</CardTitle>
+            <FaUsers className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+                <Skeleton className="h-4 w-4" />
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold">{totalUsuarios}</p>
+                  <p className="text-xs text-muted-foreground">Usuarios totales</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Usuarios Activos */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Usuarios Activos</CardTitle>
+            <FaUser className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-4 w-28" />
+                </div>
+                <Skeleton className="h-4 w-4" />
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold">{empresasStats.reduce((sum, emp) => sum + emp.usuarios_activos, 0)}</p>
+                  <p className="text-xs text-muted-foreground">Usuarios activos</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Sedes Activas */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Sedes Activas</CardTitle>
+            <FaMapMarkerAlt className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+                <Skeleton className="h-4 w-4" />
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold">{sedesStats.filter(sede => sede.cantidad > 0).length}</p>
+                  <p className="text-xs text-muted-foreground">Sedes con usuarios</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Fila 1: Distribucion por Empresas y Distribucion por Genero */}
       <div className={`grid gap-6 mb-6 ${empresaSeleccionada === 'todas' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
         {/* 1. Grafico de empresas - Tabla y Pie chart - Solo mostrar cuando no hay filtro */}
         {empresaSeleccionada === 'todas' && (
@@ -609,69 +757,96 @@ export default function EstadisticasPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-6 h-80">
-              {/* Tabla a la izquierda */}
-              <div className="w-1/2">
-                <div className="border rounded-lg overflow-hidden">
-                  <div className="bg-gray-50 px-4 py-3 border-b">
-                    <h3 className="font-semibold text-sm text-gray-700">Empresas y Usuarios</h3>
-                  </div>
-                  <div className="max-h-64 overflow-y-auto">
-                    <table className="w-full text-sm">
-                      <tbody>
-                        {empresasStats.map((empresa, index) => (
-                          <tr key={empresa.id} className="border-b hover:bg-gray-50">
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                <div 
-                                  className="w-3 h-3 rounded-full" 
-                                  style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                                ></div>
-                                <span className="font-medium">{empresa.nombre}</span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                <span className="font-semibold">{empresa.usuarios_activos}</span>
-                                <FaUser className="text-gray-500" style={{ fontSize: '10px' }} />
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-center font-medium">{empresa.porcentaje}%</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+            {isLoading ? (
+              <div className="flex gap-6 h-80">
+                <div className="w-1/2">
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="bg-gray-50 px-4 py-3 border-b">
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                    <div className="max-h-64 overflow-y-auto p-4 space-y-3">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Skeleton className="w-3 h-3 rounded-full" />
+                            <Skeleton className="h-4 w-24" />
+                          </div>
+                          <Skeleton className="h-4 w-8" />
+                          <Skeleton className="h-4 w-8" />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
+                <div className="w-1/2 flex items-center justify-center">
+                  <Skeleton className="h-48 w-48 rounded-full" />
+                </div>
               </div>
-              
-              {/* Grafica a la derecha */}
-              <div className="w-1/2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={empresasStats}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={false}
-                      outerRadius={120}
-                      fill="#8884d8"
-                      dataKey="usuarios_activos"
-                      nameKey="nombre"
-                    >
-                      {empresasStats.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value: any, name: any, props: any) => [
-                      `${value} usuarios activos (${props.payload.porcentaje}%)`,
-                      props.payload.nombre
-                    ]} />
-                  </PieChart>
-                </ResponsiveContainer>
+            ) : (
+              <div className="flex gap-6 h-80">
+                {/* Tabla a la izquierda */}
+                <div className="w-1/2">
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="bg-gray-50 px-4 py-3 border-b">
+                      <h3 className="font-semibold text-sm text-gray-700">Empresas y Usuarios</h3>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto">
+                      <table className="w-full text-sm">
+                        <tbody>
+                          {empresasStats.map((empresa, index) => (
+                            <tr key={empresa.id} className="border-b hover:bg-gray-50">
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  <div 
+                                    className="w-3 h-3 rounded-full" 
+                                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                                  ></div>
+                                  <span className="font-medium">{empresa.nombre}</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <span className="font-semibold">{empresa.usuarios_activos}</span>
+                                  <FaUser className="text-gray-500" style={{ fontSize: '10px' }} />
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-center font-medium">{empresa.porcentaje}%</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Grafica a la derecha */}
+                <div className="w-1/2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={empresasStats}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={false}
+                        outerRadius={120}
+                        fill="#8884d8"
+                        dataKey="usuarios_activos"
+                        nameKey="nombre"
+                      >
+                        {empresasStats.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value: any, name: any, props: any) => [
+                        `${value} usuarios activos (${props.payload.porcentaje}%)`,
+                        props.payload.nombre
+                      ]} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
         )}
@@ -689,7 +864,26 @@ export default function EstadisticasPage() {
           </CardHeader>
           <CardContent>
             <div className="h-80">
-              {generoStats.length === 0 ? (
+              {isLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="w-full space-y-4">
+                    <div className="flex justify-around">
+                      <div className="text-center space-y-2">
+                        <Skeleton className="h-32 w-24 mx-auto" />
+                        <Skeleton className="h-4 w-16 mx-auto" />
+                      </div>
+                      <div className="text-center space-y-2">
+                        <Skeleton className="h-40 w-24 mx-auto" />
+                        <Skeleton className="h-4 w-20 mx-auto" />
+                      </div>
+                    </div>
+                    <div className="flex justify-center space-x-8">
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-4 w-20" />
+                    </div>
+                  </div>
+                </div>
+              ) : generoStats.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
                   <p className="text-gray-500">No hay datos de genero disponibles</p>
                 </div>
@@ -747,6 +941,32 @@ export default function EstadisticasPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {isLoading ? (
+              <div className="flex gap-6 h-80">
+                <div className="w-1/2">
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="bg-gray-50 px-4 py-3 border-b">
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                    <div className="max-h-64 overflow-y-auto p-4 space-y-3">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Skeleton className="w-3 h-3 rounded-full" />
+                            <Skeleton className="h-4 w-24" />
+                          </div>
+                          <Skeleton className="h-4 w-8" />
+                          <Skeleton className="h-4 w-8" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="w-1/2 flex items-center justify-center">
+                  <Skeleton className="h-48 w-48 rounded-full" />
+                </div>
+              </div>
+            ) : (
             <div className="flex gap-6 h-80">
               {/* Tabla a la izquierda */}
               <div className="w-1/2">
@@ -829,6 +1049,7 @@ export default function EstadisticasPage() {
                 )}
               </div>
             </div>
+            )}
           </CardContent>
         </Card>
         
@@ -845,7 +1066,21 @@ export default function EstadisticasPage() {
           </CardHeader>
           <CardContent>
             <div className="h-80">
-              {retirosStats.length === 0 ? (
+              {isLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="w-full space-y-4">
+                    <div className="flex justify-around">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="text-center space-y-2">
+                          <Skeleton className="h-24 w-16 mx-auto" />
+                          <Skeleton className="h-3 w-12 mx-auto" />
+                        </div>
+                      ))}
+                    </div>
+                    <Skeleton className="h-8 w-full" />
+                  </div>
+                </div>
+              ) : retirosStats.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
                   <p className="text-gray-500">No hay datos de retiros disponibles</p>
                 </div>
@@ -900,7 +1135,21 @@ export default function EstadisticasPage() {
           </CardHeader>
           <CardContent>
             <div className="h-80">
-              {sedesStats.length === 0 ? (
+              {isLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="w-full space-y-4">
+                    <div className="flex justify-around">
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <div key={i} className="text-center space-y-2">
+                          <Skeleton className="h-32 w-12 mx-auto" />
+                          <Skeleton className="h-3 w-16 mx-auto" />
+                        </div>
+                      ))}
+                    </div>
+                    <Skeleton className="h-8 w-full" />
+                  </div>
+                </div>
+              ) : sedesStats.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
                   <p className="text-gray-500">No hay datos de sedes disponibles</p>
                 </div>
@@ -958,7 +1207,11 @@ export default function EstadisticasPage() {
             </CardHeader>
             <CardContent>
               <div className="h-48">
-                {epsStats.length === 0 ? (
+                {isLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <Skeleton className="h-32 w-32 rounded-full" />
+                  </div>
+                ) : epsStats.length === 0 ? (
                   <div className="flex items-center justify-center h-full">
                     <p className="text-gray-500 text-sm">Sin datos</p>
                   </div>
@@ -1028,7 +1281,11 @@ export default function EstadisticasPage() {
             </CardHeader>
             <CardContent>
               <div className="h-48">
-                {afpStats.length === 0 ? (
+                {isLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <Skeleton className="h-32 w-32 rounded-full" />
+                  </div>
+                ) : afpStats.length === 0 ? (
                   <div className="flex items-center justify-center h-full">
                     <p className="text-gray-500 text-sm">Sin datos</p>
                   </div>
@@ -1098,7 +1355,11 @@ export default function EstadisticasPage() {
             </CardHeader>
             <CardContent>
               <div className="h-48">
-                {cesantiasStats.length === 0 ? (
+                {isLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <Skeleton className="h-32 w-32 rounded-full" />
+                  </div>
+                ) : cesantiasStats.length === 0 ? (
                   <div className="flex items-center justify-center h-full">
                     <p className="text-gray-500 text-sm">Sin datos</p>
                   </div>
@@ -1168,7 +1429,11 @@ export default function EstadisticasPage() {
             </CardHeader>
             <CardContent>
               <div className="h-48">
-                {cajaCompensacionStats.length === 0 ? (
+                {isLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <Skeleton className="h-32 w-32 rounded-full" />
+                  </div>
+                ) : cajaCompensacionStats.length === 0 ? (
                   <div className="flex items-center justify-center h-full">
                     <p className="text-gray-500 text-sm">Sin datos</p>
                   </div>

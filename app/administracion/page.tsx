@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { CheckCircle2, XCircle } from 'lucide-react';
 
 export default function Administracion() {
@@ -25,43 +26,28 @@ export default function Administracion() {
   })
   const [notificacionesIncapacidades, setNotificacionesIncapacidades] = useState<any[]>([])
 
-  // Función para cargar solicitudes de vacaciones
+  // Función para cargar solicitudes de vacaciones (optimizada)
   const loadSolicitudesVacaciones = async () => {
     const supabase = createSupabaseClient()
-    const { data: solicitudesVacacionesData } = await supabase
-      .from('solicitudes_vacaciones')
-      .select(`
-        id,
-        usuario_id,
-        estado,
-        fecha_inicio,
-        fecha_fin,
-        fecha_solicitud
-      `)
-      .eq('estado', 'pendiente')
-      .order('fecha_solicitud', { ascending: false })
-      .limit(5)
+    
+    try {
+      const { data: solicitudesVacacionesData } = await supabase
+        .from('solicitudes_vacaciones')
+        .select('id, usuario_id, estado, fecha_inicio, fecha_fin, fecha_solicitud')
+        .eq('estado', 'pendiente')
+        .order('fecha_solicitud', { ascending: false })
+        .limit(5)
 
-    if (solicitudesVacacionesData && solicitudesVacacionesData.length > 0) {
+      if (!solicitudesVacacionesData || solicitudesVacacionesData.length === 0) {
+        setSolicitudesVacaciones([])
+        return
+      }
+
       const vacacionesUserIds = solicitudesVacacionesData.map(s => s.usuario_id)
-      const { data: vacacionesUsuariosData } = await supabase
-        .from('usuario_nomina')
-        .select(`
-          auth_user_id,
-          colaborador,
-          cedula,
-          cargo_id,
-          empresa_id,
-          empresas:empresa_id(nombre)
-        `)
-        .in('auth_user_id', vacacionesUserIds)
-
-      // Obtener información de cargos por separado
-      const cargoIds = vacacionesUsuariosData?.map(u => u.cargo_id).filter(Boolean) || []
-      const { data: cargosData } = cargoIds.length > 0 ? await supabase
-        .from('cargos')
-        .select('id, nombre')
-        .in('id', cargoIds) : { data: [] }
+      const [{ data: vacacionesUsuariosData }, { data: cargosData }] = await Promise.all([
+        supabase.from('usuario_nomina').select('auth_user_id, colaborador, cedula, cargo_id, empresa_id, empresas:empresa_id(nombre)').in('auth_user_id', vacacionesUserIds),
+        supabase.from('cargos').select('id, nombre')
+      ])
 
       const solicitudesVacacionesCompletas = solicitudesVacacionesData.map(s => {
         const usuario = vacacionesUsuariosData?.find(u => u.auth_user_id === s.usuario_id)
@@ -77,254 +63,43 @@ export default function Administracion() {
         }
       })
       setSolicitudesVacaciones(solicitudesVacacionesCompletas)
-    } else {
+    } catch (error) {
+      console.error('Error cargando solicitudes de vacaciones:', error)
       setSolicitudesVacaciones([])
     }
   }
 
-  // Función para recargar estadísticas en tiempo real
+  // Función para recargar estadísticas en tiempo real (optimizada)
   const loadStats = async () => {
     const supabase = createSupabaseClient()
-    
-    // Obtener estadísticas de usuarios
-    const { data: users } = await supabase
-      .from('usuario_nomina')
-      .select('*')
-      .eq('rol', 'usuario')
-
-    const { data: activeUsers } = await supabase
-      .from('usuario_nomina')
-      .select('*')
-      .eq('rol', 'usuario')
-      .eq('estado', 'activo')
-
-    const { data: inactiveUsers } = await supabase
-      .from('usuario_nomina')
-      .select('*')
-      .eq('rol', 'usuario')
-      .eq('estado', 'inactivo')
-
-    // Obtener usuarios que están actualmente en vacaciones
     const today = new Date().toISOString().split('T')[0]
-    const { data: vacationRequests } = await supabase
-      .from('solicitudes_vacaciones')
-      .select('usuario_id')
-      .eq('estado', 'aprobado')
-      .lte('fecha_inicio', today)
-      .gte('fecha_fin', today)
     
-    const vacationUserIds = vacationRequests?.map(req => req.usuario_id) || []
-    const uniqueVacationUserIds = [...new Set(vacationUserIds)]
-    
-    const { data: vacationUsers } = uniqueVacationUserIds.length > 0 ? await supabase
-      .from('usuario_nomina')
-      .select('*')
-      .eq('rol', 'usuario')
-      .eq('estado', 'activo')
-      .in('auth_user_id', uniqueVacationUserIds) : { data: [] }
-
-    const { data: companies } = await supabase
-      .from('empresas')
-      .select('*')
-
-    setStats({
-      totalUsers: users?.length || 0,
-      activeUsers: activeUsers?.length || 0,
-      inactiveUsers: inactiveUsers?.length || 0,
-      vacationUsers: vacationUsers?.length || 0,
-      totalCompanies: companies?.length || 0
-    })
-  }
-
-  useEffect(() => {
-    let subscriptions: any[] = []
-    
-    const loadData = async () => {
-      const supabase = createSupabaseClient()
-
-      // Obtener estadísticas
-      const { data: users } = await supabase
-        .from('usuario_nomina')
-        .select('*')
-        .eq('rol', 'usuario')
-
-      const { data: activeUsers } = await supabase
-        .from('usuario_nomina')
-        .select('*')
-        .eq('rol', 'usuario')
-        .eq('estado', 'activo')
-
-      const { data: inactiveUsers } = await supabase
-        .from('usuario_nomina')
-        .select('*')
-        .eq('rol', 'usuario')
-        .eq('estado', 'inactivo')
-
-      // Obtener usuarios que están actualmente en vacaciones
-      const today = new Date().toISOString().split('T')[0]
-      const { data: vacationRequests } = await supabase
-        .from('solicitudes_vacaciones')
-        .select('usuario_id')
-        .eq('estado', 'aprobado')
-        .lte('fecha_inicio', today)
-        .gte('fecha_fin', today)
+    try {
+      // Ejecutar todas las consultas en paralelo para mejor rendimiento
+      const [
+        { data: users },
+        { data: activeUsers },
+        { data: inactiveUsers },
+        { data: vacationRequests },
+        { data: companies }
+      ] = await Promise.all([
+        supabase.from('usuario_nomina').select('auth_user_id').eq('rol', 'usuario'),
+        supabase.from('usuario_nomina').select('auth_user_id').eq('rol', 'usuario').eq('estado', 'activo'),
+        supabase.from('usuario_nomina').select('auth_user_id').eq('rol', 'usuario').eq('estado', 'inactivo'),
+        supabase.from('solicitudes_vacaciones').select('usuario_id').eq('estado', 'aprobado').lte('fecha_inicio', today).gte('fecha_fin', today),
+        supabase.from('empresas').select('id')
+      ])
       
+      // Obtener usuarios únicos en vacaciones
       const vacationUserIds = vacationRequests?.map(req => req.usuario_id) || []
       const uniqueVacationUserIds = [...new Set(vacationUserIds)]
       
       const { data: vacationUsers } = uniqueVacationUserIds.length > 0 ? await supabase
         .from('usuario_nomina')
-        .select('*')
+        .select('auth_user_id')
         .eq('rol', 'usuario')
         .eq('estado', 'activo')
         .in('auth_user_id', uniqueVacationUserIds) : { data: [] }
-
-      const { data: companies } = await supabase
-        .from('empresas')
-        .select('*')
-
-      // Obtener las últimas 5 solicitudes de certificación pendientes
-      const { data: solicitudesCertificacionData } = await supabase
-        .from('solicitudes_certificacion')
-        .select(`
-          *,
-          usuario_nomina:usuario_id(colaborador, cedula)
-        `)
-        .eq('estado', 'pendiente')
-        .order('fecha_solicitud', { ascending: false })
-        .limit(5)
-
-      // Cargar solicitudes de vacaciones
-      await loadSolicitudesVacaciones()
-
-      // Obtener las últimas 5 solicitudes de permisos pendientes
-      const { data: solicitudesPermisosData } = await supabase
-        .from('solicitudes_permisos')
-        .select(`
-          id, tipo_permiso, fecha_inicio, fecha_fin, hora_inicio, hora_fin, 
-          motivo, compensacion, estado, fecha_solicitud, fecha_resolucion, 
-          motivo_rechazo, pdf_url, usuario_id, admin_id
-        `)
-        .eq('estado', 'pendiente')
-        .order('fecha_solicitud', { ascending: false })
-        .limit(5)
-
-      // Obtener datos de usuarios para las solicitudes de permisos
-      let solicitudesPermisosCompletas: any[] = []
-      if (solicitudesPermisosData && solicitudesPermisosData.length > 0) {
-        const permisosUserIds = [...new Set(solicitudesPermisosData.map(s => s.usuario_id))]
-        const { data: permisosUsuariosData } = await supabase
-          .from('usuario_nomina')
-          .select(`
-            auth_user_id,
-            colaborador,
-            cedula,
-            cargo_id,
-            empresa_id,
-            empresas:empresa_id(nombre)
-          `)
-          .in('auth_user_id', permisosUserIds)
-
-        // Obtener información de cargos por separado
-        const permisosCargoIds = permisosUsuariosData?.map(u => u.cargo_id).filter(Boolean) || []
-        const { data: permisosCargosData } = permisosCargoIds.length > 0 ? await supabase
-          .from('cargos')
-          .select('id, nombre')
-          .in('id', permisosCargoIds) : { data: [] }
-
-        solicitudesPermisosCompletas = solicitudesPermisosData.map(s => {
-          const usuario = permisosUsuariosData?.find(u => u.auth_user_id === s.usuario_id)
-          const cargo = usuario?.cargo_id ? permisosCargosData?.find(c => c.id === usuario.cargo_id) : null
-          return {
-            ...s,
-            usuario: usuario ? {
-              colaborador: String(usuario.colaborador || ''),
-              cedula: String(usuario.cedula || ''),
-              cargo: cargo ? String(cargo.nombre || 'N/A') : 'N/A',
-              fecha_ingreso: null,
-              empresa_id: Number(usuario.empresa_id || 0),
-              empresas: {
-                nombre: String((usuario.empresas as any)?.nombre || '')
-              }
-            } : null
-          }
-        })
-      }
-
-      // Obtener las últimas 5 incapacidades
-      const { data: incapacidadesData } = await supabase
-        .from('incapacidades')
-        .select(`
-          id,
-          fecha_inicio,
-          fecha_fin,
-          fecha_subida,
-          usuario_id
-        `)
-        .order('fecha_subida', { ascending: false })
-        .limit(5)
-
-      // Obtener datos de usuarios para las incapacidades
-let incapacidadesCompletas: Array<{
-  id: number;
-  fecha_inicio: string;
-  fecha_fin: string;
-  fecha_subida: string;
-  usuario_id: string;
-  usuario?: {
-    colaborador: string;
-    cedula: string;
-    cargo: string;
-    fecha_ingreso: string | null;
-    empresa_id: number;
-    empresas: {
-      nombre: string;
-    };
-  } | null;
-}> = [];
-      if (incapacidadesData && incapacidadesData.length > 0) {
-        const incapacidadesUserIds = [...new Set(incapacidadesData.map(i => i.usuario_id))]
-        const { data: incapacidadesUsuariosData } = await supabase
-          .from('usuario_nomina')
-          .select(`
-            auth_user_id,
-            colaborador,
-            cedula,
-            cargo_id,
-            empresa_id,
-            empresas:empresa_id(nombre)
-          `)
-          .in('auth_user_id', incapacidadesUserIds)
-
-        // Obtener información de cargos por separado
-        const incapacidadesCargoIds = incapacidadesUsuariosData?.map(u => u.cargo_id).filter(Boolean) || []
-        const { data: incapacidadesCargosData } = incapacidadesCargoIds.length > 0 ? await supabase
-          .from('cargos')
-          .select('id, nombre')
-          .in('id', incapacidadesCargoIds) : { data: [] }
-
-        incapacidadesCompletas = incapacidadesData.map((i: any) => {
-          const usuario = incapacidadesUsuariosData?.find(u => u.auth_user_id === i.usuario_id)
-          const cargo = usuario?.cargo_id ? incapacidadesCargosData?.find(c => c.id === usuario.cargo_id) : null
-          return {
-            id: Number(i.id),
-            fecha_inicio: String(i.fecha_inicio),
-            fecha_fin: String(i.fecha_fin),
-            fecha_subida: String(i.fecha_subida),
-            usuario_id: String(i.usuario_id),
-            usuario: usuario ? {
-              colaborador: String(usuario.colaborador || ''),
-              cedula: String(usuario.cedula || ''),
-              cargo: cargo ? String(cargo.nombre || 'N/A') : 'N/A',
-              fecha_ingreso: null,
-              empresa_id: Number(usuario.empresa_id || 0),
-              empresas: {
-                nombre: String((usuario.empresas as any)?.nombre || '')
-              }
-            } : null
-          }
-        })
-      }
 
       setStats({
         totalUsers: users?.length || 0,
@@ -333,12 +108,137 @@ let incapacidadesCompletas: Array<{
         vacationUsers: vacationUsers?.length || 0,
         totalCompanies: companies?.length || 0
       })
+    } catch (error) {
+      console.error('Error cargando estadísticas:', error)
+    }
+  }
 
-      setNotificacionesIncapacidades(incapacidadesCompletas || [])
+  useEffect(() => {
+    let subscriptions: any[] = []
+    
+    const loadData = async () => {
+      const supabase = createSupabaseClient()
+      const today = new Date().toISOString().split('T')[0]
 
-      setSolicitudesCertificacion(solicitudesCertificacionData || [])
-      setSolicitudesPermisos(solicitudesPermisosCompletas || [])
-      setLoading(false)
+      try {
+        // Ejecutar todas las consultas principales en paralelo para mejor rendimiento
+        const [
+          { data: users },
+          { data: activeUsers },
+          { data: inactiveUsers },
+          { data: vacationRequests },
+          { data: companies },
+          { data: solicitudesCertificacionData },
+          { data: solicitudesPermisosData },
+          { data: incapacidadesData }
+        ] = await Promise.all([
+          supabase.from('usuario_nomina').select('auth_user_id').eq('rol', 'usuario'),
+          supabase.from('usuario_nomina').select('auth_user_id').eq('rol', 'usuario').eq('estado', 'activo'),
+          supabase.from('usuario_nomina').select('auth_user_id').eq('rol', 'usuario').eq('estado', 'inactivo'),
+          supabase.from('solicitudes_vacaciones').select('usuario_id').eq('estado', 'aprobado').lte('fecha_inicio', today).gte('fecha_fin', today),
+          supabase.from('empresas').select('id'),
+          supabase.from('solicitudes_certificacion').select('*, usuario_nomina:usuario_id(colaborador, cedula)').eq('estado', 'pendiente').order('fecha_solicitud', { ascending: false }).limit(5),
+          supabase.from('solicitudes_permisos').select('id, tipo_permiso, fecha_inicio, fecha_fin, hora_inicio, hora_fin, motivo, compensacion, estado, fecha_solicitud, fecha_resolucion, motivo_rechazo, pdf_url, usuario_id, admin_id').eq('estado', 'pendiente').order('fecha_solicitud', { ascending: false }).limit(5),
+          supabase.from('incapacidades').select('id, fecha_inicio, fecha_fin, fecha_subida, usuario_id').order('fecha_subida', { ascending: false }).limit(5)
+        ])
+
+        // Cargar solicitudes de vacaciones en paralelo
+        const vacacionesPromise = loadSolicitudesVacaciones()
+
+        // Obtener usuarios únicos en vacaciones
+        const vacationUserIds = vacationRequests?.map(req => req.usuario_id) || []
+        const uniqueVacationUserIds = [...new Set(vacationUserIds)]
+        
+        const { data: vacationUsers } = uniqueVacationUserIds.length > 0 ? await supabase
+          .from('usuario_nomina')
+          .select('auth_user_id')
+          .eq('rol', 'usuario')
+          .eq('estado', 'activo')
+          .in('auth_user_id', uniqueVacationUserIds) : { data: [] }
+
+        // Procesar datos de permisos e incapacidades en paralelo
+        const [solicitudesPermisosCompletas, incapacidadesCompletas] = await Promise.all([
+          // Procesar solicitudes de permisos
+          (async () => {
+            if (!solicitudesPermisosData || solicitudesPermisosData.length === 0) return []
+            
+            const permisosUserIds = [...new Set(solicitudesPermisosData.map(s => s.usuario_id))]
+            const [{ data: permisosUsuariosData }, { data: permisosCargosData }] = await Promise.all([
+              supabase.from('usuario_nomina').select('auth_user_id, colaborador, cedula, cargo_id, empresa_id, empresas:empresa_id(nombre)').in('auth_user_id', permisosUserIds),
+              supabase.from('cargos').select('id, nombre')
+            ])
+
+            return solicitudesPermisosData.map(s => {
+              const usuario = permisosUsuariosData?.find(u => u.auth_user_id === s.usuario_id)
+              const cargo = usuario?.cargo_id ? permisosCargosData?.find(c => c.id === usuario.cargo_id) : null
+              return {
+                ...s,
+                usuario: usuario ? {
+                  colaborador: String(usuario.colaborador || ''),
+                  cedula: String(usuario.cedula || ''),
+                  cargo: cargo ? String(cargo.nombre || 'N/A') : 'N/A',
+                  fecha_ingreso: null,
+                  empresa_id: Number(usuario.empresa_id || 0),
+                  empresas: {
+                    nombre: String((usuario.empresas as any)?.nombre || '')
+                  }
+                } : null
+              }
+            })
+          })(),
+          // Procesar incapacidades
+          (async () => {
+            if (!incapacidadesData || incapacidadesData.length === 0) return []
+            
+            const incapacidadesUserIds = [...new Set(incapacidadesData.map(i => i.usuario_id))]
+            const [{ data: incapacidadesUsuariosData }, { data: incapacidadesCargosData }] = await Promise.all([
+              supabase.from('usuario_nomina').select('auth_user_id, colaborador, cedula, cargo_id, empresa_id, empresas:empresa_id(nombre)').in('auth_user_id', incapacidadesUserIds),
+              supabase.from('cargos').select('id, nombre')
+            ])
+
+            return incapacidadesData.map((i: any) => {
+              const usuario = incapacidadesUsuariosData?.find(u => u.auth_user_id === i.usuario_id)
+              const cargo = usuario?.cargo_id ? incapacidadesCargosData?.find(c => c.id === usuario.cargo_id) : null
+              return {
+                id: Number(i.id),
+                fecha_inicio: String(i.fecha_inicio),
+                fecha_fin: String(i.fecha_fin),
+                fecha_subida: String(i.fecha_subida),
+                usuario_id: String(i.usuario_id),
+                usuario: usuario ? {
+                  colaborador: String(usuario.colaborador || ''),
+                  cedula: String(usuario.cedula || ''),
+                  cargo: cargo ? String(cargo.nombre || 'N/A') : 'N/A',
+                  fecha_ingreso: null,
+                  empresa_id: Number(usuario.empresa_id || 0),
+                  empresas: {
+                    nombre: String((usuario.empresas as any)?.nombre || '')
+                  }
+                } : null
+              }
+            })
+          })()
+        ])
+
+        // Esperar a que termine la carga de vacaciones
+        await vacacionesPromise
+
+        setStats({
+          totalUsers: users?.length || 0,
+          activeUsers: activeUsers?.length || 0,
+          inactiveUsers: inactiveUsers?.length || 0,
+          vacationUsers: vacationUsers?.length || 0,
+          totalCompanies: companies?.length || 0
+        })
+
+        setNotificacionesIncapacidades(incapacidadesCompletas || [])
+        setSolicitudesCertificacion(solicitudesCertificacionData || [])
+        setSolicitudesPermisos(solicitudesPermisosCompletas || [])
+        setLoading(false)
+      } catch (error) {
+        console.error('Error cargando datos del dashboard:', error)
+        setLoading(false)
+      }
 
       // Configurar subscripciones en tiempo real después de cargar datos iniciales
       console.log('Configurando suscripciones de tiempo real...')
@@ -629,8 +529,57 @@ let incapacidadesCompletas: Array<{
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex flex-col justify-center items-center">
-        <div className="text-2xl font-semibold text-gray-700">Cargando...</div>
+      <div className="space-y-6">
+        <div>
+          <Skeleton className="h-8 w-64 mb-2" />
+          <Skeleton className="h-4 w-96" />
+        </div>
+
+        {/* Skeleton para tarjetas informativas */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-4" />
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Skeleton className="h-8 w-12 mb-1" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Skeleton para grid de solicitudes */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4">
+              <div className="flex justify-between items-center">
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-8 w-20" />
+              </div>
+              <div className="space-y-3">
+                <div className="flex space-x-4">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-16" />
+                </div>
+                {[...Array(3)].map((_, j) => (
+                  <div key={j} className="flex space-x-4">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     )
   }

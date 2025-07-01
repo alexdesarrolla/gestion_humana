@@ -473,7 +473,7 @@ export default function EstadisticasPage() {
       <div className="p-6">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Estadisticas</h1>
-          <p className="text-gray-600">Analisis de datos del sistema</p>
+          <p className="text-gray-600">Cargando datos...</p>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {[...Array(4)].map((_, i) => (
@@ -615,8 +615,7 @@ export default function EstadisticasPage() {
                        tickFormatter={(value) => value.toString()}
                      />
                      <Tooltip formatter={(value: any, name: any, props: any) => [
-                       `${value} personas (${props.payload.porcentaje}%)`,
-                       props.payload.genero
+                       `${value} personas (${props.payload.porcentaje}%)`
                      ]} />
                      <Bar 
                        dataKey="cantidad" 
@@ -726,8 +725,7 @@ export default function EstadisticasPage() {
                         ))}
                       </Pie>
                       <Tooltip formatter={(value: any, name: any, props: any) => [
-                        `${value} usuarios (${props.payload.porcentaje}%)`,
-                        props.payload.nombre
+                        `${value} usuarios (${props.payload.porcentaje}%)`
                       ]} />
                     </PieChart>
                   </ResponsiveContainer>
@@ -774,23 +772,14 @@ export default function EstadisticasPage() {
                       tickFormatter={(value) => value.toString()}
                     />
                     <Tooltip 
-                      formatter={(value: any, name: any, props: any) => [
-                        `${value} casos`,
-                        props.payload.motivo
+                      formatter={(value: any) => [
+                        `${value} casos`
                       ]}
-                      labelFormatter={(label) => `Motivo: ${label}`}
                     />
                     <Bar 
                       dataKey="cantidad" 
                       fill="#8884d8"
                       radius={[4, 4, 0, 0]}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="cantidad" 
-                      stroke="#ff7300" 
-                      strokeWidth={2}
-                      dot={{ fill: '#ff7300', strokeWidth: 2, r: 4 }}
                     />
                   </ComposedChart>
                 </ResponsiveContainer>
@@ -837,9 +826,8 @@ export default function EstadisticasPage() {
                       domain={[0, 'dataMax + 10']}
                       tickFormatter={(value) => value.toString()}
                     />
-                    <Tooltip formatter={(value: any, name: any, props: any) => [
-                      `${value} usuarios`,
-                      props.payload.nombre
+                    <Tooltip formatter={(value: any) => [
+                      `${value} usuarios`
                     ]} />
                     <Bar 
                       dataKey="cantidad" 
@@ -894,8 +882,7 @@ export default function EstadisticasPage() {
                         ))}
                       </Pie>
                       <Tooltip formatter={(value: any, name: any, props: any) => [
-                        `${value} usuarios (${props.payload.porcentaje}%)`,
-                        props.payload.nombre
+                        `${value} usuarios (${props.payload.porcentaje}%)`
                       ]} />
                     </PieChart>
                   </ResponsiveContainer>
@@ -965,8 +952,7 @@ export default function EstadisticasPage() {
                         ))}
                       </Pie>
                       <Tooltip formatter={(value: any, name: any, props: any) => [
-                        `${value} usuarios (${props.payload.porcentaje}%)`,
-                        props.payload.nombre
+                        `${value} usuarios (${props.payload.porcentaje}%)`
                       ]} />
                     </PieChart>
                   </ResponsiveContainer>
@@ -1036,8 +1022,7 @@ export default function EstadisticasPage() {
                         ))}
                       </Pie>
                       <Tooltip formatter={(value: any, name: any, props: any) => [
-                        `${value} usuarios (${props.payload.porcentaje}%)`,
-                        props.payload.nombre
+                        `${value} usuarios (${props.payload.porcentaje}%)`
                       ]} />
                     </PieChart>
                   </ResponsiveContainer>
@@ -1107,8 +1092,7 @@ export default function EstadisticasPage() {
                         ))}
                       </Pie>
                       <Tooltip formatter={(value: any, name: any, props: any) => [
-                        `${value} usuarios (${props.payload.porcentaje}%)`,
-                        props.payload.nombre
+                        `${value} usuarios (${props.payload.porcentaje}%)`
                       ]} />
                     </PieChart>
                   </ResponsiveContainer>

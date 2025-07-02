@@ -694,10 +694,7 @@ export default function AdminCertificacionLaboral() {
                 <p className="text-muted-foreground">Gestiona las solicitudes pendientes.</p>
               </div>
               <div className="flex gap-2">
-                <Button onClick={() => router.push('/administracion/solicitudes/certificacion-laboral/historico')}>Ver histórico</Button>
-                <Button onClick={() => setShowCreateModal(true)}>
-                  <Plus className="h-4 w-4 mr-1" />Nueva solicitud
-                </Button>
+                <Button className="btn-custom" onClick={() => router.push('/administracion/solicitudes/certificacion-laboral/historico')}>Ver histórico</Button>
               </div>
             </div>
 

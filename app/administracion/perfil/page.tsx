@@ -71,7 +71,7 @@ export default function Perfil() {
                 <p className="text-muted-foreground">Visualiza tu información personal, laboral y de afiliaciones.</p>
               </div>
 
-              <div className="divide-y divide-border rounded-md border bg-white">
+              <div className="divide-y divide-border rounded-[10px] border bg-white">
                 {loading ? (
                   <div className="p-6 space-y-6">
                     <div className="flex items-center space-x-4">

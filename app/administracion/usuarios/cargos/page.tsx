@@ -211,17 +211,17 @@ export default function Cargos() {
               <CardTitle className="text-2xl font-bold">Cargos</CardTitle>
               <div className="flex flex-col sm:flex-row gap-2">
                 <Button 
-                  onClick={handleNewCargo} 
-                  className="flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" /> Añadir cargo
-                </Button>
-                <Button 
                   variant="outline" 
                   onClick={() => router.push('/administracion/usuarios')}
                   className="flex items-center gap-2"
                 >
                   <ArrowLeft className="h-4 w-4" /> Volver a usuarios
+                </Button>
+                <Button 
+                  onClick={handleNewCargo} 
+                  className="flex items-center gap-2 btn-custom"
+                >
+                  <Plus className="h-4 w-4" /> Añadir cargo
                 </Button>
               </div>
             </div>
@@ -296,11 +296,6 @@ export default function Cargos() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{isEditing ? "Editar" : "Nuevo"} Cargo</DialogTitle>
-              <DialogDescription>
-                {isEditing 
-                  ? "Actualice los datos del cargo."
-                  : "Complete los datos para crear un nuevo cargo."}
-              </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-4 py-4">
@@ -330,7 +325,7 @@ export default function Cargos() {
             
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-              <Button onClick={handleSaveCargo}>{isEditing ? "Actualizar" : "Crear"}</Button>
+              <Button onClick={handleSaveCargo} className="btn-custom">{isEditing ? "Actualizar" : "Crear"}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

@@ -720,7 +720,7 @@ export default function EstadisticasPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-2xl font-bold">{totalEmpresas}</p>
-                  <p className="text-xs text-muted-foreground">Empresas registradas</p>
+                  <p className="text-xs text-muted-foreground">Empresas</p>
                 </div>
               </div>
             )}
@@ -746,7 +746,7 @@ export default function EstadisticasPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-2xl font-bold">{totalUsuarios}</p>
-                  <p className="text-xs text-muted-foreground">Usuarios totales</p>
+                  <p className="text-xs text-muted-foreground">Usuarios</p>
                 </div>
               </div>
             )}
@@ -780,7 +780,7 @@ export default function EstadisticasPage() {
                     }
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {estadoUsuarioSeleccionado === 'inactivo' ? 'Usuarios inactivos' : 'Usuarios activos'}
+                    {estadoUsuarioSeleccionado === 'inactivo' ? 'Usuarios' : 'Usuarios'}
                   </p>
                 </div>
               </div>

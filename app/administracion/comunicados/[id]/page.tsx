@@ -202,7 +202,7 @@ export default function DetalleComunicadoPage() {
             <div className="flex flex-col flex-1">
                 <main className="flex-1 py-8">
                     <div className="w-full mx-auto">
-                        <div className="mb-8">
+                        <div className="mb-8 flex justify-end">
                             <Button 
                                 variant="outline" 
                                 className="gap-3 text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-all duration-200 border border-slate-200 bg-white shadow-sm px-6 py-3" 

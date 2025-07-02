@@ -943,7 +943,7 @@ export default function Usuarios() {
                     <h1 className="text-2xl font-bold tracking-tight">Listado de Usuarios</h1>
                     <p className="text-muted-foreground">Gestiona los usuarios del sistema.</p>
                   </div>
-                  <Button onClick={handleAddUser} className="flex items-center gap-2">
+                  <Button onClick={handleAddUser} className="flex items-center gap-2 btn-custom">
                     <Plus className="h-4 w-4" />
                     Añadir Usuario
                   </Button>
@@ -1605,7 +1605,7 @@ export default function Usuarios() {
                 <Button type="button" variant="outline" onClick={() => setIsAddUserModalOpen(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={addUserLoading}>
+                <Button type="submit" className="btn-custom" disabled={addUserLoading}>
                   {addUserLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

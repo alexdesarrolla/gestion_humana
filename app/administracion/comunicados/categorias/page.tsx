@@ -212,17 +212,17 @@ export default function CategoriasComunicados() {
               <CardTitle className="text-2xl font-bold">Categorías de Comunicados</CardTitle>
               <div className="flex flex-col sm:flex-row gap-2">
                 <Button 
-                  onClick={handleNewCategoria} 
-                  className="flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" /> Añadir categoría
-                </Button>
-                <Button 
                   variant="outline" 
                   onClick={() => router.push('/administracion/comunicados')}
                   className="flex items-center gap-2"
                 >
                   <ArrowLeft className="h-4 w-4" /> Volver a comunicados
+                </Button>
+                <Button 
+                  onClick={handleNewCategoria} 
+                  className="btn-custom"
+                >
+                  <Plus className="h-4 w-4" /> Añadir categoría
                 </Button>
               </div>
             </div>
@@ -313,11 +313,6 @@ export default function CategoriasComunicados() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{isEditing ? "Editar" : "Nueva"} Categoría</DialogTitle>
-              <DialogDescription>
-                {isEditing 
-                  ? "Actualice los datos de la categoría."
-                  : "Complete los datos para crear una nueva categoría."}
-              </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-4 py-4">
@@ -347,7 +342,7 @@ export default function CategoriasComunicados() {
             
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-              <Button onClick={handleSaveCategoria}>{isEditing ? "Actualizar" : "Crear"}</Button>
+              <Button className="btn-custom" onClick={handleSaveCategoria}>{isEditing ? "Actualizar" : "Crear"}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

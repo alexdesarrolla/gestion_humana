@@ -799,7 +799,7 @@ export default function AdminSolicitudesPermisos() {
                 <h1 className="text-2xl font-bold tracking-tight">Solicitudes de Permisos</h1>
                 <p className="text-muted-foreground">Gestiona las solicitudes de permisos laborales.</p>
               </div>
-              <Button onClick={() => router.push('/administracion/solicitudes/permisos/historico')}>Ver histórico</Button>
+              <Button className="btn-custom" onClick={() => router.push('/administracion/solicitudes/permisos/historico')}>Ver histórico</Button>
             </div>
 
             {/* Alertas */}

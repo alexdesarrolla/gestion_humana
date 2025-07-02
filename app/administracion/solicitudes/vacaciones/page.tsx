@@ -297,7 +297,7 @@ export default function AdminVacacionesPage() {
             <h1 className="text-3xl font-bold">Gestión de Vacaciones</h1>
             <Button 
               onClick={() => router.push('/administracion/solicitudes/vacaciones/historico')}
-              variant="outline"
+              className="btn-custom"
             >
               Ver Histórico
             </Button>
@@ -464,7 +464,6 @@ export default function AdminVacacionesPage() {
                 Cancelar
               </Button>
               <Button
-                variant="destructive"
                 onClick={handleRejectConfirm}
                 disabled={!rejectReason.trim() || actionLoading === solicitudToReject}
               >

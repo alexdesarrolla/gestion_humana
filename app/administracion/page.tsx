@@ -538,7 +538,7 @@ export default function Administracion() {
         {/* Skeleton para tarjetas informativas */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <Card key={i}>
+            <Card key={i} className="rounded-[10px]">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-4 w-4" />
@@ -558,7 +558,7 @@ export default function Administracion() {
         {/* Skeleton para grid de solicitudes */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4">
+            <div key={i} className="bg-white rounded-[10px] shadow-sm border border-gray-200 p-6 space-y-4">
               <div className="flex justify-between items-center">
                 <Skeleton className="h-6 w-48" />
                 <Skeleton className="h-8 w-20" />
@@ -594,7 +594,7 @@ export default function Administracion() {
       {/* Tarjetas informativas principales */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Usuarios Activos */}
-        <Card>
+        <Card className="rounded-[10px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Usuarios Activos</CardTitle>
             <FaUserCheck className="h-4 w-4 text-muted-foreground" />
@@ -603,14 +603,14 @@ export default function Administracion() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold">{stats.activeUsers}</p>
-                <p className="text-xs text-muted-foreground">usuarios activos</p>
+                <p className="text-xs text-muted-foreground">Usuarios</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Usuarios Inactivos */}
-        <Card>
+        <Card className="rounded-[10px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Usuarios Inactivos</CardTitle>
             <FaUserTimes className="h-4 w-4 text-muted-foreground" />
@@ -619,14 +619,14 @@ export default function Administracion() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold">{stats.inactiveUsers}</p>
-                <p className="text-xs text-muted-foreground">usuarios inactivos</p>
+                <p className="text-xs text-muted-foreground">Usuarios</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Empresas Registradas */}
-        <Card>
+        <Card className="rounded-[10px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Empresas Registradas</CardTitle>
             <FaBuilding className="h-4 w-4 text-muted-foreground" />
@@ -635,14 +635,14 @@ export default function Administracion() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold">{stats.totalCompanies}</p>
-                <p className="text-xs text-muted-foreground">empresas registradas</p>
+                <p className="text-xs text-muted-foreground">Empresas</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Usuarios de Vacaciones */}
-        <Card>
+        <Card className="rounded-[10px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Usuarios de Vacaciones</CardTitle>
             <FaUmbrellaBeach className="h-4 w-4 text-muted-foreground" />
@@ -651,7 +651,7 @@ export default function Administracion() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold">{stats.vacationUsers}</p>
-                <p className="text-xs text-muted-foreground">usuarios de vacaciones</p>
+                <p className="text-xs text-muted-foreground">Usuarios</p>
               </div>
             </div>
           </CardContent>
@@ -661,11 +661,13 @@ export default function Administracion() {
       {/* Grid de Solicitudes - 2x2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Tabla de Solicitudes de Certificación */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4">
+        <div className="bg-white rounded-[10px] shadow-sm border border-gray-200 p-6 space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Solicitudes de Certificación Laboral</h2>
             <Button
+              variant="outline"
               size="sm"
+              className="btn-custom"
               onClick={() => router.push('/administracion/solicitudes/certificacion-laboral')}
             >
               Ver todas
@@ -707,12 +709,13 @@ export default function Administracion() {
         </div>
 
         {/* Tabla de Solicitudes de Vacaciones */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4">
+        <div className="bg-white rounded-[10px] shadow-sm border border-gray-200 p-6 space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Solicitudes de Vacaciones</h2>
             <Button
               variant="outline"
               size="sm"
+              className="btn-custom"
               onClick={() => router.push('/administracion/solicitudes/vacaciones')}
             >
               Ver todas
@@ -752,12 +755,13 @@ export default function Administracion() {
         </div>
 
         {/* Tabla de Solicitudes de Permisos */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4">
+        <div className="bg-white rounded-[10px] shadow-sm border border-gray-200 p-6 space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Solicitudes de Permisos</h2>
             <Button
               variant="outline"
               size="sm"
+              className="btn-custom"
               onClick={() => router.push('/administracion/solicitudes/permisos')}
             >
               Ver todas
@@ -791,12 +795,13 @@ export default function Administracion() {
         </div>
 
         {/* Tabla de Notificaciones de Incapacidades */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4">
+        <div className="bg-white rounded-[10px] shadow-sm border border-gray-200 p-6 space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Notificaciones de Incapacidades</h2>
             <Button
               variant="outline"
               size="sm"
+              className="btn-custom"
               onClick={() => router.push('/administracion/solicitudes/incapacidades')}
             >
               Ver todas

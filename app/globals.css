@@ -86,3 +86,23 @@
   border-radius: 12px;
   border: 1px solid rgba(209, 213, 219, 0.3);
 }
+
+/* Custom button style */
+.btn-custom {
+  background: #e5d6a3; /* 200 */
+  border: #d5ba6f 1px solid; /* 300 */
+  color: #351e13; /* 950 */
+  border-radius: 5px;
+}
+
+.btn-custom:hover {
+  background: #f1ebd0 !important; /* 300 */
+  border: #d5ba6f 1px solid !important; /* 300 */
+  color: #351e13; /* 950 */
+}
+
+.btn-custom:active {
+  background: #d5ba6f;
+  border: #d5ba6f 1px solid;
+  color: #351e13;
+}

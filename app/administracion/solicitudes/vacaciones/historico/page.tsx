@@ -237,7 +237,7 @@ export default function AdminSolicitudesVacaciones() {
                 <h1 className="text-2xl font-bold">Histórico - Solicitudes de Vacaciones</h1>
             <p className="text-muted-foreground">Gestiona las solicitudes de vacaciones.</p>
             </div>
-            <Button onClick={() => router.push('/administracion/solicitudes/vacaciones')}>Ir a vacaciones Pendientes</Button>
+            <Button variant="outline" onClick={() => router.push('/administracion/solicitudes/vacaciones')}>Volver a vacaciones</Button>
             </div>
             {/* filtros */}
             <Card>

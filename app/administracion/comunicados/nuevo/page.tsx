@@ -394,10 +394,9 @@ export default function NuevoComunicado() {
                   <div className="flex flex-col sm:flex-row gap-4 pt-6 md:pt-8">
                     <Button
                       type="button"
-                      variant="default"
                       onClick={e => handleSubmit(e, true)}
                       disabled={saving || uploadingImage || uploadingFiles}
-                      className="w-full"
+                      className="w-full btn-custom"
                     >
                       {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                       Publicar Comunicado

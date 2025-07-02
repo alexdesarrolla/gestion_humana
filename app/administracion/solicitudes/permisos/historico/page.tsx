@@ -186,12 +186,12 @@ export default function AdminPermisosHistorico() {
                   Consulta y filtra el historial de permisos laborales.
                 </p>
               </div>
-              <Button
+              <Button variant="outline"
                 onClick={() =>
                   router.push("/administracion/solicitudes/permisos")
                 }
               >
-                Ir a Permisos Pendientes
+                Volver a Permisos
               </Button>
             </div>
 

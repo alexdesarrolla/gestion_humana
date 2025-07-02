@@ -281,7 +281,7 @@ export default function Comunicados() {
                   onClick={() =>
                     router.push("/administracion/comunicados/nuevo")
                   }
-                  className="flex items-center gap-2"
+                  className="btn-custom"
                 >
                   <Plus className="h-4 w-4" /> Añadir nuevo
                 </Button>

@@ -181,13 +181,13 @@ export function ProfileCard({ userData }: ProfileCardProps) {
   if (!userData) return null
 
   return (
-    <Card className="border-none shadow-md">
-      <CardHeader className="bg-primary/5 pb-5">
+    <Card className="border-none shadow-md rounded-[10px]">
+      <CardHeader className="bg-[#f1ebd0] pb-5 rounded-t-[10px]">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-5">
             <div className="relative group">
               <div
-                className="h-20 w-20 rounded-full overflow-hidden cursor-pointer border-2 border-white shadow-md"
+                className="h-20 w-20 rounded-full overflow-hidden cursor-pointer border-2 border-white shadow-md bg-white"
                 onClick={() => setIsModalOpen(true)}
                 role="button"
                 tabIndex={0}
@@ -212,19 +212,19 @@ export function ProfileCard({ userData }: ProfileCardProps) {
             {isModalOpen && (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={closeModal}>
                 <div
-                  className="bg-white rounded-lg max-w-md w-full mx-4 overflow-hidden"
+                  className="bg-white rounded-[10px] max-w-md w-full mx-4 overflow-hidden"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex justify-between items-center p-4 border-b">
                     <h2 className="text-lg font-semibold">Vista previa</h2>
-                    <button className="rounded-full p-1 hover:bg-gray-200 transition-colors" onClick={closeModal}>
+                    <button className="rounded-[10px] p-1 hover:bg-gray-200 transition-colors" onClick={closeModal}>
                       <X className="h-5 w-5" />
                     </button>
                   </div>
 
                   <div className="p-6 flex flex-col items-center">
                     <div className="relative mb-6">
-                      <div className="h-40 w-40 rounded-full overflow-hidden border-4 border-white shadow-lg">
+                      <div className="h-40 w-40 rounded-[10px] overflow-hidden border-4 border-white shadow-lg">
                         <img src={avatarUrl || undefined} alt="Avatar del usuario" className="h-full w-full object-cover" />
                       </div>
                     </div>
@@ -253,11 +253,11 @@ export function ProfileCard({ userData }: ProfileCardProps) {
 
             {showUploadOptions && (
               <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
+                <div className="bg-white rounded-[10px] p-6 max-w-sm w-full mx-4">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-medium">Cambiar avatar</h3>
                     <button
-                      className="rounded-full p-1 hover:bg-gray-100"
+                      className="rounded-[10px] p-1 hover:bg-gray-100"
                       onClick={() => setShowUploadOptions(false)}
                       disabled={isUploading}
                     >
@@ -273,7 +273,7 @@ export function ProfileCard({ userData }: ProfileCardProps) {
 
                   <div className="space-y-4">
                     <button
-                      className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-300 rounded-[10px] hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={triggerFileInput}
                       disabled={isUploading}
                       aria-label={isUploading ? "Subiendo imagen" : "Seleccionar imagen desde el dispositivo"}
@@ -306,7 +306,7 @@ export function ProfileCard({ userData }: ProfileCardProps) {
               <CardTitle className="text-2xl md:text-2xl font-bold text-sm">{userData?.colaborador}</CardTitle>
               <p className="text-muted-foreground text-sm">{userData?.cargos?.nombre || "Sin cargo asignado"}</p>
               <div className="flex flex-wrap gap-2 mt-2">
-                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-3 py-1 text-sm">
+                <Badge variant="outline" className="bg-[#351e13] text-white border-[#351e13] px-3 py-1 text-sm">
                   {userData?.empresas?.nombre || "Empresa no asignada"}
                 </Badge>
                 {userData?.estado === "inactivo" && (
@@ -324,12 +324,12 @@ export function ProfileCard({ userData }: ProfileCardProps) {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="pt-6">
+      <CardContent className="pt-6 rounded-b-[10px]">
         <Tabs defaultValue="personal" className="w-full">
-          <TabsList className="grid w-full h-auto [&>*]:whitespace-normal grid-cols-3">
-            <TabsTrigger value="personal">Información Personal</TabsTrigger>
-            <TabsTrigger value="laboral">Información Laboral</TabsTrigger>
-            <TabsTrigger value="afiliaciones">Afiliaciones</TabsTrigger>
+          <TabsList className="grid w-full h-auto [&>*]:whitespace-normal grid-cols-3 rounded-[10px]">
+            <TabsTrigger value="personal" className="rounded-[10px]">Información Personal</TabsTrigger>
+            <TabsTrigger value="laboral" className="rounded-[10px]">Información Laboral</TabsTrigger>
+            <TabsTrigger value="afiliaciones" className="rounded-[10px]">Afiliaciones</TabsTrigger>
           </TabsList>
 
           <TabsContent value="personal" className="pt-4">

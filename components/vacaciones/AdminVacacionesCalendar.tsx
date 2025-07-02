@@ -434,53 +434,113 @@ export default function AdminVacacionesCalendar() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Calendario */}
-        <div className="lg:col-span-7 flex justify-center">
-          <Card className="shadow-lg border-0 w-max">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center">
-                <Calendar className="h-5 w-5 mr-2 text-primary" />
-                Gestión de días
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <MonthNavigation currentMonth={currentMonth} setCurrentMonth={setCurrentMonth} />
-              <div className="p-3 border rounded-lg bg-white shadow-sm">
-                <DayPicker
-                  mode="range"
-                  month={currentMonth}
-                  onMonthChange={setCurrentMonth}
-                  selected={selectedRange}
-                  onSelect={onSelect}
-                  modifiers={{
-                    blocked: blockedDays,
-                  }}
-                  modifiersClassNames={{
-                    blocked: "bg-gray-200 text-gray-500",
-                    selected: "bg-blue-500 text-white",
-                    range_start: "rounded-l-full",
-                    range_end: "rounded-r-full",
-                    range_middle: "bg-blue-300 text-white",
-                  }}
-                  numberOfMonths={2}
-                  captionLayout="dropdown"
-                  locale={es}
-                  classNames={{
-                    day: "h-10 w-10 text-base font-medium",
-                    caption: "hidden",
-                    nav: "hidden",
-                    months: "flex gap-4",
-                    month: "flex-1",
-                  }}
-                />
-              </div>
-            </CardContent>
-          </Card>
+        <div className="lg:col-span-7 space-y-4">
+          <Card className="shadow-lg border-0 w-full">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center">
+                  <Calendar className="h-5 w-5 mr-2 text-primary" />
+                  Gestión de días
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <MonthNavigation currentMonth={currentMonth} setCurrentMonth={setCurrentMonth} />
+                <div className="p-3 border rounded-lg bg-white shadow-sm">
+                  <DayPicker
+                    mode="range"
+                    month={currentMonth}
+                    onMonthChange={setCurrentMonth}
+                    selected={selectedRange}
+                    onSelect={onSelect}
+                    modifiers={{
+                      blocked: blockedDays,
+                    }}
+                    modifiersClassNames={{
+                      blocked: "bg-gray-200 text-gray-500",
+                      selected: "bg-blue-500 text-white",
+                      range_start: "rounded-l-full",
+                      range_end: "rounded-r-full",
+                      range_middle: "bg-blue-300 text-white",
+                    }}
+                    numberOfMonths={2}
+                    captionLayout="dropdown"
+                    locale={es}
+                    classNames={{
+                      day: "h-10 w-10 text-base font-medium",
+                      caption: "hidden",
+                      nav: "hidden",
+                      months: "flex gap-4",
+                      month: "flex-1",
+                    }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          
+          {/* Rango seleccionado - Movido debajo del calendario */}
+          {selectedRange.from && selectedRange.to && (() => {
+            // Verificar si el rango seleccionado contiene días bloqueados
+            const selectedDays = eachDayOfInterval({
+              start: selectedRange.from,
+              end: selectedRange.to,
+            })
+            
+            const hasBlockedDays = selectedDays.some(day => 
+              blockedDays.some(blockedDay => 
+                day.getTime() === blockedDay.getTime()
+              )
+            )
+            
+            return (
+              <Card className="shadow-md border-0 bg-blue-50 w-full">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg text-blue-800 text-center">Rango seleccionado</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="mb-4 font-medium text-blue-700 text-sm text-center">
+                    {format(selectedRange.from, "d 'de' MMMM", { locale: es })} al{" "}
+                    {format(selectedRange.to, "d 'de' MMMM", { locale: es })}
+                  </p>
+                  <div className="flex gap-3 justify-center">
+                    {hasBlockedDays ? (
+                      <Button
+                        onClick={handleEnable}
+                        disabled={actionLoading}
+                        className="bg-green-600 hover:bg-green-700 text-sm"
+                        size="sm"
+                      >
+                        {actionLoading ? (
+                          <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                        ) : (
+                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                        )}
+                        Habilitar días
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={handleDisable}
+                        disabled={actionLoading}
+                        className="bg-red-600 hover:bg-red-700 text-sm"
+                        size="sm"
+                      >
+                        {actionLoading ? (
+                          <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                        ) : (
+                          <XCircle className="mr-2 h-4 w-4" />
+                        )}
+                        Deshabilitar días
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })()}
         </div>
 
         {/* Panel derecho */}
         <div className="lg:col-span-5 space-y-6">
           <Card className="shadow-md border-0">
-            <CardContent>
+            <CardContent className="pt-6">
               <div className="flex justify-between gap-6">
                 {/* Leyenda */}
                 <div className="flex-1">
@@ -515,68 +575,7 @@ export default function AdminVacacionesCalendar() {
             </CardContent>
           </Card>
 
-          {selectedRange.from && selectedRange.to && (() => {
-            // Verificar si el rango seleccionado contiene días bloqueados
-            const selectedDays = eachDayOfInterval({
-              start: selectedRange.from,
-              end: selectedRange.to,
-            })
-            
-            const hasBlockedDays = selectedDays.some(day => 
-              blockedDays.some(blockedDay => 
-                day.getTime() === blockedDay.getTime()
-              )
-            )
-            
-            const allDaysBlocked = selectedDays.every(day => 
-              blockedDays.some(blockedDay => 
-                day.getTime() === blockedDay.getTime()
-              )
-            )
-            
-            return (
-              <Card className="shadow-md border-0 bg-blue-50 w-max">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg text-blue-800">Rango seleccionado</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="mb-4 font-medium text-blue-700">
-                    {format(selectedRange.from, "d 'de' MMMM", { locale: es })} al{" "}
-                    {format(selectedRange.to, "d 'de' MMMM", { locale: es })}
-                  </p>
-                  <div className="flex flex-wrap gap-3">
-                    {hasBlockedDays ? (
-                      <Button
-                        onClick={handleEnable}
-                        disabled={actionLoading}
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        {actionLoading ? (
-                          <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                        ) : (
-                          <CheckCircle2 className="mr-2 h-4 w-4" />
-                        )}
-                        Habilitar días
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={handleDisable}
-                        disabled={actionLoading}
-                        className="bg-red-600 hover:bg-red-700"
-                      >
-                        {actionLoading ? (
-                          <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                        ) : (
-                          <XCircle className="mr-2 h-4 w-4" />
-                        )}
-                        Deshabilitar días
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })()}
+
 
           <div className="text-sm text-muted-foreground bg-white p-3 rounded-lg border shadow-sm">
             Última actualización: {new Date().toLocaleString("es-ES")}

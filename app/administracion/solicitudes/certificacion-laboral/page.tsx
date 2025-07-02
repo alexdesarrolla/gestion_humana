@@ -103,7 +103,26 @@ export default function AdminCertificacionLaboral() {
   const formatDate = (d: Date | string | null | undefined) => {
     if (!d) return 'Fecha no disponible'
     try {
-      const date = typeof d === 'string' ? new Date(d + 'T00:00:00') : d
+      // Manejar diferentes formatos de fecha de PostgreSQL
+      let date: Date
+      if (typeof d === 'string') {
+        // Si ya incluye información de tiempo, usar directamente
+        if (d.includes('T') || d.includes(' ')) {
+          date = new Date(d)
+        } else {
+          // Si es solo fecha, agregar tiempo
+          date = new Date(d + 'T00:00:00')
+        }
+      } else {
+        date = d
+      }
+      
+      // Verificar si la fecha es válida
+      if (isNaN(date.getTime())) {
+        console.error('Fecha inválida:', d)
+        return 'Fecha inválida'
+      }
+      
       const formatted = date.toLocaleDateString("es-CO", {
         year: "numeric",
         month: "long",
@@ -126,7 +145,17 @@ export default function AdminCertificacionLaboral() {
       const { data, error } = await supabase
         .from("solicitudes_certificacion")
         .select(`
-          *,
+          id,
+          usuario_id,
+          admin_id,
+          estado,
+          dirigido_a,
+          ciudad,
+          fecha_solicitud,
+          fecha_resolucion,
+          motivo_rechazo,
+          pdf_url,
+          salario_contrato,
           usuario_nomina:usuario_id(
             colaborador,
             cedula,

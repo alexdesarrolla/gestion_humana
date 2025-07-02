@@ -122,19 +122,23 @@ export default function EstadisticasPage() {
   const [empresasDisponibles, setEmpresasDisponibles] = useState<Empresa[]>([])
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState<string>('todas')
   const [isLoading, setIsLoading] = useState(true)
+  
+  // Estado para filtro de estado de usuario
+  const [estadoUsuarioSeleccionado, setEstadoUsuarioSeleccionado] = useState<string>('activo')
 
   // Filtrar cargos basandose en el termino de busqueda
   const filteredCargosStats = cargosStats.filter(cargo =>
     cargo.nombre.toLowerCase().includes(searchCargo.toLowerCase())
   )
 
-  const loadEstadisticas = async (empresaFiltro: string = 'todas') => {
+  const loadEstadisticas = async (empresaFiltro: string = 'todas', estadoFiltro: string = 'todos') => {
     const supabase = createSupabaseClient()
     setIsLoading(true)
     
     try {
-      // Construir filtro de empresa si es necesario
+      // Construir filtros si es necesario
       const empresaFilter = empresaFiltro !== 'todas' ? empresaFiltro : null
+      const estadoFilter = estadoFiltro !== 'todos' ? estadoFiltro : null
       
       // Crear todas las consultas en paralelo
       const queries = []
@@ -162,11 +166,15 @@ export default function EstadisticasPage() {
         .from('usuario_nomina')
         .select('genero')
         .eq('rol', 'usuario')
-        .eq('estado', 'activo')
         .in('genero', ['F', 'M'])
       
       if (empresaFilter) {
         generoQuery = generoQuery.eq('empresa_id', empresaFilter)
+      }
+      if (estadoFilter) {
+        generoQuery = generoQuery.eq('estado', estadoFilter)
+      } else {
+        generoQuery = generoQuery.eq('estado', 'activo')
       }
       queries.push(generoQuery)
       
@@ -178,6 +186,11 @@ export default function EstadisticasPage() {
       
       if (empresaFilter) {
         sedesQuery = sedesQuery.eq('empresa_id', empresaFilter)
+      }
+      if (estadoFilter) {
+        sedesQuery = sedesQuery.eq('estado', estadoFilter)
+      } else {
+        sedesQuery = sedesQuery.eq('estado', 'activo')
       }
       queries.push(sedesQuery)
       
@@ -193,10 +206,14 @@ export default function EstadisticasPage() {
         .from('usuario_nomina')
         .select('cargo_id')
         .eq('rol', 'usuario')
-        .eq('estado', 'activo')
       
       if (empresaFilter) {
         cargosQuery = cargosQuery.eq('empresa_id', empresaFilter)
+      }
+      if (estadoFilter) {
+        cargosQuery = cargosQuery.eq('estado', estadoFilter)
+      } else {
+        cargosQuery = cargosQuery.eq('estado', 'activo')
       }
       queries.push(cargosQuery)
       
@@ -212,10 +229,14 @@ export default function EstadisticasPage() {
         .from('usuario_nomina')
         .select('eps_id')
         .eq('rol', 'usuario')
-        .eq('estado', 'activo')
       
       if (empresaFilter) {
         epsQuery = epsQuery.eq('empresa_id', empresaFilter)
+      }
+      if (estadoFilter) {
+        epsQuery = epsQuery.eq('estado', estadoFilter)
+      } else {
+        epsQuery = epsQuery.eq('estado', 'activo')
       }
       queries.push(epsQuery)
       
@@ -231,10 +252,14 @@ export default function EstadisticasPage() {
         .from('usuario_nomina')
         .select('afp_id')
         .eq('rol', 'usuario')
-        .eq('estado', 'activo')
       
       if (empresaFilter) {
         afpQuery = afpQuery.eq('empresa_id', empresaFilter)
+      }
+      if (estadoFilter) {
+        afpQuery = afpQuery.eq('estado', estadoFilter)
+      } else {
+        afpQuery = afpQuery.eq('estado', 'activo')
       }
       queries.push(afpQuery)
       
@@ -250,10 +275,14 @@ export default function EstadisticasPage() {
         .from('usuario_nomina')
         .select('cesantias_id')
         .eq('rol', 'usuario')
-        .eq('estado', 'activo')
       
       if (empresaFilter) {
         cesantiasQuery = cesantiasQuery.eq('empresa_id', empresaFilter)
+      }
+      if (estadoFilter) {
+        cesantiasQuery = cesantiasQuery.eq('estado', estadoFilter)
+      } else {
+        cesantiasQuery = cesantiasQuery.eq('estado', 'activo')
       }
       queries.push(cesantiasQuery)
       
@@ -269,10 +298,14 @@ export default function EstadisticasPage() {
         .from('usuario_nomina')
         .select('caja_de_compensacion_id')
         .eq('rol', 'usuario')
-        .eq('estado', 'activo')
       
       if (empresaFilter) {
         cajaQuery = cajaQuery.eq('empresa_id', empresaFilter)
+      }
+      if (estadoFilter) {
+        cajaQuery = cajaQuery.eq('estado', estadoFilter)
+      } else {
+        cajaQuery = cajaQuery.eq('estado', 'activo')
       }
       queries.push(cajaQuery)
       
@@ -333,9 +366,18 @@ export default function EstadisticasPage() {
           const usuariosEmpresa = empresasDataResult.data.filter((u: any) => 
             u.empresa_id === empresaTyped.id && u.rol === 'usuario'
           )
+          
+          // Filtrar usuarios según el estado seleccionado
+          let usuariosFiltrados
+          if (estadoFilter) {
+            usuariosFiltrados = usuariosEmpresa.filter((u: any) => u.estado === estadoFilter)
+          } else {
+            usuariosFiltrados = usuariosEmpresa.filter((u: any) => u.estado === 'activo')
+          }
+          
           const usuariosActivos = usuariosEmpresa.filter((u: any) => u.estado === 'activo')
           
-          const totalEmpresa = usuariosEmpresa.length
+          const totalEmpresa = usuariosFiltrados.length
           const activosEmpresa = usuariosActivos.length
           totalUsuariosGlobal += totalEmpresa
           
@@ -353,7 +395,7 @@ export default function EstadisticasPage() {
             ...empresa,
             porcentaje: totalUsuariosGlobal > 0 ? Math.round((empresa.usuarios_totales / totalUsuariosGlobal) * 100) : 0
           }))
-          .sort((a, b) => b.usuarios_activos - a.usuarios_activos)
+          .sort((a, b) => b.usuarios_totales - a.usuarios_totales)
         
         setEmpresasStats(empresasConPorcentajes)
         setTotalUsuarios(totalUsuariosGlobal)
@@ -556,8 +598,8 @@ export default function EstadisticasPage() {
   
   // Debounced version of loadEstadisticas
   const debouncedLoadEstadisticas = useCallback(
-    debounce((empresaFiltro: string) => {
-      loadEstadisticas(empresaFiltro)
+    debounce((empresaFiltro: string, estadoFiltro: string) => {
+      loadEstadisticas(empresaFiltro, estadoFiltro)
     }, 300),
     []
   )
@@ -569,12 +611,16 @@ export default function EstadisticasPage() {
   useEffect(() => {
     if (empresasDisponibles.length > 0) {
       setLoading(true)
-      debouncedLoadEstadisticas(empresaSeleccionada)
+      debouncedLoadEstadisticas(empresaSeleccionada, estadoUsuarioSeleccionado)
     }
-  }, [empresaSeleccionada, debouncedLoadEstadisticas])
+  }, [empresaSeleccionada, estadoUsuarioSeleccionado, debouncedLoadEstadisticas])
   
   const handleEmpresaChange = (value: string) => {
     setEmpresaSeleccionada(value)
+  }
+  
+  const handleEstadoUsuarioChange = (value: string) => {
+    setEstadoUsuarioSeleccionado(value)
   }
 
   if (loading) {
@@ -607,32 +653,50 @@ export default function EstadisticasPage() {
         <h1 className="text-2xl font-bold text-gray-900">Estadisticas</h1>
         <p className="text-gray-600">Analisis de datos del sistema</p>
         
-        {/* Filtro por empresa */}
-        <div className="mt-4 flex items-center gap-4">
-          <label className="text-sm font-medium text-gray-700">Filtrar por empresa:</label>
-          <Select value={empresaSeleccionada} onValueChange={handleEmpresaChange}>
-            <SelectTrigger className="w-64 bg-white border-gray-300 shadow-sm">
-              <SelectValue placeholder="Seleccionar empresa" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todas las empresas</SelectItem>
-              {empresasDisponibles.map((empresa) => (
-                <SelectItem key={empresa.id} value={empresa.id}>
-                  {empresa.nombre}
+        {/* Filtros */}
+        <div className="mt-4 flex items-center gap-6 flex-wrap">
+          <div className="flex items-center gap-4">
+            <label className="text-sm font-medium text-gray-700">Filtrar por empresa:</label>
+            <Select value={empresaSeleccionada} onValueChange={handleEmpresaChange}>
+              <SelectTrigger className="w-64 bg-white border-gray-300 shadow-sm">
+                <SelectValue placeholder="Seleccionar empresa" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas las empresas</SelectItem>
+                {empresasDisponibles.map((empresa) => (
+                  <SelectItem key={empresa.id} value={empresa.id}>
+                    {empresa.nombre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <label className="text-sm font-medium text-gray-700">Estado de usuario:</label>
+            <Select value={estadoUsuarioSeleccionado} onValueChange={handleEstadoUsuarioChange}>
+              <SelectTrigger className="w-48 bg-white border-gray-300 shadow-sm">
+                <SelectValue placeholder="Seleccionar estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="activo">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    Activos
+                  </div>
                 </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+                <SelectItem value="inactivo">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                    Inactivos
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
          
-         {/* Indicador de empresa seleccionada */}
-         {empresaSeleccionada !== 'todas' && (
-           <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-             <p className="text-sm text-blue-800">
-               <span className="font-medium">Mostrando estadísticas para:</span> {empresasDisponibles.find(e => e.id === empresaSeleccionada)?.nombre}
-             </p>
-           </div>
-         )}
+
        </div>
        
        {/* Tarjetas de resumen */}
@@ -689,10 +753,12 @@ export default function EstadisticasPage() {
           </CardContent>
         </Card>
 
-        {/* Usuarios Activos */}
+        {/* Usuarios Activos/Inactivos */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Usuarios Activos</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {estadoUsuarioSeleccionado === 'inactivo' ? 'Usuarios Inactivos' : 'Usuarios Activos'}
+            </CardTitle>
             <FaUser className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -707,8 +773,15 @@ export default function EstadisticasPage() {
             ) : (
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold">{empresasStats.reduce((sum, emp) => sum + emp.usuarios_activos, 0)}</p>
-                  <p className="text-xs text-muted-foreground">Usuarios activos</p>
+                  <p className="text-2xl font-bold">
+                    {estadoUsuarioSeleccionado === 'inactivo' 
+                      ? empresasStats.reduce((sum, emp) => sum + (emp.usuarios_totales - emp.usuarios_activos), 0)
+                      : empresasStats.reduce((sum, emp) => sum + emp.usuarios_activos, 0)
+                    }
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {estadoUsuarioSeleccionado === 'inactivo' ? 'Usuarios inactivos' : 'Usuarios activos'}
+                  </p>
                 </div>
               </div>
             )}
@@ -753,7 +826,10 @@ export default function EstadisticasPage() {
               Distribucion por Empresas
             </CardTitle>
             <CardDescription>
-              Cantidad de usuarios activos y porcentaje por empresa
+              {estadoUsuarioSeleccionado === 'inactivo' 
+                ? 'Cantidad de usuarios inactivos y porcentaje por empresa'
+                : 'Cantidad de usuarios activos y porcentaje por empresa'
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -806,7 +882,14 @@ export default function EstadisticasPage() {
                               </td>
                               <td className="px-4 py-3 text-center">
                                 <div className="flex items-center justify-center gap-1">
-                                  <span className="font-semibold">{empresa.usuarios_activos}</span>
+                                  <span className="font-semibold">
+                                    {estadoUsuarioSeleccionado === 'inactivo' 
+                                      ? (empresa.usuarios_totales - empresa.usuarios_activos)
+                                      : estadoUsuarioSeleccionado === 'todos'
+                                      ? empresa.usuarios_totales
+                                      : empresa.usuarios_activos
+                                    }
+                                  </span>
                                   <FaUser className="text-gray-500" style={{ fontSize: '10px' }} />
                                 </div>
                               </td>
@@ -824,14 +907,21 @@ export default function EstadisticasPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={empresasStats}
+                        data={empresasStats.map(empresa => ({
+                          ...empresa,
+                          valor_filtrado: estadoUsuarioSeleccionado === 'inactivo' 
+                            ? (empresa.usuarios_totales - empresa.usuarios_activos)
+                            : estadoUsuarioSeleccionado === 'todos'
+                            ? empresa.usuarios_totales
+                            : empresa.usuarios_activos
+                        }))}
                         cx="50%"
                         cy="50%"
                         labelLine={false}
                         label={false}
                         outerRadius={120}
                         fill="#8884d8"
-                        dataKey="usuarios_activos"
+                        dataKey="valor_filtrado"
                         nameKey="nombre"
                       >
                         {empresasStats.map((entry, index) => (
@@ -839,7 +929,7 @@ export default function EstadisticasPage() {
                         ))}
                       </Pie>
                       <Tooltip formatter={(value: any, name: any, props: any) => [
-                        `${value} usuarios activos (${props.payload.porcentaje}%)`,
+                        `${value} usuarios ${estadoUsuarioSeleccionado === 'inactivo' ? 'inactivos' : estadoUsuarioSeleccionado === 'todos' ? 'totales' : 'activos'} (${props.payload.porcentaje}%)`,
                         props.payload.nombre
                       ]} />
                     </PieChart>

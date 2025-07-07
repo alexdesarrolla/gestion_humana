@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation"
 import { AdminSidebar } from "@/components/ui/admin-sidebar"
 import { NotificationsDropdown } from "@/components/ui/notifications-dropdown"
 import { createSupabaseClient } from "@/lib/supabase"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import Link from "next/link"
 
 export default function AdministracionLayout({
   children,
@@ -127,10 +129,22 @@ export default function AdministracionLayout({
               </h1>
             </div>
             <div className="flex items-center gap-4">
-              <NotificationsDropdown />
-              <div className="text-sm text-gray-600">
-                Bienvenido, {userData?.colaborador || 'Administrador'}
+              <div className="bg-gray-100 rounded-md border border-gray-300">
+                <NotificationsDropdown />
               </div>
+              <Link href="/administracion/perfil" className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800 transition-colors cursor-pointer">
+                <span>Bienvenido, {userData?.colaborador || 'Administrador'}</span>
+                <Avatar className="h-8 w-8">
+                  <AvatarImage 
+                    src={userData?.avatar_path ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatar/${userData.avatar_path}` : '/img/default-avatar.svg'} 
+                    alt={userData?.colaborador || 'Administrador'}
+                    className="object-cover"
+                  />
+                  <AvatarFallback className="bg-blue-500 text-white text-xs">
+                    {(userData?.colaborador || 'Administrador').split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </Link>
             </div>
           </div>
         </div>

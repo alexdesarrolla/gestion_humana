@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
 
 // Función para el servidor con autenticación de usuario (anon key)
 export const createServerSupabaseClient = () => {
@@ -9,20 +8,11 @@ export const createServerSupabaseClient = () => {
     throw new Error('Las variables de entorno de Supabase no están configuradas');
   }
   
-  const cookieStore = cookies();
-  
   return createClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      get(name: string) {
-        return cookieStore.get(name)?.value;
-      },
-      set(name: string, value: string, options: any) {
-        // No-op for server-side
-      },
-      remove(name: string, options: any) {
-        // No-op for server-side
-      },
-    },
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
   });
 };
 

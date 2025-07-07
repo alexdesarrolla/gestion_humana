@@ -60,7 +60,8 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
         return
       }
 
-      const response = await fetch('/api/notificaciones?limit=10', {
+      // Solo cargar notificaciones no leídas para el dropdown
+      const response = await fetch('/api/notificaciones?limit=10&solo_no_leidas=true', {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
@@ -140,13 +141,9 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
         throw new Error('Error al marcar como leída')
       }
 
-      // Actualizar estado local
+      // Remover la notificación del estado local ya que solo mostramos no leídas
       setNotificaciones(prev => 
-        prev.map(notif => 
-          notif.id === notificacionId 
-            ? { ...notif, leida: true }
-            : notif
-        )
+        prev.filter(notif => notif.id !== notificacionId)
       )
       setNoLeidasCount(prev => Math.max(0, prev - 1))
     } catch (err) {
@@ -179,10 +176,8 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
         throw new Error('Error al marcar todas como leídas')
       }
 
-      // Actualizar estado local
-      setNotificaciones(prev => 
-        prev.map(notif => ({ ...notif, leida: true }))
-      )
+      // Limpiar todas las notificaciones ya que solo mostramos no leídas
+      setNotificaciones([])
       setNoLeidasCount(0)
     } catch (err) {
       console.error('Error al marcar todas como leídas:', err)
@@ -243,7 +238,7 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
 
       {/* Dropdown de notificaciones */}
       {isOpen && (
-        <Card className="absolute right-0 top-12 w-80 max-h-96 shadow-lg border z-50 bg-white">
+        <Card className="fixed right-4 top-20 w-[30vw] max-h-96 overflow-hidden shadow-lg border bg-white z-50">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-medium">Notificaciones</CardTitle>
@@ -285,7 +280,7 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
                 No tienes notificaciones
               </div>
             ) : (
-              <div className="max-h-64 overflow-y-auto">
+              <div className="max-h-80 overflow-y-auto">
                 {notificaciones.map((notificacion, index) => (
                   <div key={notificacion.id}>
                     <div 
@@ -340,7 +335,7 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
                     className="w-full text-xs"
                     onClick={() => {
                       setIsOpen(false)
-                      // Aquí podrías navegar a una página de todas las notificaciones
+                      window.location.href = '/administracion/notificaciones'
                     }}
                   >
                     Ver todas las notificaciones

@@ -147,14 +147,26 @@ export default function CertificacionLaboral() {
   // enviar nueva solicitud
   const enviarSolicitud = async () => {
     if (!formData.dirigidoA) {
-      setError("Por favor completa el campo ‘Dirigido a’")
+      setError("Por favor completa el campo 'Dirigido a'")
       return
     }
     setLoading(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return router.push("/login")
-      const { error: insErr } = await supabase
+      
+      // Obtener datos del usuario para la notificación
+      const { data: userData, error: userError } = await supabase
+        .from("usuario_nomina")
+        .select("colaborador")
+        .eq("auth_user_id", session.user.id)
+        .single()
+      
+      if (userError) {
+        console.error("Error al obtener datos del usuario:", userError)
+      }
+      
+      const { data: nuevaSolicitud, error: insErr } = await supabase
         .from("solicitudes_certificacion")
         .insert([{
           usuario_id: session.user.id,
@@ -163,7 +175,12 @@ export default function CertificacionLaboral() {
           estado: "pendiente",
           salario_contrato: formData.incluirSalario ? "Si" : "No",
         }])
+        .select()
+        .single()
+      
       if (insErr) throw insErr
+
+      // Las notificaciones se crean automáticamente desde el servidor
 
       // recarga lista
       const { data: solData } = await supabase

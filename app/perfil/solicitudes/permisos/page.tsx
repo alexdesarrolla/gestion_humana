@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
 import { ComentariosPermisos } from "@/components/permisos/comentarios-permisos"
+// import { crearNotificacionNuevaSolicitud } from "@/lib/notificaciones" // Removido - se maneja desde el servidor
 
 export default function SolicitudPermisos() {
   const [showReasonModal, setShowReasonModal] = useState(false)
@@ -235,6 +236,17 @@ export default function SolicitudPermisos() {
         return
       }
 
+      // Obtener datos del usuario para la notificación
+      const { data: userData, error: userError } = await supabase
+        .from("usuario_nomina")
+        .select("colaborador")
+        .eq("auth_user_id", session.user.id)
+        .single()
+      
+      if (userError) {
+        console.error("Error al obtener datos del usuario:", userError)
+      }
+
       // Crear la solicitud en la base de datos
       const { data, error } = await supabase
         .from('solicitudes_permisos')
@@ -251,8 +263,11 @@ export default function SolicitudPermisos() {
           estado: 'pendiente'
         }])
         .select()
+        .single()
 
       if (error) throw error
+
+      // Las notificaciones se crean automáticamente desde el servidor
 
       // Actualizar la lista de solicitudes
       const { data: solicitudesData } = await supabase

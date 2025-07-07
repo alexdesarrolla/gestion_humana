@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import UserVacacionesCalendar from "@/components/vacaciones/UserVacacionesCalendar"
 import { ComentariosVacaciones } from "@/components/vacaciones/comentarios-vacaciones"
+// import { crearNotificacionNuevaSolicitud } from "@/lib/notificaciones" // Removido - se maneja desde el servidor
 
 export default function SolicitudVacaciones() {
   const [showReasonModal, setShowReasonModal] = useState(false)
@@ -190,6 +191,17 @@ export default function SolicitudVacaciones() {
         return
       }
 
+      // Obtener datos del usuario para la notificación
+      const { data: userData, error: userError } = await supabase
+        .from("usuario_nomina")
+        .select("colaborador")
+        .eq("auth_user_id", session.user.id)
+        .single()
+      
+      if (userError) {
+        console.error("Error al obtener datos del usuario:", userError)
+      }
+
       // Crear la solicitud en la base de datos
       const { data, error } = await supabase
         .from('solicitudes_vacaciones')
@@ -200,8 +212,11 @@ export default function SolicitudVacaciones() {
           estado: 'pendiente'
         }])
         .select()
+        .single()
 
       if (error) throw error
+
+      // Las notificaciones se crean automáticamente desde el servidor
 
       // Actualizar la lista de solicitudes
       const { data: solicitudesData } = await supabase

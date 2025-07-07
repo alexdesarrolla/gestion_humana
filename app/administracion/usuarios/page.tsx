@@ -141,7 +141,7 @@ export default function Usuarios() {
             .select(`
               id, auth_user_id, colaborador, correo_electronico, telefono, rol, estado, genero, cedula,
               fecha_ingreso, empresa_id, cargo_id, sede_id, fecha_nacimiento, edad, rh, eps_id, afp_id,
-              cesantias_id, caja_de_compensacion_id, direccion_residencia, avatar_path,
+              cesantias_id, caja_de_compensacion_id, direccion_residencia,
               empresas:empresa_id(id, nombre),
               sedes:sede_id(id, nombre),
               eps:eps_id(id, nombre),
@@ -525,7 +525,7 @@ export default function Usuarios() {
           .select(`
             id, auth_user_id, colaborador, correo_electronico, telefono, rol, estado, genero, cedula,
             fecha_ingreso, empresa_id, cargo_id, sede_id, fecha_nacimiento, edad, rh, eps_id, afp_id,
-            cesantias_id, caja_de_compensacion_id, direccion_residencia, avatar_path,
+            cesantias_id, caja_de_compensacion_id, direccion_residencia,
             empresas:empresa_id(id, nombre),
             sedes:sede_id(id, nombre),
             eps:eps_id(id, nombre),

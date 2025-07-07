@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
+// import { crearNotificacionNuevaSolicitud } from "@/lib/notificaciones" // Removido - se maneja desde el servidor
 // Sidebar removido - ya está en el layout
 import { Card, CardContent, CardHeader, CardDescription, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -189,6 +190,17 @@ export default function IncapacidadesUsuario() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return router.push("/login")
 
+      // Obtener datos del usuario para la notificación
+      const { data: userData, error: userError } = await supabase
+        .from("usuario_nomina")
+        .select("colaborador")
+        .eq("auth_user_id", session.user.id)
+        .single()
+      
+      if (userError) {
+        console.error("Error al obtener datos del usuario:", userError)
+      }
+
       const fileName = `${session.user.id}_${Date.now().toString(36)}.pdf`
       const { error: uploadError } = await supabase
         .storage.from("incapacidades")
@@ -196,7 +208,7 @@ export default function IncapacidadesUsuario() {
       if (uploadError) throw uploadError
 
       const { data: urlData } = supabase.storage.from("incapacidades").getPublicUrl(fileName)
-      const { error: dbError } = await supabase
+      const { data: incapacidadData, error: dbError } = await supabase
         .from("incapacidades")
         .insert([{
           usuario_id: session.user.id,
@@ -205,7 +217,11 @@ export default function IncapacidadesUsuario() {
           fecha_subida: new Date().toISOString(),
           documento_url: urlData.publicUrl,
         }])
+        .select()
+        .single()
       if (dbError) throw dbError
+
+      // Las notificaciones se crean automáticamente desde el servidor
 
       // Refrescar lista y contadores
       const { data: incs } = await supabase

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { AdminSidebar } from "@/components/ui/admin-sidebar"
+import { NotificationsDropdown } from "@/components/ui/notifications-dropdown"
 import { createSupabaseClient } from "@/lib/supabase"
 
 export default function AdministracionLayout({
@@ -98,7 +99,7 @@ export default function AdministracionLayout({
       
       {/* Contenido principal */}
       <div 
-        className="flex-1 overflow-auto relative"
+        className="flex-1 overflow-auto relative flex flex-col"
         style={{
           backgroundImage: 'url("/fondosecciones.webp")',
           backgroundSize: 'cover',
@@ -116,7 +117,25 @@ export default function AdministracionLayout({
             WebkitBackdropFilter: 'blur(2px)'
           }}
         ></div>
-        <main className="relative px-20 py-10 space-y-6 z-10">
+        
+        {/* Header con notificaciones */}
+        <div className="relative z-20 bg-white/80 backdrop-blur-sm border-b border-gray-200 px-6 py-3">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center">
+              <h1 className="text-lg font-semibold text-gray-900">
+                Panel de Administración
+              </h1>
+            </div>
+            <div className="flex items-center gap-4">
+              <NotificationsDropdown />
+              <div className="text-sm text-gray-600">
+                Bienvenido, {userData?.colaborador || 'Administrador'}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <main className="relative px-20 py-10 space-y-6 z-10 flex-1">
           {children}
         </main>
       </div>

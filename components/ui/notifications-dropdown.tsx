@@ -209,6 +209,8 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
         return '📄'
       case 'vacaciones':
         return '🏖️'
+      case 'comentario_vacaciones':
+        return '💬'
       case 'permisos':
         return '📝'
       case 'incapacidades':
@@ -225,6 +227,8 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
         return '/administracion/solicitudes/certificacion-laboral'
       case 'vacaciones':
         return '/administracion/solicitudes/vacaciones'
+      case 'comentario_vacaciones':
+        return '/perfil/solicitudes/vacaciones'
       case 'permisos':
         return '/administracion/solicitudes/permisos'
       case 'incapacidades':
@@ -306,10 +310,10 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
                         'p-3 hover:bg-gray-50 cursor-pointer transition-colors',
                         !notificacion.leida && 'bg-blue-50 border-l-2 border-l-blue-500'
                       )}
-                      onClick={() => {
+                      onClick={async () => {
                         // Marcar como leída si no lo está
                         if (!notificacion.leida) {
-                          marcarComoLeida(notificacion.id)
+                          await marcarComoLeida(notificacion.id)
                         }
                         
                         // Cerrar el dropdown
@@ -317,7 +321,9 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
                         
                         // Redirigir a la sección correspondiente
                         const url = obtenerUrlRedireccion(notificacion.tipo)
-                        router.push(url)
+                        
+                        // Usar router.replace para forzar la navegación
+                        router.replace(url)
                       }}
                     >
                       <div className="flex items-start gap-3">

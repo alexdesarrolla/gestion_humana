@@ -50,8 +50,11 @@ export default function PerfilLayout({
       }
 
       // Permitir acceso a usuarios inactivos para que puedan ver su perfil
-      // pero redirigir administradores a su panel
-      if (userData.rol === 'administrador' || userData.rol === 'moderador') {
+      // Los administradores pueden acceder a su perfil cuando sea necesario
+      // (por ejemplo, desde notificaciones o para ver sus propias solicitudes)
+      // Solo redirigir si están accediendo directamente a /perfil sin una ruta específica
+      if ((userData.rol === 'administrador' || userData.rol === 'moderador') && 
+          window.location.pathname === '/perfil') {
         router.push("/administracion")
         return
       }

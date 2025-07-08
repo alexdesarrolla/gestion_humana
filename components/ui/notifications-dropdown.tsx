@@ -211,6 +211,8 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
         return '🏖️'
       case 'comentario_vacaciones':
         return '💬'
+      case 'comentario_permisos':
+        return '💬'
       case 'permisos':
         return '📝'
       case 'incapacidades':
@@ -228,7 +230,9 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
       case 'vacaciones':
         return '/administracion/solicitudes/vacaciones'
       case 'comentario_vacaciones':
-        return '/perfil/solicitudes/vacaciones'
+        return '/administracion/solicitudes/vacaciones'
+      case 'comentario_permisos':
+        return '/administracion/solicitudes/permisos'
       case 'permisos':
         return '/administracion/solicitudes/permisos'
       case 'incapacidades':

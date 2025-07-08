@@ -290,7 +290,7 @@ export default function AdminVacacionesPage() {
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen py-6">
       <div className="flex-1">
         <div className="w-full mx-auto space-y-6">
           <div className="flex justify-between items-center">

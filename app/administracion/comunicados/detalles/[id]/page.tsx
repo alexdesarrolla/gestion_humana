@@ -26,22 +26,41 @@ import {
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
 interface Lectura {
   usuario_id: string
   usuario_nomina: {
     colaborador: string | null
+    avatar_path: string | null
+    genero: string | null
   } | null
   leido_at: string
 }
 interface Destinatario {
   usuario_id: string
   colaborador: string | undefined
+  avatar_path: string | null
+  genero: string | null
 }
 
 export default function DetallesComunicadoPage() {
   const router = useRouter()
   const { id: comunicadoId } = useParams() as { id: string }
+  const supabase = createSupabaseClient()
+
+  // Función para obtener URL del avatar
+  const getAvatarUrl = (avatar_path: string | null, genero: string | null): string => {
+    if (avatar_path) {
+      const { data } = supabase.storage.from("avatar").getPublicUrl(avatar_path)
+      return data.publicUrl
+    } else if (genero) {
+      const path = genero === "F" ? "defecto/avatar-f.webp" : "defecto/avatar-m.webp"
+      const { data } = supabase.storage.from("avatar").getPublicUrl(path)
+      return data.publicUrl
+    }
+    return "/img/default-avatar.svg"
+  }
 
   const [comunicadoInfo, setComunicadoInfo] = useState<{
     titulo: string
@@ -57,7 +76,6 @@ export default function DetallesComunicadoPage() {
     if (!comunicadoId) return
 
     try {
-      const supabase = createSupabaseClient()
 
       // Ejecutar consultas iniciales en paralelo
       const [comResult, cargosResult, lecturasResult] = await Promise.all([
@@ -78,7 +96,7 @@ export default function DetallesComunicadoPage() {
           .select(`
             usuario_id,
             leido_at,
-            usuario_nomina:usuario_id (colaborador)
+            usuario_nomina:usuario_id (colaborador, avatar_path, genero)
           `)
           .eq("comunicado_id", comunicadoId)
           .order("leido_at", { ascending: false })
@@ -96,7 +114,9 @@ export default function DetallesComunicadoPage() {
       const lecturas: Lectura[] = leData.map(item => ({
           usuario_id: item.usuario_id as string,
           usuario_nomina: item.usuario_nomina && typeof item.usuario_nomina === 'object' ? {
-            colaborador: (item.usuario_nomina as { colaborador: string | null }).colaborador || "Usuario desconocido"
+            colaborador: (item.usuario_nomina as { colaborador: string | null; avatar_path: string | null; genero: string | null }).colaborador || "Usuario desconocido",
+            avatar_path: (item.usuario_nomina as { colaborador: string | null; avatar_path: string | null; genero: string | null }).avatar_path,
+            genero: (item.usuario_nomina as { colaborador: string | null; avatar_path: string | null; genero: string | null }).genero
           } : null,
           leido_at: item.leido_at as string
         }))
@@ -113,7 +133,7 @@ export default function DetallesComunicadoPage() {
           // Obtener destinatarios
           supabase
             .from("usuario_nomina")
-            .select("auth_user_id, colaborador")
+            .select("auth_user_id, colaborador, avatar_path, genero")
             .in("cargo_id", cargoIds)
         ])
 
@@ -128,6 +148,8 @@ export default function DetallesComunicadoPage() {
           const destinatariosData = Array.isArray(destinatariosResult.data) ? destinatariosResult.data.map((u) => ({
             usuario_id: u.auth_user_id as string,
             colaborador: u.colaborador as string | undefined,
+            avatar_path: u.avatar_path as string | null,
+            genero: u.genero as string | null,
           })) : []
           
           setDestinatarios(destinatariosData)
@@ -198,19 +220,12 @@ export default function DetallesComunicadoPage() {
   )
 
   return (
-    <div className="flex min-h-screen">
+    <div className="py-6 flex min-h-screen">
       <div className="flex-1">
         <div className="w-full mx-auto">
           {/* Header */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <div>
-              <Button
-                variant="ghost"
-                onClick={() => router.back()}
-                className="gap-2 -ml-2 mb-2 hover:bg-slate-100"
-              >
-                <ArrowLeftIcon className="h-4 w-4" /> Volver
-              </Button>
               <h1 className="text-2xl font-bold tracking-tight">
                 {loading
                   ? "Cargando detalles..."
@@ -221,11 +236,11 @@ export default function DetallesComunicadoPage() {
               </p>
             </div>
             <div className="flex items-center gap-2 self-end md:self-auto">
-              <Badge variant="outline" className="px-3 py-1">
+              <Badge variant="outline" className="px-3 py-1 bg-white">
                 <BookOpenCheckIcon className="h-3.5 w-3.5 mr-1" />{" "}
                 {usuariosLeidos.length} lecturas
               </Badge>
-              <Badge variant="outline" className="px-3 py-1">
+              <Badge variant="outline" className="px-3 py-1 bg-white">
                 <UsersIcon className="h-3.5 w-3.5 mr-1" />{" "}
                 {comunicadoInfo?.total_destinatarios || 0} destinatarios
               </Badge>
@@ -345,16 +360,23 @@ export default function DetallesComunicadoPage() {
                         className="flex justify-between items-center p-4 hover:bg-slate-50"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                            {u.usuario_nomina?.colaborador
-                              ? u.usuario_nomina.colaborador
-                                .split(" ")
-                                .map((w) => w[0])
-                                .join("")
-                                .toUpperCase()
-                                .slice(0, 2)
-                              : "--"}
-                          </div>
+                          <Avatar className="h-9 w-9">
+                            <AvatarImage 
+                              src={getAvatarUrl(u.usuario_nomina?.avatar_path || null, u.usuario_nomina?.genero || null)} 
+                              alt={u.usuario_nomina?.colaborador || "Usuario"}
+                              className="object-cover"
+                            />
+                            <AvatarFallback className="bg-primary/10 text-primary">
+                              {u.usuario_nomina?.colaborador
+                                ? u.usuario_nomina.colaborador
+                                  .split(" ")
+                                  .map((w) => w[0])
+                                  .join("")
+                                  .toUpperCase()
+                                  .slice(0, 2)
+                                : "--"}
+                            </AvatarFallback>
+                          </Avatar>
                           <span>{u.usuario_nomina?.colaborador || "Usuario desconocido"}</span>
                         </div>
                         <div className="text-sm text-muted-foreground flex items-center">
@@ -417,16 +439,23 @@ export default function DetallesComunicadoPage() {
                         key={i}
                         className="flex items-center gap-3 p-4 hover:bg-slate-50"
                       >
-                        <div className="h-9 w-9 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
-                          {d.colaborador
-                            ? d.colaborador
-                              .split(" ")
-                              .map((w) => w[0])
-                              .join("")
-                              .toUpperCase()
-                              .slice(0, 2)
-                            : "--"}
-                        </div>
+                        <Avatar className="h-9 w-9">
+                          <AvatarImage 
+                            src={getAvatarUrl(d.avatar_path, d.genero)} 
+                            alt={d.colaborador || "Usuario"}
+                            className="object-cover"
+                          />
+                          <AvatarFallback className="bg-destructive/10 text-destructive">
+                            {d.colaborador
+                              ? d.colaborador
+                                .split(" ")
+                                .map((w) => w[0])
+                                .join("")
+                                .toUpperCase()
+                                .slice(0, 2)
+                              : "--"}
+                          </AvatarFallback>
+                        </Avatar>
                         <span>{d.colaborador || "Usuario desconocido"}</span>
                       </div>
                     ))

@@ -684,7 +684,7 @@ export default function AdminCertificacionLaboral() {
   // Renderizar UI
   //
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen py-6">
       <div className="flex flex-col flex-1">
         <main>
           <div className="w-full mx-auto space-y-6">

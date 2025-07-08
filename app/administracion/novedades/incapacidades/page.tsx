@@ -409,7 +409,7 @@ export default function AdminNovedadesIncapacidades() {
   }
 
   return (
-    <div className="flex">
+    <div className="py-6 flex">
       <div className="w-full mx-auto flex-1">
         <div className="w-full bg-white rounded-lg shadow-sm p-6">
           <div className="mb-6">

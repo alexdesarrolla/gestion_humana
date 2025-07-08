@@ -789,7 +789,7 @@ export default function AdminSolicitudesPermisos() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="py-6 min-h-screen">
       <div className="flex flex-col flex-1">
         <main className="flex-1">
           <div className="w-full mx-auto space-y-6">

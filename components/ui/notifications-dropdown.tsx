@@ -26,6 +26,7 @@ interface NotificationsDropdownProps {
 
 export function NotificationsDropdown({ className }: NotificationsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [isAnimating, setIsAnimating] = useState(false)
   const [notificaciones, setNotificaciones] = useState<Notificacion[]>([])
   const [noLeidasCount, setNoLeidasCount] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -34,11 +35,22 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
   const supabase = createSupabaseClient()
   const router = useRouter()
 
+  // Funciones para manejar animaciones
+  const handleOpen = () => {
+    setIsOpen(true)
+    setIsAnimating(true)
+  }
+
+  const handleClose = () => {
+    setIsAnimating(false)
+    setTimeout(() => setIsOpen(false), 200) // Aumentar duración para evitar parpadeo
+  }
+
   // Cerrar dropdown al hacer clic fuera
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
+        handleClose()
       }
     }
 
@@ -253,7 +265,7 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
         variant="ghost"
         size="sm"
         className="relative p-2 h-10 w-10 rounded-full hover:bg-transparent"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => isOpen ? handleClose() : handleOpen()}
       >
         <Bell className="h-5 w-5" />
         {noLeidasCount > 0 && (
@@ -268,7 +280,12 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
 
       {/* Dropdown de notificaciones */}
       {isOpen && (
-        <Card className="fixed right-4 top-20 w-[30vw] max-h-96 overflow-hidden shadow-lg border bg-white z-50">
+        <Card className={cn(
+          "fixed right-4 top-20 w-[30vw] max-h-96 overflow-hidden shadow-lg border bg-white z-50 transition-all duration-200 ease-out",
+          isAnimating 
+            ? "animate-in fade-in-0 zoom-in-95" 
+            : "animate-out fade-out-0 zoom-out-95"
+        )}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-medium">Notificaciones</CardTitle>
@@ -288,7 +305,7 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
                   variant="ghost"
                   size="sm"
                   className="h-6 w-6 p-0"
-                  onClick={() => setIsOpen(false)}
+                  onClick={handleClose}
                 >
                   <X className="h-3 w-3" />
                 </Button>

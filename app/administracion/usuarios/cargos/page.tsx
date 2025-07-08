@@ -203,7 +203,7 @@ export default function Cargos() {
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="py-6 flex min-h-screen">
       <div className="w-full mx-auto flex-1">
         <Card className="shadow-md">
           <CardHeader className="bg-primary/5 pb-6">

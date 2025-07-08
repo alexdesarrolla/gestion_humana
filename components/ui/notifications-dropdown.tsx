@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { createSupabaseClient } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
+import { useRouter } from 'next/navigation'
 
 interface Notificacion {
   id: string
@@ -31,6 +32,7 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
   const [error, setError] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const supabase = createSupabaseClient()
+  const router = useRouter()
 
   // Cerrar dropdown al hacer clic fuera
   useEffect(() => {
@@ -216,6 +218,22 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
     }
   }
 
+  // Obtener URL de redirección según tipo de notificación
+  const obtenerUrlRedireccion = (tipo: string) => {
+    switch (tipo) {
+      case 'certificacion_laboral':
+        return '/administracion/solicitudes/certificacion-laboral'
+      case 'vacaciones':
+        return '/administracion/solicitudes/vacaciones'
+      case 'permisos':
+        return '/administracion/solicitudes/permisos'
+      case 'incapacidades':
+        return '/administracion/novedades/incapacidades'
+      default:
+        return '/administracion/notificaciones'
+    }
+  }
+
   return (
     <div className={cn('relative', className)} ref={dropdownRef}>
       {/* Botón de notificaciones */}
@@ -289,9 +307,17 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
                         !notificacion.leida && 'bg-blue-50 border-l-2 border-l-blue-500'
                       )}
                       onClick={() => {
+                        // Marcar como leída si no lo está
                         if (!notificacion.leida) {
                           marcarComoLeida(notificacion.id)
                         }
+                        
+                        // Cerrar el dropdown
+                        setIsOpen(false)
+                        
+                        // Redirigir a la sección correspondiente
+                        const url = obtenerUrlRedireccion(notificacion.tipo)
+                        router.push(url)
                       }}
                     >
                       <div className="flex items-start gap-3">
@@ -325,24 +351,22 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
               </div>
             )}
             
-            {notificaciones.length > 0 && (
-              <>
-                <Separator />
-                <div className="p-3">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="w-full text-xs"
-                    onClick={() => {
-                      setIsOpen(false)
-                      window.location.href = '/administracion/notificaciones'
-                    }}
-                  >
-                    Ver todas las notificaciones
-                  </Button>
-                </div>
-              </>
-            )}
+            <>
+              <Separator />
+              <div className="p-3">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full text-xs"
+                  onClick={() => {
+                    setIsOpen(false)
+                    router.push('/administracion/notificaciones')
+                  }}
+                >
+                  Ver todas las notificaciones
+                </Button>
+              </div>
+            </>
           </CardContent>
         </Card>
       )}

@@ -47,7 +47,7 @@ export default function NotificacionesPage() {
       const params = new URLSearchParams({
         limit: '50'
       })
-      
+
       if (filtro === 'no_leidas') {
         params.append('solo_no_leidas', 'true')
       }
@@ -58,23 +58,23 @@ export default function NotificacionesPage() {
           'Content-Type': 'application/json'
         }
       })
-      
+
       if (!response.ok) {
         throw new Error(`Error al cargar notificaciones: ${response.status}`)
       }
 
       const data = await response.json()
       let notificacionesFiltradas = data.notificaciones || []
-      
+
       // Aplicar filtros adicionales en el cliente
       if (filtro === 'leidas') {
         notificacionesFiltradas = notificacionesFiltradas.filter((n: Notificacion) => n.leida)
       }
-      
+
       if (tipoFiltro !== 'todos') {
         notificacionesFiltradas = notificacionesFiltradas.filter((n: Notificacion) => n.tipo === tipoFiltro)
       }
-      
+
       setNotificaciones(notificacionesFiltradas)
       setNoLeidasCount(data.no_leidas_count || 0)
     } catch (err) {
@@ -112,9 +112,9 @@ export default function NotificacionesPage() {
       }
 
       // Actualizar estado local
-      setNotificaciones(prev => 
-        prev.map(notif => 
-          notif.id === notificacionId 
+      setNotificaciones(prev =>
+        prev.map(notif =>
+          notif.id === notificacionId
             ? { ...notif, leida: true }
             : notif
         )
@@ -147,7 +147,7 @@ export default function NotificacionesPage() {
       }
 
       // Actualizar estado local
-      setNotificaciones(prev => 
+      setNotificaciones(prev =>
         prev.map(notif => ({ ...notif, leida: true }))
       )
       setNoLeidasCount(0)
@@ -204,30 +204,30 @@ export default function NotificacionesPage() {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Link href="/administracion">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Volver
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Bell className="h-6 w-6" />
-              Notificaciones
-            </h1>
-            <p className="text-gray-600">
-              {noLeidasCount > 0 ? `${noLeidasCount} notificaciones sin leer` : 'Todas las notificaciones están leídas'}
-            </p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Bell className="h-6 w-6" />
+            Notificaciones
+          </h1>
+          <p className="text-gray-600">
+            {noLeidasCount > 0 ? `${noLeidasCount} notificaciones sin leer` : 'Todas las notificaciones están leídas'}
+          </p>
         </div>
-        
-        {noLeidasCount > 0 && (
-          <Button onClick={marcarTodasComoLeidas} className="flex items-center gap-2">
-            <CheckCheck className="h-4 w-4" />
-            Marcar todas como leídas
+        <div className="flex items-center gap-2">
+          {noLeidasCount > 0 && (
+            <Button onClick={marcarTodasComoLeidas} className="flex items-center gap-2">
+              <CheckCheck className="h-4 w-4" />
+              Marcar todas como leídas
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            onClick={() => window.location.href = '/administracion'}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" /> Volver al dashboard
           </Button>
-        )}
+        </div>
       </div>
 
       {/* Filtros */}
@@ -253,7 +253,7 @@ export default function NotificacionesPage() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="flex-1">
               <label className="text-sm font-medium mb-2 block">Tipo</label>
               <Select value={tipoFiltro} onValueChange={setTipoFiltro}>
@@ -296,7 +296,7 @@ export default function NotificacionesPage() {
           ) : (
             <div className="divide-y">
               {notificaciones.map((notificacion) => (
-                <div 
+                <div
                   key={notificacion.id}
                   className={cn(
                     'p-4 hover:bg-gray-50 transition-colors cursor-pointer',

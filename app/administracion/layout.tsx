@@ -121,7 +121,7 @@ export default function AdministracionLayout({
         ></div>
         
         {/* Header con notificaciones */}
-        <div className="relative z-20 bg-white/80 backdrop-blur-sm border-b border-gray-200 px-6 py-3">
+        <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-sm border-b border-gray-200 px-6 py-2">
           <div className="flex justify-between items-center">
             <div className="flex items-center">
               <h1 className="text-lg font-semibold text-gray-900">
@@ -129,27 +129,28 @@ export default function AdministracionLayout({
               </h1>
             </div>
             <div className="flex items-center gap-4">
-              <div className="bg-gray-100 rounded-md border border-gray-300">
+              <div className="rounded-full border border-gray-300 bg-gray-100 hover:bg-gray-200 transition-colors">
                 <NotificationsDropdown />
               </div>
-              <Link href="/administracion/perfil" className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800 transition-colors cursor-pointer">
-                <span>Bienvenido, {userData?.colaborador || 'Administrador'}</span>
-                <Avatar className="h-8 w-8">
+              <Link href="/administracion/perfil" className="flex items-center font-medium text-base gap-2 text-sm text-gray-800 hover:text-gray-950 transition-colors cursor-pointer">
+                <div className="rounded-full border border-gray-300 bg-gray-100 hover:bg-gray-200 transition-colors p-1">
+                  <Avatar className="h-8 w-8">
                   <AvatarImage 
                     src={userData?.avatar_path ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatar/${userData.avatar_path}` : '/img/default-avatar.svg'} 
                     alt={userData?.colaborador || 'Administrador'}
                     className="object-cover"
                   />
-                  <AvatarFallback className="bg-blue-500 text-white text-xs">
-                    {(userData?.colaborador || 'Administrador').split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                    <AvatarFallback className="bg-blue-500 text-white text-xs">
+                      {(userData?.colaborador || 'Administrador').split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
               </Link>
             </div>
           </div>
         </div>
         
-        <main className="relative px-20 py-10 space-y-6 z-10 flex-1">
+        <main className="relative px-20 py-1 space-y-6 z-10 flex-1">
           {children}
         </main>
       </div>

@@ -252,7 +252,7 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
       <Button
         variant="ghost"
         size="sm"
-        className="relative p-2 h-10 w-10"
+        className="relative p-2 h-10 w-10 rounded-full hover:bg-transparent"
         onClick={() => setIsOpen(!isOpen)}
       >
         <Bell className="h-5 w-5" />

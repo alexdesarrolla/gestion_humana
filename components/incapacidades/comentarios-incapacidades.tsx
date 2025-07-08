@@ -183,14 +183,23 @@ export function ComentariosIncapacidades({ incapacidadId }: { incapacidadId?: st
   const handleComentar = async () => {
     if (!user || !nuevoComentario.trim() || !incapacidadId) return
     setLoading(true)
-    await supabase.from("comentarios_incapacidades").insert({
+    
+    const { error } = await supabase.from("comentarios_incapacidades").insert({
       incapacidad_id: incapacidadId,
       usuario_id: user.id,
       contenido: nuevoComentario,
       respuesta_a: null,
     })
-    setNuevoComentario("")
-    setShowConfirmModal(false)
+    
+    if (error) {
+      console.error('Error al guardar comentario:', error)
+      setErrorFetch(`Error al guardar comentario: ${error.message}`)
+    } else {
+      setNuevoComentario("")
+      setShowConfirmModal(false)
+      setErrorFetch(null)
+    }
+    
     setLoading(false)
   }
 
@@ -198,14 +207,23 @@ export function ComentariosIncapacidades({ incapacidadId }: { incapacidadId?: st
   const handleResponder = async (parentId: number) => {
     if (!user || !respuestaTexto.trim() || !incapacidadId) return
     setLoading(true)
-    await supabase.from("comentarios_incapacidades").insert({
+    
+    const { error } = await supabase.from("comentarios_incapacidades").insert({
       incapacidad_id: incapacidadId,
       usuario_id: user.id,
       contenido: respuestaTexto,
       respuesta_a: parentId,
     })
-    setRespuestaTexto("")
-    setRespondiendoA(null)
+    
+    if (error) {
+      console.error('Error al guardar respuesta:', error)
+      setErrorFetch(`Error al guardar respuesta: ${error.message}`)
+    } else {
+      setRespuestaTexto("")
+      setRespondiendoA(null)
+      setErrorFetch(null)
+    }
+    
     setLoading(false)
   }
 

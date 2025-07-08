@@ -267,6 +267,9 @@ export default function CertificacionLaboral() {
         }}
       >
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Comentarios de la solicitud</DialogTitle>
+          </DialogHeader>
           {currentSolicId && (
             <ComentariosCertificacion solicitudId={currentSolicId} />
           )}

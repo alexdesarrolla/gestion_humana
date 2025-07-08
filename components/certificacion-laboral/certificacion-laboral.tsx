@@ -84,7 +84,7 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
       supabase
         .from("usuario_nomina")
         .select("colaborador, avatar_path, genero")
-        .or(`auth_user_id.eq.${authUser.id},user_id.eq.${authUser.id}`)
+        .eq("auth_user_id", authUser.id)
         .single()
         .then(({ data: perfil }) => {
           const nombre: string = String(perfil?.colaborador || "Usuario")
@@ -214,30 +214,60 @@ export function ComentariosCertificacion({ solicitudId }: { solicitudId?: string
   const handleComentar = async () => {
     if (!user || !nuevoComentario.trim() || !solicitudId) return
     setLoading(true)
-    await supabase.from("comentarios_certificacion").insert({
-      solicitud_id: solicitudId,
-      usuario_id: user.id,
-      comentario: nuevoComentario,
-      respuesta_a: null,
-    })
-    setNuevoComentario("")
-    setShowConfirmModal(false)
-    setLoading(false)
+    try {
+      const { error } = await supabase.from("comentarios_certificacion").insert({
+        solicitud_id: solicitudId,
+        usuario_id: user.id,
+        comentario: nuevoComentario.trim(),
+        respuesta_a: null,
+      })
+      
+      if (error) {
+        console.error("Error al guardar comentario:", error)
+        setErrorFetch("Error al guardar el comentario: " + error.message)
+        return
+      }
+      
+      setNuevoComentario("")
+      setShowConfirmModal(false)
+      // Refrescar comentarios después de insertar
+      await fetchComentarios()
+    } catch (err) {
+      console.error("Error inesperado:", err)
+      setErrorFetch("Error inesperado al guardar el comentario")
+    } finally {
+      setLoading(false)
+    }
   }
 
   // — publicar respuesta SOLO a root
   const handleResponder = async (parentId: number) => {
     if (!user || !respuestaTexto.trim() || !solicitudId) return
     setLoading(true)
-    await supabase.from("comentarios_certificacion").insert({
-      solicitud_id: solicitudId,
-      usuario_id: user.id,
-      comentario: respuestaTexto,
-      respuesta_a: parentId,
-    })
-    setRespuestaTexto("")
-    setRespondiendoA(null)
-    setLoading(false)
+    try {
+      const { error } = await supabase.from("comentarios_certificacion").insert({
+        solicitud_id: solicitudId,
+        usuario_id: user.id,
+        comentario: respuestaTexto.trim(),
+        respuesta_a: parentId,
+      })
+      
+      if (error) {
+        console.error("Error al guardar respuesta:", error)
+        setErrorFetch("Error al guardar la respuesta: " + error.message)
+        return
+      }
+      
+      setRespuestaTexto("")
+      setRespondiendoA(null)
+      // Refrescar comentarios después de insertar
+      await fetchComentarios()
+    } catch (err) {
+      console.error("Error inesperado:", err)
+      setErrorFetch("Error inesperado al guardar la respuesta")
+    } finally {
+      setLoading(false)
+    }
   }
 
   // — helper "Hace x"

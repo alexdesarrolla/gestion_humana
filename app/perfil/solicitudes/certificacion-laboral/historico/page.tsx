@@ -40,6 +40,8 @@ import { ComentariosCertificacion } from "@/components/certificacion-laboral/cer
 import {
   Dialog,
   DialogContent,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog"
 
 export default function HistoricoCertificacionLaboral() {
@@ -235,6 +237,9 @@ export default function HistoricoCertificacionLaboral() {
         }}
       >
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Comentarios de la solicitud</DialogTitle>
+          </DialogHeader>
           {currentSolicId && (
             <ComentariosCertificacion solicitudId={currentSolicId} />
           )}

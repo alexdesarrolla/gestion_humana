@@ -587,8 +587,7 @@ export default function Administracion() {
   return (
     <div className="py-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Panel de Administración</h1>
-        <p className="text-muted-foreground">Gestiona usuarios y configuración del sistema.</p>
+        <h2 className="text-xl font-semibold tracking-tight">Gestiona usuarios y configuración del sistema.</h2> 
       </div>
 
       {/* Tarjetas informativas principales */}

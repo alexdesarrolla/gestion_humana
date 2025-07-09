@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { AdminSidebar } from "@/components/ui/admin-sidebar"
 import { NotificationsDropdown } from "@/components/ui/notifications-dropdown"
+import { OnlineUsersIndicator } from "@/components/ui/online-users-indicator"
 import { createSupabaseClient } from "@/lib/supabase"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
@@ -129,6 +130,9 @@ export default function AdministracionLayout({
               </h1>
             </div>
             <div className="flex items-center gap-4">
+              <div className="rounded-full border border-gray-300 bg-gray-100 hover:bg-gray-200 transition-colors">
+                <OnlineUsersIndicator />
+              </div>
               <div className="rounded-full border border-gray-300 bg-gray-100 hover:bg-gray-200 transition-colors">
                 <NotificationsDropdown />
               </div>

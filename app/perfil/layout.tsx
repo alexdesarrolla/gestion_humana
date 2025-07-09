@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/ui/sidebar"
+import { OnlineUsersIndicator } from "@/components/ui/online-users-indicator"
 import { createSupabaseClient } from "@/lib/supabase"
 
 export default function PerfilLayout({
@@ -133,6 +134,22 @@ export default function PerfilLayout({
             WebkitBackdropFilter: 'blur(2px)'
           }}
         ></div>
+        {/* Header con indicador de usuarios en línea */}
+        <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-sm border-b border-gray-200 px-6 py-2">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center">
+              <h1 className="text-lg font-semibold text-gray-900">
+                Mi Perfil
+              </h1>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="rounded-full border border-gray-300 bg-gray-100 hover:bg-gray-200 transition-colors">
+                <OnlineUsersIndicator />
+              </div>
+            </div>
+          </div>
+        </div>
+        
         <main className="relative px-20 py-10 space-y-6 z-10">
           {children}
         </main>

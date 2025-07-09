@@ -120,7 +120,7 @@ export default function Perfil() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 py-6">
         <div className="bg-white/80 backdrop-blur-sm rounded-lg p-6 shadow-sm">
           <div className="h-8 bg-gray-200/60 rounded animate-pulse mb-2"></div>
           <div className="h-4 bg-gray-200/40 rounded animate-pulse w-3/4"></div>

@@ -154,7 +154,7 @@ export default function AdministracionLayout({
           </div>
         </div>
         
-        <main className="relative px-20 py-1 space-y-6 z-10 flex-1">
+        <main className="relative px-20 py-6 space-y-6 z-10 flex-1">
           {children}
         </main>
       </div>

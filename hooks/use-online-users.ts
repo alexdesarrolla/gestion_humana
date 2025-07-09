@@ -49,6 +49,41 @@ export function useOnlineUsers() {
     }
   }, [supabase])
 
+  // Función para eliminar usuario cuando sale de la plataforma
+  const removeUserOnline = useCallback(async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        return
+      }
+
+      // Usar sendBeacon si está disponible para mayor confiabilidad
+      if (navigator.sendBeacon) {
+        const data = new FormData()
+        data.append('token', session.access_token)
+        
+        // Crear una URL con método DELETE simulado
+        const url = new URL('/api/online-users', window.location.origin)
+        url.searchParams.set('_method', 'DELETE')
+        
+        navigator.sendBeacon(url.toString(), data)
+      } else {
+        // Fallback con fetch
+        await fetch('/api/online-users', {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          keepalive: true
+        })
+      }
+    } catch (error) {
+      console.error('Error al eliminar usuario online:', error)
+    }
+  }, [supabase])
+
   // Función para obtener usuarios en línea
   const fetchOnlineUsers = useCallback(async () => {
     try {
@@ -129,6 +164,35 @@ export function useOnlineUsers() {
       }
     }
   }, [sendHeartbeat, fetchOnlineUsers, supabase])
+
+  // Efecto para manejar la salida del usuario de la plataforma
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      removeUserOnline()
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        removeUserOnline()
+      }
+    }
+
+    const handlePageHide = () => {
+      removeUserOnline()
+    }
+
+    // Agregar event listeners
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('pagehide', handlePageHide)
+
+    // Limpiar event listeners al desmontar
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('pagehide', handlePageHide)
+    }
+  }, [removeUserOnline])
 
   // Suscripción a cambios en tiempo real (opcional)
   useEffect(() => {

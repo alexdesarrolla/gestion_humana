@@ -2,9 +2,91 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { createClient } from '@supabase/supabase-js'
 
-// POST - Enviar heartbeat (actualizar estado en línea)
+// Función auxiliar para eliminar usuario
+async function deleteUserOnline(token: string) {
+  // Crear cliente con el token del usuario autenticado
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    }
+  )
+  
+  // Verificar el token y obtener el usuario
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+  
+  if (authError || !user) {
+    throw new Error('Token inválido')
+  }
+
+  // Eliminar el usuario de la tabla online_users
+  const { error: deleteError } = await supabase
+    .from('online_users')
+    .delete()
+    .eq('user_id', user.id)
+
+  if (deleteError) {
+    throw new Error('Error al eliminar usuario online')
+  }
+
+  return { success: true }
+}
+
+// DELETE - Eliminar usuario cuando sale de la plataforma
+export async function DELETE(request: NextRequest) {
+  try {
+    let token = ''
+    
+    // Obtener token del header Authorization
+    const authHeader = request.headers.get('authorization')
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.replace('Bearer ', '')
+    }
+
+    if (!token) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    const result = await deleteUserOnline(token)
+    return NextResponse.json(result)
+  } catch (error) {
+    console.error('Error en DELETE heartbeat:', error)
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
+  }
+}
+
+// POST - Manejar tanto heartbeat como eliminación via sendBeacon
 export async function POST(request: NextRequest) {
   try {
+    // Verificar si es una eliminación via sendBeacon
+    const url = new URL(request.url)
+    const method = url.searchParams.get('_method')
+    
+    if (method === 'DELETE') {
+      // Manejar eliminación via sendBeacon
+      let token = ''
+      
+      try {
+        const formData = await request.formData()
+        token = formData.get('token') as string
+      } catch {
+        return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+      }
+
+      if (!token) {
+        return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+      }
+
+      const result = await deleteUserOnline(token)
+      return NextResponse.json(result)
+    }
+
+    // Manejar heartbeat normal
     // Obtener token del header Authorization
     const authHeader = request.headers.get('authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -34,18 +116,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 })
     }
 
-    // Hacer upsert del heartbeat con el cliente autenticado
+    // Actualizar o insertar el heartbeat del usuario
     const { error: upsertError } = await supabase
       .from('online_users')
-      .upsert(
-        {
-          user_id: user.id,
-          last_seen_at: new Date().toISOString()
-        },
-        {
-          onConflict: 'user_id'
-        }
-      )
+      .upsert({
+        user_id: user.id,
+        last_seen_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_id'
+      })
 
     if (upsertError) {
       console.error('Error al actualizar heartbeat:', upsertError)
@@ -54,10 +133,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error en heartbeat:', error)
+    console.error('Error en POST heartbeat:', error)
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 }
+
 
 // GET - Obtener cantidad de usuarios en línea
 export async function GET(request: NextRequest) {

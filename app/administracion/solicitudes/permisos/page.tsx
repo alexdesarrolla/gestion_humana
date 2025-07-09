@@ -959,12 +959,12 @@ export default function AdminSolicitudesPermisos() {
                           <TableCell>{new Date(solicitud.fecha_fin).toLocaleDateString()}</TableCell>
                           <TableCell>
                             <Badge
-                              variant={
+                              className={
                                 solicitud.estado === 'aprobado'
-                                  ? 'secondary'
+                                  ? 'bg-green-100 text-green-800'
                                   : solicitud.estado === 'rechazado'
-                                  ? 'destructive'
-                                  : 'default'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-yellow-100 text-yellow-800'
                               }
                             >
                               {solicitud.estado.charAt(0).toUpperCase() + solicitud.estado.slice(1)}
@@ -1006,24 +1006,20 @@ export default function AdminSolicitudesPermisos() {
                                   Aprobar
                                 </Button>
                               )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => markReadAndOpen(solicitud.id)}
-                                className="text-gray-500 hover:text-gray-700 relative"
-                              >
-                                <div className="flex items-center">
+                              <div className="relative inline-block">
+                                {unseenCounts[solicitud.id] > 0 && (
+                                  <span className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full text-xs w-5 h-5 flex items-center justify-center">
+                                    {unseenCounts[solicitud.id]}
+                                  </span>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => markReadAndOpen(solicitud.id)}
+                                >
                                   <MessageSquare className="h-4 w-4" />
-                                  {unseenCounts[solicitud.id] > 0 && (
-                                    <Badge 
-                                      variant="destructive" 
-                                      className="ml-1 h-5 w-auto min-w-[20px] flex items-center justify-center p-1 text-xs rounded-full"
-                                    >
-                                      {unseenCounts[solicitud.id]}
-                                    </Badge>
-                                  )}
-                                </div>
-                              </Button>
+                                </Button>
+                              </div>
                             </div>
                           </TableCell>
                         </TableRow>

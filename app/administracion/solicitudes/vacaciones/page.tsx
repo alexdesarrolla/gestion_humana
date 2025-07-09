@@ -347,7 +347,6 @@ export default function AdminVacacionesPage() {
                         <TableHead>Días</TableHead>
                         <TableHead>Fecha Solicitud</TableHead>
                         <TableHead>Estado</TableHead>
-                        <TableHead>Comentarios</TableHead>
                         <TableHead>Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -366,7 +365,7 @@ export default function AdminVacacionesPage() {
                           <TableCell>{formatDate(solicitud.fecha_fin)}</TableCell>
                           <TableCell>
                             <Badge variant="outline">
-                              {calcularDiasVacaciones(solicitud.fecha_inicio, solicitud.fecha_fin)} días
+                              {calcularDiasVacaciones(solicitud.fecha_inicio, solicitud.fecha_fin)}
                             </Badge>
                           </TableCell>
                           <TableCell>{formatDate(solicitud.fecha_solicitud)}</TableCell>
@@ -376,28 +375,7 @@ export default function AdminVacacionesPage() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleShowComments(solicitud.id)}
-                            >
-                              <MessageSquare className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                          <TableCell>
                             <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                onClick={() => handleApprove(solicitud.id)}
-                                disabled={actionLoading === solicitud.id}
-                                className="bg-green-600 hover:bg-green-700"
-                              >
-                                {actionLoading === solicitud.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <CheckCircle2 className="h-4 w-4" />
-                                )}
-                              </Button>
                               <Button
                                 size="sm"
                                 variant="destructive"
@@ -410,6 +388,27 @@ export default function AdminVacacionesPage() {
                                   <XCircle className="h-4 w-4" />
                                 )}
                               </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => handleApprove(solicitud.id)}
+                                disabled={actionLoading === solicitud.id}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                {actionLoading === solicitud.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <CheckCircle2 className="h-4 w-4" />
+                                )}
+                              </Button>
+                              <div className="relative inline-block">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleShowComments(solicitud.id)}
+                                >
+                                  <MessageSquare className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
                           </TableCell>
                         </TableRow>

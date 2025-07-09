@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, CheckCircle2, Calendar } from "lucide-react"
+import { AlertCircle, CheckCircle2, Calendar, MessageSquare } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -458,14 +458,13 @@ export default function SolicitudVacaciones() {
                               <TableHead>Fecha de fin</TableHead>
                               <TableHead>Días</TableHead>
                               <TableHead>Estado</TableHead>
-                              <TableHead>Comentarios</TableHead>
                               <TableHead>Acciones</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {solicitudes.length === 0 ? (
                               <TableRow>
-                                <TableCell colSpan={7} className="text-center">
+                                <TableCell colSpan={6} className="text-center">
                                   No has realizado ninguna solicitud de vacaciones.
                                 </TableCell>
                               </TableRow>
@@ -499,24 +498,24 @@ export default function SolicitudVacaciones() {
                                     </Badge>
                                   </TableCell>
                                   <TableCell>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => handleShowComments(solicitud.id.toString())}
-                                    >
-                                      Ver comentarios
-                                    </Button>
-                                  </TableCell>
-                                  <TableCell>
-                                    {solicitud.estado === "rechazado" && solicitud.motivo_rechazo && (
+                                    <div className="flex gap-2">
                                       <Button
                                         variant="outline"
                                         size="sm"
-                                        onClick={() => handleShowReason(solicitud.motivo_rechazo)}
+                                        onClick={() => handleShowComments(solicitud.id.toString())}
                                       >
-                                        Ver motivo
+                                        <MessageSquare className="h-4 w-4" />
                                       </Button>
-                                    )}
+                                      {solicitud.estado === "rechazado" && solicitud.motivo_rechazo && (
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => handleShowReason(solicitud.motivo_rechazo)}
+                                        >
+                                          Ver motivo
+                                        </Button>
+                                      )}
+                                    </div>
                                   </TableCell>
                                 </TableRow>
                               ))

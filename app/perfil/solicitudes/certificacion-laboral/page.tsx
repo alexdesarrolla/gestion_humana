@@ -340,7 +340,7 @@ export default function CertificacionLaboral() {
                       {solicitudes.map((s) => (
                         <TableRow key={s.id}>
                           <TableCell>
-                            {formatDate(new Date(s.fecha_solicitud + 'T00:00:00'))}
+                            {formatDate(new Date(s.fecha_solicitud))}
                           </TableCell>
                           <TableCell>{s.dirigido_a}</TableCell>
                           <TableCell>{s.ciudad}</TableCell>
@@ -380,17 +380,6 @@ export default function CertificacionLaboral() {
                                 Descargar
                               </Button>
                             )}
-                            {s.estado === "rechazado" && s.motivo_rechazo && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() =>
-                                  alert(`Motivo: ${s.motivo_rechazo}`)
-                                }
-                              >
-                                Ver motivo
-                              </Button>
-                            )}
                             <div className="relative inline-block">
                               {unseenCounts[s.id] > 0 && (
                                 <span className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full text-xs w-5 h-5 flex items-center justify-center">
@@ -405,6 +394,17 @@ export default function CertificacionLaboral() {
                                 <MessageSquare className="h-4 w-4" />
                               </Button>
                             </div>
+                            {s.estado === "rechazado" && s.motivo_rechazo && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  alert(`Motivo: ${s.motivo_rechazo}`)
+                                }
+                              >
+                                Ver motivo
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}

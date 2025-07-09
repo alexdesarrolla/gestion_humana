@@ -520,8 +520,8 @@ export default function SolicitudPermisos() {
                 </Dialog>
 
                 {/* Tabla de solicitudes */}
-                <div className="mt-6">
-                  <Card className="bg-white/80 backdrop-blur-sm">
+                <div className="mt-6 w-full">
+                  <Card className="bg-white/80 backdrop-blur-sm w-full">
                     <CardHeader>
                       <CardTitle>Mis Solicitudes de Permisos</CardTitle>
                       <CardDescription>
@@ -544,14 +544,14 @@ export default function SolicitudPermisos() {
                           {solicitudes.length > 0 ? (
                             solicitudes.map((solicitud) => (
                               <TableRow key={solicitud.id}>
-                                <TableCell>{new Date(solicitud.fecha_solicitud + 'T00:00:00').toLocaleDateString()}</TableCell>
+                                <TableCell>{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</TableCell>
                                 <TableCell>
                                   {solicitud.tipo_permiso === 'no_remunerado' ? 'No remunerado' :
                                    solicitud.tipo_permiso === 'remunerado' ? 'Remunerado' :
                                    'Actividad interna'}
                                 </TableCell>
-                                <TableCell>{new Date(solicitud.fecha_inicio + 'T00:00:00').toLocaleDateString()}</TableCell>
-                                <TableCell>{new Date(solicitud.fecha_fin + 'T00:00:00').toLocaleDateString()}</TableCell>
+                                <TableCell>{new Date(solicitud.fecha_inicio).toLocaleDateString()}</TableCell>
+                                <TableCell>{new Date(solicitud.fecha_fin).toLocaleDateString()}</TableCell>
                                 <TableCell>
                                   <Badge
                                     variant={solicitud.estado === 'aprobado' ? 'secondary' :
@@ -576,19 +576,10 @@ export default function SolicitudPermisos() {
                                       <Button
                                         variant="outline"
                                         size="sm"
-                                        onClick={() => descargarPermiso(solicitud.pdf_url)}
-                                      >
-                                        <Download className="h-4 w-4 mr-1" />
-                                        Descargar
-                                      </Button>
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
                                         onClick={() => markReadAndOpen(solicitud.id)}
                                         className="relative"
                                       >
-                                        <MessageSquare className="h-4 w-4 mr-1" />
-                                        Comentarios
+                                        <MessageSquare className="h-4 w-4" />
                                         {unseenCounts[solicitud.id] > 0 && (
                                           <Badge
                                             variant="destructive"
@@ -597,6 +588,14 @@ export default function SolicitudPermisos() {
                                             {unseenCounts[solicitud.id]}
                                           </Badge>
                                         )}
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => descargarPermiso(solicitud.pdf_url)}
+                                      >
+                                        <Download className="h-4 w-4 mr-1" />
+                                        Descargar
                                       </Button>
                                     </div>
                                   )}

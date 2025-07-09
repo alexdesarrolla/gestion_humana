@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react"
 import { createSupabaseClient } from "@/lib/supabase"
+import { getAvatarUrl } from "@/lib/avatar-utils"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
@@ -67,19 +68,9 @@ export function ComentariosIncapacidades({ incapacidadId }: { incapacidadId?: st
         .single()
         .then(({ data: perfil }) => {
           const nombre: string = String(perfil?.colaborador || "Usuario")
-          const path = perfil?.avatar_path
-          const gender = perfil?.genero
-          let avatarUrl: string
-          if (path && typeof path === 'string') {
-            const { data } = supabase.storage.from("avatar").getPublicUrl(path)
-            avatarUrl = data.publicUrl
-          } else if (gender === "F") {
-            const { data } = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-f.webp")
-            avatarUrl = data.publicUrl
-          } else {
-            const { data } = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-m.webp")
-            avatarUrl = data.publicUrl
-          }
+          const path = perfil?.avatar_path as string | null
+          const gender = perfil?.genero as string | null
+          const avatarUrl = getAvatarUrl(path, gender)
           setUser({ id: authUser.id, nombre: nombre, avatarUrl: avatarUrl })
         })
     })

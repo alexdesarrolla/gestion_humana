@@ -59,7 +59,7 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
   }, [])
 
   // Cargar notificaciones
-  const cargarNotificaciones = async () => {
+  const cargarNotificaciones = async (retryCount = 0) => {
     try {
       setLoading(true)
       setError(null)
@@ -70,7 +70,7 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
         console.log('❌ No hay sesión activa')
-        setError('No hay sesión activa')
+        setError('Sesión no válida. Por favor, inicia sesión nuevamente.')
         return
       }
 
@@ -84,6 +84,14 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
       console.log('📡 Response status:', response.status)
       
       if (!response.ok) {
+        if (response.status === 401) {
+          setError('Sesión expirada. Por favor, recarga la página.')
+          return
+        }
+        if (response.status === 404) {
+          setError('Servicio no disponible temporalmente.')
+          return
+        }
         const errorText = await response.text()
         console.error('❌ Error response:', errorText)
         throw new Error(`Error al cargar notificaciones: ${response.status}`)
@@ -96,7 +104,15 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
       console.log('✅ Notificaciones cargadas:', data.notificaciones?.length || 0)
     } catch (err) {
       console.error('❌ Error al cargar notificaciones:', err)
-      setError('Error al cargar notificaciones')
+      
+      // Retry logic para errores de red
+      if (retryCount < 2 && err instanceof Error && err.message.includes('fetch')) {
+        console.log(`🔄 Reintentando... (${retryCount + 1}/2)`)
+        setTimeout(() => cargarNotificaciones(retryCount + 1), 1000)
+        return
+      }
+      
+      setError('Error al cargar notificaciones. Verifica tu conexión.')
     } finally {
       setLoading(false)
     }
@@ -152,7 +168,8 @@ export function NotificationsDropdown({ className }: NotificationsDropdownProps)
       })
 
       if (!response.ok) {
-        throw new Error('Error al marcar como leída')
+        console.error('Error al marcar como leída:', response.status)
+        return // Fallar silenciosamente para no interrumpir la UX
       }
 
       // Remover la notificación del estado local ya que solo mostramos no leídas

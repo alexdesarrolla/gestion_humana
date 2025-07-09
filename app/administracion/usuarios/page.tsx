@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { PermissionsManager } from "@/components/ui/permissions-manager"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
 export default function Usuarios() {
   const router = useRouter()
@@ -88,6 +89,27 @@ export default function Usuarios() {
   // Referencia para el timeout de búsqueda
   const searchTimeout = useRef<NodeJS.Timeout | null>(null)
 
+  // Función helper para obtener la URL del avatar
+  const getAvatarUrl = (avatar_path: string | null, genero: string | null) => {
+    const supabase = createSupabaseClient()
+    
+    if (avatar_path) {
+      const { data } = supabase.storage.from("avatar").getPublicUrl(avatar_path)
+      return data.publicUrl
+    }
+    
+    // Imagen por defecto basada en género desde Supabase Storage
+    if (genero) {
+      const path = genero === "F" ? "defecto/avatar-f.webp" : "defecto/avatar-m.webp"
+      const { data } = supabase.storage.from("avatar").getPublicUrl(path)
+      return data.publicUrl
+    }
+    
+    // Imagen por defecto del sistema desde Supabase Storage
+    const { data } = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-m.webp")
+    return data.publicUrl
+  }
+
   useEffect(() => {
     const checkAuth = async () => {
       const supabase = createSupabaseClient()
@@ -141,7 +163,7 @@ export default function Usuarios() {
             .select(`
               id, auth_user_id, colaborador, correo_electronico, telefono, rol, estado, genero, cedula,
               fecha_ingreso, empresa_id, cargo_id, sede_id, fecha_nacimiento, edad, rh, eps_id, afp_id,
-              cesantias_id, caja_de_compensacion_id, direccion_residencia,
+              cesantias_id, caja_de_compensacion_id, direccion_residencia, avatar_path,
               empresas:empresa_id(id, nombre),
               sedes:sede_id(id, nombre),
               eps:eps_id(id, nombre),
@@ -525,7 +547,7 @@ export default function Usuarios() {
           .select(`
             id, auth_user_id, colaborador, correo_electronico, telefono, rol, estado, genero, cedula,
             fecha_ingreso, empresa_id, cargo_id, sede_id, fecha_nacimiento, edad, rh, eps_id, afp_id,
-            cesantias_id, caja_de_compensacion_id, direccion_residencia,
+            cesantias_id, caja_de_compensacion_id, direccion_residencia, avatar_path,
             empresas:empresa_id(id, nombre),
             sedes:sede_id(id, nombre),
             eps:eps_id(id, nombre),
@@ -1149,18 +1171,17 @@ export default function Usuarios() {
                             paginatedUsers.map((user) => (
                               <TableRow key={user.id}>
                                 <TableCell>
-                                  {user.avatar_path ? (
-                                    <img
-                                      src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatar/${user.avatar_path}`}
-                                      className="h-10 w-10 rounded-full object-cover border border-gray-200"
-                                      alt="Avatar"
-                                    />
-                                  ) : (
-                                    <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-medium">
-                                      {user.colaborador?.charAt(0) || "?"}
-                                    </div>
-                                  )}
-                                </TableCell>
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage 
+                      src={getAvatarUrl(user.avatar_path, user.genero)} 
+                      alt={user.colaborador || 'Usuario'}
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                      {user.colaborador?.charAt(0) || "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                </TableCell>
                                 <TableCell className="font-medium">{user.colaborador}</TableCell>
                                 <TableCell>{user.cargos?.nombre || "N/A"}</TableCell>
                                 <TableCell>
@@ -1281,7 +1302,7 @@ export default function Usuarios() {
 
       {/* Modal de detalles de usuario */}
       {isModalOpen && selectedUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4 overflow-y-auto" onClick={() => setIsModalOpen(false)}>
           <div
             className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}

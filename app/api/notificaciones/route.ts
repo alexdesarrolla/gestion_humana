@@ -4,8 +4,6 @@ import { createServerSupabaseClient, createAdminSupabaseClient } from '@/lib/sup
 // GET - Obtener notificaciones del usuario autenticado
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createServerSupabaseClient()
-    
     // Obtener token del header Authorization
     const authHeader = request.headers.get('authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -15,8 +13,11 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.replace('Bearer ', '')
     
-    // Verificar el token con Supabase
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    // Usar cliente administrativo para verificar el token
+    const adminSupabase = createAdminSupabaseClient()
+    
+    // Verificar el token directamente con el admin client
+    const { data: { user }, error: authError } = await adminSupabase.auth.getUser(token)
     
     console.log('Auth error:', authError)
     console.log('User:', user ? 'exists' : 'null')
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Obtener datos del usuario para verificar que existe en usuario_nomina
-    const { data: userData, error: userError } = await supabase
+    const { data: userData, error: userError } = await adminSupabase
       .from('usuario_nomina')
       .select('auth_user_id, rol')
       .eq('auth_user_id', user.id)
@@ -43,9 +44,6 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0')
     const soloNoLeidas = searchParams.get('solo_no_leidas') === 'true'
 
-    // Usar cliente administrativo para evitar problemas con RLS
-    const adminSupabase = createAdminSupabaseClient()
-    
     // Construir consulta
     let query = adminSupabase
       .from('notificaciones')

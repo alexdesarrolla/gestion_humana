@@ -168,10 +168,15 @@ export async function GET(request: NextRequest) {
     
     if (authError || !user) {
       console.error('Error de autenticación en GET:', authError)
-      return NextResponse.json({ error: 'Token inválido' }, { status: 401 })
+      // Si hay error de autenticación, aún podemos devolver datos vacíos en lugar de error
+      return NextResponse.json({ 
+        count: 0,
+        users: [],
+        timestamp: new Date().toISOString()
+      })
     }
 
-    // Limpiar usuarios inactivos (más de 2 minutos sin heartbeat) usando service role
+    // Limpiar usuarios inactivos usando service role
     const adminSupabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -183,19 +188,26 @@ export async function GET(request: NextRequest) {
       }
     )
     
-    const twoMinutesAgoCleanup = new Date(Date.now() - 2 * 60 * 1000).toISOString()
-    await adminSupabase
+    // Limpieza más agresiva: 90 segundos para casos de cierre abrupto del navegador
+    const ninetySecondsAgoCleanup = new Date(Date.now() - 90 * 1000).toISOString()
+    const { error: cleanupError, count: deletedCount } = await adminSupabase
       .from('online_users')
-      .delete()
-      .lt('last_seen_at', twoMinutesAgoCleanup)
+      .delete({ count: 'exact' })
+      .lt('last_seen_at', ninetySecondsAgoCleanup)
+    
+    if (cleanupError) {
+      console.error('Error al limpiar usuarios inactivos:', cleanupError)
+    } else if (deletedCount && deletedCount > 0) {
+      console.log(`Limpieza automática: ${deletedCount} usuarios inactivos eliminados`)
+    }
 
-    // Obtener usuarios en línea (últimos 2 minutos)
-    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString()
+    // Obtener usuarios en línea (últimos 90 segundos, consistente con la limpieza)
+    const ninetySecondsAgo = new Date(Date.now() - 90 * 1000).toISOString()
     
     const { data: onlineUsers, error: queryError } = await supabase
       .from('online_users')
       .select('user_id, last_seen_at')
-      .gte('last_seen_at', twoMinutesAgo)
+      .gte('last_seen_at', ninetySecondsAgo)
       .order('last_seen_at', { ascending: false })
 
     if (queryError) {
@@ -204,21 +216,26 @@ export async function GET(request: NextRequest) {
     }
 
     // Obtener información adicional de los usuarios desde usuario_nomina
+    // Filtrar solo usuarios con rol 'usuario'
     const usersWithInfo = []
     if (onlineUsers && onlineUsers.length > 0) {
       for (const onlineUser of onlineUsers) {
         const { data: userData, error: userError } = await supabase
           .from('usuario_nomina')
-          .select('colaborador, avatar_path')
+          .select('colaborador, avatar_path, rol')
           .eq('auth_user_id', onlineUser.user_id)
+          .eq('rol', 'usuario')
           .single()
         
-        usersWithInfo.push({
-          user_id: onlineUser.user_id,
-          last_seen_at: onlineUser.last_seen_at,
-          colaborador: userData?.colaborador || 'Usuario',
-          avatar_path: userData?.avatar_path
-        })
+        // Solo agregar si el usuario tiene rol 'usuario'
+        if (userData && !userError) {
+          usersWithInfo.push({
+            user_id: onlineUser.user_id,
+            last_seen_at: onlineUser.last_seen_at,
+            colaborador: userData?.colaborador || 'Usuario',
+            avatar_path: userData?.avatar_path
+          })
+        }
       }
     }
 

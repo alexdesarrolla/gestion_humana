@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/ui/sidebar"
+import { OnlineUsersIndicator } from "@/components/ui/online-users-indicator"
 import { createSupabaseClient } from "@/lib/supabase"
 
 export default function PerfilLayout({
@@ -111,6 +112,7 @@ export default function PerfilLayout({
       {/* Sidebar */}
       <div className="w-64 bg-white shadow-sm border-r border-gray-200 flex-shrink-0">
         <Sidebar userName={userData?.colaborador || 'Usuario'} />
+        <OnlineUsersIndicator />
       </div>
       
       {/* Contenido principal */}

@@ -67,7 +67,19 @@ export function useOnlineUsers() {
         const url = new URL('/api/online-users', window.location.origin)
         url.searchParams.set('_method', 'DELETE')
         
-        navigator.sendBeacon(url.toString(), data)
+        const success = navigator.sendBeacon(url.toString(), data)
+        if (!success) {
+          console.warn('sendBeacon falló, intentando con fetch')
+          // Fallback inmediato si sendBeacon falla
+          fetch('/api/online-users', {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json'
+            },
+            keepalive: true
+          }).catch(err => console.error('Error en fallback fetch:', err))
+        }
       } else {
         // Fallback con fetch
         await fetch('/api/online-users', {
@@ -91,6 +103,8 @@ export function useOnlineUsers() {
       
       if (!session?.access_token) {
         setLoading(false)
+        setOnlineCount(0)
+        setOnlineUsers([])
         return
       }
 
@@ -106,6 +120,12 @@ export function useOnlineUsers() {
         const data: OnlineUsersData = await response.json()
         setOnlineCount(data.count)
         setOnlineUsers(data.users)
+        setError(null)
+      } else if (response.status === 401) {
+        // Error de autenticación, establecer valores por defecto
+        console.warn('Token expirado o inválido, estableciendo valores por defecto')
+        setOnlineCount(0)
+        setOnlineUsers([])
         setError(null)
       } else {
         console.error('Error al obtener usuarios en línea:', response.statusText)
@@ -128,16 +148,16 @@ export function useOnlineUsers() {
       // Enviar heartbeat inicial
       await sendHeartbeat()
       
-      // Configurar intervalo de heartbeat cada 30 segundos
-      heartbeatInterval = setInterval(sendHeartbeat, 30000)
+      // Configurar intervalo de heartbeat cada 20 segundos (más frecuente para mejor detección)
+      heartbeatInterval = setInterval(sendHeartbeat, 20000)
     }
 
     const startFetching = async () => {
       // Obtener usuarios en línea inicial
       await fetchOnlineUsers()
       
-      // Configurar intervalo para actualizar la lista cada 30 segundos
-      fetchInterval = setInterval(fetchOnlineUsers, 30000)
+      // Configurar intervalo para actualizar la lista cada 25 segundos
+      fetchInterval = setInterval(fetchOnlineUsers, 25000)
     }
 
     // Verificar si hay sesión activa
@@ -167,13 +187,24 @@ export function useOnlineUsers() {
 
   // Efecto para manejar la salida del usuario de la plataforma
   useEffect(() => {
+    let visibilityTimer: NodeJS.Timeout
+
     const handleBeforeUnload = () => {
       removeUserOnline()
     }
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
-        removeUserOnline()
+        // Esperar un poco antes de eliminar por si el usuario vuelve rápidamente
+        visibilityTimer = setTimeout(() => {
+          removeUserOnline()
+        }, 5000) // 5 segundos de gracia
+      } else if (document.visibilityState === 'visible') {
+        // Si el usuario vuelve, cancelar la eliminación y enviar heartbeat
+        if (visibilityTimer) {
+          clearTimeout(visibilityTimer)
+        }
+        sendHeartbeat()
       }
     }
 
@@ -181,18 +212,27 @@ export function useOnlineUsers() {
       removeUserOnline()
     }
 
+    const handleUnload = () => {
+      removeUserOnline()
+    }
+
     // Agregar event listeners
     window.addEventListener('beforeunload', handleBeforeUnload)
+    window.addEventListener('unload', handleUnload)
     document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('pagehide', handlePageHide)
 
     // Limpiar event listeners al desmontar
     return () => {
+      if (visibilityTimer) {
+        clearTimeout(visibilityTimer)
+      }
       window.removeEventListener('beforeunload', handleBeforeUnload)
+      window.removeEventListener('unload', handleUnload)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('pagehide', handlePageHide)
     }
-  }, [removeUserOnline])
+  }, [removeUserOnline, sendHeartbeat])
 
   // Suscripción a cambios en tiempo real (opcional)
   useEffect(() => {

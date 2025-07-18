@@ -2,7 +2,20 @@
 
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
+import { createSupabaseClient } from "@/lib/supabase";
+
+interface BirthdayUser {
+  id: string
+  colaborador: string
+  fecha_nacimiento: string
+  avatar_path?: string | null
+  genero?: string | null
+  empresas?: { nombre: string }
+  cargos?: { nombre: string }
+}
 
 export default function Home() {
   const router = useRouter();
@@ -11,11 +24,155 @@ export default function Home() {
     password: "",
     remember: false
   });
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [birthdayUsers, setBirthdayUsers] = useState<BirthdayUser[]>([]);
+  const [loadingBirthdays, setLoadingBirthdays] = useState(true);
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    router.push("/login");
-  };
+  // Función para verificar si el input es una cédula o un correo electrónico
+  const isCedula = (input: string): boolean => {
+    return /^\d+$/.test(input)
+  }
+
+  // Función para obtener la URL del avatar
+  const getAvatarUrl = (avatar_path: string | null, genero: string | null): string => {
+    const supabase = createSupabaseClient()
+    
+    if (avatar_path) {
+      const { data } = supabase.storage.from("avatar").getPublicUrl(avatar_path)
+      return data.publicUrl
+    } else if (genero) {
+      const path = genero === "F" ? "defecto/avatar-f.webp" : "defecto/avatar-m.webp"
+      const { data } = supabase.storage.from("avatar").getPublicUrl(path)
+      return data.publicUrl
+    }
+    
+    // Fallback a avatar por defecto masculino
+    const { data } = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-m.webp")
+    return data.publicUrl
+  }
+
+  // Cargar cumpleañeros de la semana
+  useEffect(() => {
+    const loadBirthdayUsers = async () => {
+      try {
+        const supabase = createSupabaseClient()
+        const today = new Date()
+        const currentWeekStart = new Date(today)
+        currentWeekStart.setDate(today.getDate() - today.getDay() + 1) // Lunes
+        const currentWeekEnd = new Date(currentWeekStart)
+        currentWeekEnd.setDate(currentWeekStart.getDate() + 6) // Domingo
+        
+        // Obtener todos los usuarios activos con fecha de nacimiento
+        const { data: users, error } = await supabase
+          .from('usuario_nomina')
+          .select(`
+            id,
+            colaborador,
+            fecha_nacimiento,
+            avatar_path,
+            genero,
+            empresas:empresa_id(nombre),
+            cargos:cargo_id(nombre)
+          `)
+          .eq('estado', 'activo')
+          .not('fecha_nacimiento', 'is', null)
+        
+        if (error) {
+          console.error('Error loading birthday users:', error)
+          return
+        }
+        
+        // Filtrar usuarios que cumplen años esta semana
+        const birthdayUsersThisWeek = (users || []).filter(user => {
+          if (!user.fecha_nacimiento) return false
+          
+          const birthDate = new Date(user.fecha_nacimiento)
+          const currentYear = today.getFullYear()
+          
+          // Crear fecha de cumpleaños para este año
+          const birthdayThisYear = new Date(currentYear, birthDate.getMonth(), birthDate.getDate())
+          
+          // Verificar si el cumpleaños está en la semana actual
+          return birthdayThisYear >= currentWeekStart && birthdayThisYear <= currentWeekEnd
+        })
+        
+        setBirthdayUsers(birthdayUsersThisWeek)
+      } catch (error) {
+        console.error('Error loading birthday users:', error)
+      } finally {
+        setLoadingBirthdays(false)
+      }
+    }
+
+    loadBirthdayUsers()
+  }, [])
+
+  const handleLogin = async (e: React.FormEvent) => {
+     e.preventDefault();
+     setError('');
+     setIsLoading(true);
+ 
+     try {
+       const supabase = createSupabaseClient();
+       let emailToUse = formData.email;
+ 
+       // Si el input es una cédula, buscar el correo correspondiente
+       if (isCedula(formData.email)) {
+         const { data: userData, error: userError } = await supabase
+           .from('usuario_nomina')
+           .select('correo_electronico')
+           .eq('cedula', formData.email)
+           .single();
+ 
+         if (userError) {
+           throw new Error('No se encontró ningún usuario con esta cédula');
+         }
+ 
+         if (typeof userData.correo_electronico === 'string') {
+           emailToUse = userData.correo_electronico;
+         } else {
+           throw new Error('El correo electrónico recuperado no es válido');
+         }
+       }
+ 
+       // Iniciar sesión
+       const { data, error } = await supabase.auth.signInWithPassword({
+         email: emailToUse,
+         password: formData.password,
+       });
+ 
+       if (error) throw error;
+ 
+       if (data.user) {
+         // Obtener el rol y estado del usuario
+         const { data: userData, error: userError } = await supabase
+           .from('usuario_nomina')
+           .select('rol, estado')
+           .eq('auth_user_id', data.user.id)
+           .single();
+ 
+         if (userError) throw userError;
+ 
+         // Verificar si el usuario está activo
+         if (userData.estado !== 'activo') {
+           await supabase.auth.signOut();
+           throw new Error('Tu cuenta no está activa actualmente. Contacta al administrador para más información.');
+         }
+ 
+         // Redirigir según el rol
+         if (userData.rol === 'administrador') {
+           router.push('/administracion');
+         } else {
+           router.push('/perfil');
+         }
+       }
+     } catch (err: any) {
+       setError(err.message);
+     } finally {
+       setIsLoading(false);
+     }
+   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -85,16 +242,24 @@ export default function Home() {
             <div className="landing-login-section">
               <div className="landing-login-card">
                 <h3 className="landing-login-title">Iniciar Sesión</h3>
+                {error && (
+                  <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                    <div className="flex items-center">
+                      <AlertCircle className="h-4 w-4 mr-2" />
+                      <span>{error}</span>
+                    </div>
+                  </div>
+                )}
                 <form className="landing-login-form" onSubmit={handleLogin}>
                   <div className="landing-form-group">
-                    <label htmlFor="email">Correo electrónico</label>
+                    <label htmlFor="email">Cédula o Correo electrónico</label>
                     <input
-                      type="email"
+                      type="text"
                       id="email"
                       name="email"
                       value={formData.email}
                       onChange={handleInputChange}
-                      placeholder="tu@empresa.com"
+                      placeholder="12345678 o tu@empresa.com"
                       required
                     />
                   </div>
@@ -124,8 +289,8 @@ export default function Home() {
                       ¿Olvidaste tu contraseña?
                     </a>
                   </div>
-                  <button type="submit" className="landing-login-btn">
-                    Ingresar al Portal
+                  <button type="submit" className="landing-login-btn" disabled={isLoading}>
+                    {isLoading ? 'Iniciando sesión...' : 'Ingresar al Portal'}
                   </button>
                 </form>
               </div>
@@ -380,30 +545,69 @@ export default function Home() {
                 ¡Envíales tus felicitaciones!
               </p>
               <div className="landing-birthday-featured-list">
-                <div className="landing-birthday-featured-person">
-                  <div className="landing-birthday-avatar">
-                    <div className="w-full h-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center">
-                      <span className="text-white font-bold text-2xl">MG</span>
-                    </div>
+                {loadingBirthdays ? (
+                  <div className="text-center py-4">
+                    <p className="text-gray-600">Cargando cumpleañeros...</p>
                   </div>
-                  <div className="landing-birthday-info">
-                    <h4 className="landing-birthday-person-name">María González</h4>
-                    <p className="landing-birthday-person-role">Gerente de Marketing</p>
-                    <p className="landing-birthday-person-date">🎂 Miércoles 17 de Enero</p>
+                ) : birthdayUsers.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                    {birthdayUsers.map((user, index) => {
+                      const birthDate = new Date(user.fecha_nacimiento)
+                      const formattedDate = birthDate.toLocaleDateString('es-ES', {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long'
+                      })
+                      
+                      const colors = [
+                        'from-pink-400 to-purple-500',
+                        'from-blue-400 to-cyan-500',
+                        'from-green-400 to-emerald-500',
+                        'from-orange-400 to-red-500',
+                        'from-purple-400 to-pink-500',
+                        'from-cyan-400 to-blue-500',
+                        'from-emerald-400 to-green-500',
+                        'from-red-400 to-orange-500'
+                      ]
+                      
+                      const initials = user.colaborador
+                        .split(' ')
+                        .map(name => name.charAt(0))
+                        .slice(0, 2)
+                        .join('')
+                      
+                      return (
+                        <div key={user.id} className="landing-birthday-featured-person">
+                          <div className="landing-birthday-avatar">
+                            <img 
+                              src={getAvatarUrl(user.avatar_path, user.genero)}
+                              alt={`Avatar de ${user.colaborador}`}
+                              className="w-full h-full object-cover rounded-full"
+                              onError={(e) => {
+                                // Fallback a avatar con iniciales si la imagen falla
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                const parent = target.parentElement;
+                                if (parent) {
+                                  parent.innerHTML = `<div class="w-full h-full bg-gradient-to-br ${colors[index % colors.length]} flex items-center justify-center rounded-full"><span class="text-white font-bold text-2xl">${initials}</span></div>`;
+                                }
+                              }}
+                            />
+                          </div>
+                          <div className="landing-birthday-info">
+                            <h4 className="landing-birthday-person-name">{user.colaborador}</h4>
+                            <p className="landing-birthday-person-role">{user.cargos?.nombre || 'Sin cargo'} - {user.empresas?.nombre || 'Sin empresa'}</p>
+                            <p className="landing-birthday-person-date">🎂 {formattedDate}</p>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
-                </div>
-                <div className="landing-birthday-featured-person">
-                  <div className="landing-birthday-avatar">
-                    <div className="w-full h-full bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center">
-                      <span className="text-white font-bold text-2xl">CR</span>
-                    </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-gray-600">No hay cumpleañeros esta semana</p>
                   </div>
-                  <div className="landing-birthday-info">
-                    <h4 className="landing-birthday-person-name">Carlos Rodríguez</h4>
-                    <p className="landing-birthday-person-role">Desarrollador Senior</p>
-                    <p className="landing-birthday-person-date">🎂 Viernes 19 de Enero</p>
-                  </div>
-                </div>
+                )}
               </div>
               <div className="landing-birthday-actions">
                 <a href="#" className="landing-birthday-cta primary">

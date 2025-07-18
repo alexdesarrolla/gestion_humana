@@ -646,8 +646,7 @@
   background: linear-gradient(135deg, #ff6b6b 0%, #4ecdc4 100%);
   border-radius: var(--border-radius-xl);
   padding: var(--spacing-3xl);
-  display: grid;
-  grid-template-columns: 2fr 1fr;
+  display: flex;
   gap: var(--spacing-3xl);
   align-items: center;
   color: white;
@@ -705,6 +704,7 @@
   border-radius: var(--border-radius-lg);
   backdrop-filter: blur(10px);
   transition: transform 0.2s ease;
+  width: 100%;
 }
 
 .landing-birthday-featured-person:hover {
@@ -923,6 +923,7 @@
     flex-direction: column;
     text-align: center;
     gap: var(--spacing-md);
+    width: 100%;
   }
 
   .landing-birthday-actions {

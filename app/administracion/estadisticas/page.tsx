@@ -152,6 +152,7 @@ export default function EstadisticasPage() {
       
       // 2. Estadísticas de empresas (solo si no hay filtro específico)
       if (!empresaFilter) {
+        // Obtener todos los usuarios sin filtrar por estado para el total
         queries.push(
           supabase
             .from('usuario_nomina')
@@ -372,12 +373,14 @@ export default function EstadisticasPage() {
           if (estadoFilter) {
             usuariosFiltrados = usuariosEmpresa.filter((u: any) => u.estado === estadoFilter)
           } else {
-            usuariosFiltrados = usuariosEmpresa.filter((u: any) => u.estado === 'activo')
+            // Mostrar todos los usuarios cuando no hay filtro de estado
+            usuariosFiltrados = usuariosEmpresa
           }
           
           const usuariosActivos = usuariosEmpresa.filter((u: any) => u.estado === 'activo')
           
-          const totalEmpresa = usuariosFiltrados.length
+          // Usar la longitud total de usuarios de la empresa para el conteo global
+          const totalEmpresa = usuariosEmpresa.length
           const activosEmpresa = usuariosActivos.length
           totalUsuariosGlobal += totalEmpresa
           

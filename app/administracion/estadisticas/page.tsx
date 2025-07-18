@@ -1588,6 +1588,658 @@ export default function EstadisticasPage() {
           </Card>
         </div>
       </div>
-    </div>
-  )
-}
+      
+      {/* Gráficos generales */}
+      <div className="mt-8">
+        <h2 className="text-xl font-bold text-gray-900 mb-6">Gráficos generales</h2>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Gráfico de Otros Cargos */}
+          <Card className="lg:col-span-1">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FaBriefcase className="h-5 w-5 text-blue-500" />
+                Comercial
+              </CardTitle>
+              <CardDescription>
+                Cargos no incluidos en categorías específicas
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-80">
+                {isLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <Skeleton className="h-full w-full" />
+                  </div>
+                ) : (() => {
+                  // Definir todos los cargos que están en categorías específicas
+                  const cargosEspecificos = [
+                    // Centro de Servicios y Repuestos
+                    'JEFE DE CENTRO DE SERVICIO', 'TÉCNICO DE MOTOS', 'LAVADOR DE MOTOS',
+                    'ANALISTA DE GARANTÍAS', 'AUXILIAR SERVICIO AL CLIENTE', 'EJECUTIVO CENTRO DE SERVICIO Y RECAUDO',
+                    // Crédito y Cartera
+                    'GESTOR DE CONTACT CENTER', 'GESTOR DE RECAUDO EXTERNO', 'DEPENDIENTE JUDICIAL',
+                    'FRONT', 'BACKUP CRM', 'ANALISTA DE CRÉDITO',
+                    // Logística
+                    'COORDINADOR LOGÍSTICO', 'CONDUCTOR', 'COMPRADOR JUNIOR',
+                    'AUXILIAR DE BODEGA', 'BODEGUERO/MENSAJERO', 'LÍDER DE BODEGA', 'ANALISTA LOGÍSTICO ELECTRO',
+                    // Administrativos
+                    'SUPERNUMERARIO', 'TESORERÍA', 'AUXILIAR TESORERÍA', 'CONTADOR',
+                    'AUXILIAR CONTABLE', 'AUXILIAR DE ARCHIVO', 'AUXILIAR DE RECEPCIÓN',
+                    'AUXILIAR SERVICIOS GENERALES', 'SERVICIOS GENERALES', 'CAMARERA/RECEPCIONISTA',
+                    'AUXILIAR ADMINISTRATIVO', 'COORDINADOR GESTIÓN DOCUMENTAL', 'AUXILIAR CONTRATACIÓN',
+                    'ANALISTA DE NÓMINA', 'DIRECTOR TALENTO HUMANO', 'PSICÓLOGA DE SELECCIÓN Y BIENESTAR',
+                    'COORDINADOR SEGURIDAD Y SALUD EN EL TRABAJO', 'AUXILIAR DE SOPORTE',
+                    'CONTROL INTERNO', 'AUXILIAR CONTROL INTERNO', 'DIRECTOR CONTROL INTERNO', 'LÍDER TICS',
+                    // Agencia BDATAM
+                    'GERENTE AGENCIA BDATAM', 'DISEÑADOR WEB', 'DISEÑADOR GRÁFICO',
+                    'COMMUNITY MANAGER', 'PRODUCTOR MULTIMEDIA', 'DESARROLLADOR DE APLICACIONES',
+                    // SENA
+                    'APRENDIZ SENA ETAPA PRODUCTIVA', 'APRENDIZ SENA ETAPA LECTIVA'
+                  ]
+                  
+                  const otrosCargos = cargosStats.filter(cargo => 
+                    !cargosEspecificos.includes(cargo.nombre.toUpperCase())
+                  ).slice(0, 10)
+                  
+                  return otrosCargos.length === 0 ? (
+                    <div className="flex items-center justify-center h-full">
+                      <p className="text-gray-500">Sin datos disponibles</p>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={otrosCargos}
+                        margin={{
+                          top: 20,
+                          right: 30,
+                          left: 20,
+                          bottom: 60,
+                        }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="nombre" 
+                          angle={-45}
+                          textAnchor="end"
+                          height={80}
+                          fontSize={12}
+                          interval={0}
+                        />
+                        <YAxis fontSize={12} />
+                        <Tooltip 
+                          formatter={(value: any, name: any, props: any) => [
+                            `${value} usuarios (${props.payload.porcentaje}%)`,
+                            'Cantidad'
+                          ]}
+                          labelFormatter={(label) => `Cargo: ${label}`}
+                        />
+                        <Bar 
+                          dataKey="cantidad" 
+                          fill="#3B82F6"
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )
+                })()}
+              </div>
+              {(() => {
+                const cargosEspecificos = [
+                  'JEFE DE CENTRO DE SERVICIO', 'TÉCNICO DE MOTOS', 'LAVADOR DE MOTOS',
+                  'ANALISTA DE GARANTÍAS', 'AUXILIAR SERVICIO AL CLIENTE', 'EJECUTIVO CENTRO DE SERVICIO Y RECAUDO',
+                  'GESTOR DE CONTACT CENTER', 'GESTOR DE RECAUDO EXTERNO', 'DEPENDIENTE JUDICIAL',
+                  'FRONT', 'BACKUP CRM', 'ANALISTA DE CRÉDITO',
+                  'COORDINADOR LOGÍSTICO', 'CONDUCTOR', 'COMPRADOR JUNIOR',
+                  'AUXILIAR DE BODEGA', 'BODEGUERO/MENSAJERO', 'LÍDER DE BODEGA', 'ANALISTA LOGÍSTICO ELECTRO',
+                  'SUPERNUMERARIO', 'TESORERÍA', 'AUXILIAR TESORERÍA', 'CONTADOR',
+                  'AUXILIAR CONTABLE', 'AUXILIAR DE ARCHIVO', 'AUXILIAR DE RECEPCIÓN',
+                  'AUXILIAR SERVICIOS GENERALES', 'SERVICIOS GENERALES', 'CAMARERA/RECEPCIONISTA',
+                  'AUXILIAR ADMINISTRATIVO', 'COORDINADOR GESTIÓN DOCUMENTAL', 'AUXILIAR CONTRATACIÓN',
+                  'ANALISTA DE NÓMINA', 'DIRECTOR TALENTO HUMANO', 'PSICÓLOGA DE SELECCIÓN Y BIENESTAR',
+                  'COORDINADOR SEGURIDAD Y SALUD EN EL TRABAJO', 'AUXILIAR DE SOPORTE',
+                  'CONTROL INTERNO', 'AUXILIAR CONTROL INTERNO', 'DIRECTOR CONTROL INTERNO', 'LÍDER TICS',
+                  'GERENTE AGENCIA BDATAM', 'DISEÑADOR WEB', 'DISEÑADOR GRÁFICO',
+                  'COMMUNITY MANAGER', 'PRODUCTOR MULTIMEDIA', 'DESARROLLADOR DE APLICACIONES',
+                  'APRENDIZ SENA ETAPA PRODUCTIVA', 'APRENDIZ SENA ETAPA LECTIVA'
+                ]
+                
+                const otrosCargos = cargosStats.filter(cargo => 
+                  !cargosEspecificos.includes(cargo.nombre.toUpperCase())
+                ).slice(0, 10)
+                
+                return otrosCargos.length > 0 && (
+                  <div className="mt-4 text-center">
+                    <span className="text-2xl font-bold text-blue-600">
+                      {otrosCargos.reduce((sum, cargo) => sum + cargo.cantidad, 0)}
+                    </span>
+                    <p className="text-sm text-gray-500">Total usuarios</p>
+                  </div>
+                )
+              })()}
+            </CardContent>
+          </Card>
+          
+          {/* Gráfico de Centro de Servicios y Repuestos */}
+           <Card className="lg:col-span-1">
+             <CardHeader>
+               <CardTitle className="flex items-center gap-2">
+                 <FaBriefcase className="h-5 w-5 text-green-500" />
+                 Centro de Servicios y Repuestos
+               </CardTitle>
+               <CardDescription>
+                 Distribución de usuarios en el área de servicios
+               </CardDescription>
+             </CardHeader>
+             <CardContent>
+               <div className="h-80">
+                 {isLoading ? (
+                   <div className="flex items-center justify-center h-full">
+                     <Skeleton className="h-full w-full" />
+                   </div>
+                 ) : (() => {
+                   const cargosServicio = cargosStats.filter(cargo => 
+                     ['JEFE DE CENTRO DE SERVICIO', 'TÉCNICO DE MOTOS', 'LAVADOR DE MOTOS', 
+                      'ANALISTA DE GARANTÍAS', 'AUXILIAR SERVICIO AL CLIENTE', 
+                      'EJECUTIVO CENTRO DE SERVICIO Y RECAUDO'].includes(cargo.nombre.toUpperCase())
+                   )
+                   
+                   return cargosServicio.length === 0 ? (
+                     <div className="flex items-center justify-center h-full">
+                       <p className="text-gray-500">Sin datos disponibles</p>
+                     </div>
+                   ) : (
+                     <ResponsiveContainer width="100%" height="100%">
+                       <BarChart
+                         data={cargosServicio}
+                         margin={{
+                           top: 20,
+                           right: 30,
+                           left: 20,
+                           bottom: 60,
+                         }}
+                       >
+                         <CartesianGrid strokeDasharray="3 3" />
+                         <XAxis 
+                           dataKey="nombre" 
+                           angle={-45}
+                           textAnchor="end"
+                           height={80}
+                           fontSize={12}
+                           interval={0}
+                         />
+                         <YAxis fontSize={12} />
+                         <Tooltip 
+                           formatter={(value: any, name: any, props: any) => [
+                             `${value} usuarios (${props.payload.porcentaje}%)`,
+                             'Cantidad'
+                           ]}
+                           labelFormatter={(label) => `Cargo: ${label}`}
+                         />
+                         <Bar 
+                           dataKey="cantidad" 
+                           fill="#10B981"
+                           radius={[4, 4, 0, 0]}
+                         />
+                       </BarChart>
+                     </ResponsiveContainer>
+                   )
+                 })()}
+               </div>
+               {(() => {
+                 const cargosServicio = cargosStats.filter(cargo => 
+                   ['JEFE DE CENTRO DE SERVICIO', 'TÉCNICO DE MOTOS', 'LAVADOR DE MOTOS', 
+                    'ANALISTA DE GARANTÍAS', 'AUXILIAR SERVICIO AL CLIENTE', 
+                    'EJECUTIVO CENTRO DE SERVICIO Y RECAUDO'].includes(cargo.nombre.toUpperCase())
+                 )
+                 
+                 return cargosServicio.length > 0 && (
+                   <div className="mt-4 text-center">
+                     <span className="text-2xl font-bold text-green-600">
+                       {cargosServicio.reduce((sum, cargo) => sum + cargo.cantidad, 0)}
+                     </span>
+                     <p className="text-sm text-gray-500">Total usuarios</p>
+                   </div>
+                 )
+               })()}
+             </CardContent>
+           </Card>
+        </div>
+         
+         {/* Segunda fila de gráficos */}
+         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+           {/* Gráfico de Crédito y Cartera */}
+           <Card>
+             <CardHeader>
+               <CardTitle className="flex items-center gap-2">
+                 <FaChartLine className="h-5 w-5 text-purple-500" />
+                 Crédito y Cartera
+               </CardTitle>
+               <CardDescription>
+                 Distribución de usuarios en crédito y cartera
+               </CardDescription>
+             </CardHeader>
+             <CardContent>
+               <div className="h-80">
+                 {isLoading ? (
+                   <div className="flex items-center justify-center h-full">
+                     <Skeleton className="h-full w-full" />
+                   </div>
+                 ) : (() => {
+                   const cargosCredito = cargosStats.filter(cargo => 
+                     ['GESTOR DE CONTACT CENTER', 'GESTOR DE RECAUDO EXTERNO', 'DEPENDIENTE JUDICIAL', 
+                      'FRONT', 'BACKUP CRM', 'ANALISTA DE CRÉDITO'].includes(cargo.nombre.toUpperCase())
+                   )
+                   
+                   return cargosCredito.length === 0 ? (
+                     <div className="flex items-center justify-center h-full">
+                       <p className="text-gray-500">Sin datos disponibles</p>
+                     </div>
+                   ) : (
+                     <ResponsiveContainer width="100%" height="100%">
+                       <BarChart
+                         data={cargosCredito}
+                         margin={{
+                           top: 20,
+                           right: 30,
+                           left: 20,
+                           bottom: 60,
+                         }}
+                       >
+                         <CartesianGrid strokeDasharray="3 3" />
+                         <XAxis 
+                           dataKey="nombre" 
+                           angle={-45}
+                           textAnchor="end"
+                           height={80}
+                           fontSize={12}
+                           interval={0}
+                         />
+                         <YAxis fontSize={12} />
+                         <Tooltip 
+                           formatter={(value: any, name: any, props: any) => [
+                             `${value} usuarios (${props.payload.porcentaje}%)`,
+                             'Cantidad'
+                           ]}
+                           labelFormatter={(label) => `Cargo: ${label}`}
+                         />
+                         <Bar 
+                           dataKey="cantidad" 
+                           fill="#8B5CF6"
+                           radius={[4, 4, 0, 0]}
+                         />
+                       </BarChart>
+                     </ResponsiveContainer>
+                   )
+                 })()}
+               </div>
+               {(() => {
+                 const cargosCredito = cargosStats.filter(cargo => 
+                   ['GESTOR DE CONTACT CENTER', 'GESTOR DE RECAUDO EXTERNO', 'DEPENDIENTE JUDICIAL', 
+                    'FRONT', 'BACKUP CRM', 'ANALISTA DE CRÉDITO'].includes(cargo.nombre.toUpperCase())
+                 )
+                 
+                 return cargosCredito.length > 0 && (
+                   <div className="mt-4 text-center">
+                     <span className="text-2xl font-bold text-purple-600">
+                       {cargosCredito.reduce((sum, cargo) => sum + cargo.cantidad, 0)}
+                     </span>
+                     <p className="text-sm text-gray-500">Total usuarios</p>
+                   </div>
+                 )
+               })()}
+             </CardContent>
+           </Card>
+           
+           {/* Gráfico de Personal Logística */}
+           <Card>
+             <CardHeader>
+               <CardTitle className="flex items-center gap-2">
+                 <FaMapMarkerAlt className="h-5 w-5 text-orange-500" />
+                 Personal Logística
+               </CardTitle>
+               <CardDescription>
+                 Distribución de usuarios en logística
+               </CardDescription>
+             </CardHeader>
+             <CardContent>
+               <div className="h-80">
+                 {isLoading ? (
+                   <div className="flex items-center justify-center h-full">
+                     <Skeleton className="h-full w-full" />
+                   </div>
+                 ) : (() => {
+                   const cargosLogistica = cargosStats.filter(cargo => 
+                     ['COORDINADOR LOGÍSTICO', 'CONDUCTOR', 'COMPRADOR JUNIOR', 
+                      'AUXILIAR DE BODEGA', 'BODEGUERO/MENSAJERO', 'LÍDER DE BODEGA', 
+                      'ANALISTA LOGÍSTICO ELECTRO'].includes(cargo.nombre.toUpperCase())
+                   )
+                   
+                   return cargosLogistica.length === 0 ? (
+                     <div className="flex items-center justify-center h-full">
+                       <p className="text-gray-500">Sin datos disponibles</p>
+                     </div>
+                   ) : (
+                     <ResponsiveContainer width="100%" height="100%">
+                       <BarChart
+                         data={cargosLogistica}
+                         margin={{
+                           top: 20,
+                           right: 30,
+                           left: 20,
+                           bottom: 60,
+                         }}
+                       >
+                         <CartesianGrid strokeDasharray="3 3" />
+                         <XAxis 
+                           dataKey="nombre" 
+                           angle={-45}
+                           textAnchor="end"
+                           height={80}
+                           fontSize={12}
+                           interval={0}
+                         />
+                         <YAxis fontSize={12} />
+                         <Tooltip 
+                           formatter={(value: any, name: any, props: any) => [
+                             `${value} usuarios (${props.payload.porcentaje}%)`,
+                             'Cantidad'
+                           ]}
+                           labelFormatter={(label) => `Cargo: ${label}`}
+                         />
+                         <Bar 
+                           dataKey="cantidad" 
+                           fill="#F97316"
+                           radius={[4, 4, 0, 0]}
+                         />
+                       </BarChart>
+                     </ResponsiveContainer>
+                   )
+                 })()}
+               </div>
+               {(() => {
+                 const cargosLogistica = cargosStats.filter(cargo => 
+                   ['COORDINADOR LOGÍSTICO', 'CONDUCTOR', 'COMPRADOR JUNIOR', 
+                    'AUXILIAR DE BODEGA', 'BODEGUERO/MENSAJERO', 'LÍDER DE BODEGA', 
+                    'ANALISTA LOGÍSTICO ELECTRO'].includes(cargo.nombre.toUpperCase())
+                 )
+                 
+                 return cargosLogistica.length > 0 && (
+                   <div className="mt-4 text-center">
+                     <span className="text-2xl font-bold text-orange-600">
+                       {cargosLogistica.reduce((sum, cargo) => sum + cargo.cantidad, 0)}
+                     </span>
+                     <p className="text-sm text-gray-500">Total usuarios</p>
+                   </div>
+                 )
+               })()}
+             </CardContent>
+           </Card>
+           
+           {/* Gráfico de Administrativos */}
+           <Card>
+             <CardHeader>
+               <CardTitle className="flex items-center gap-2">
+                 <FaUser className="h-5 w-5 text-red-500" />
+                 Administrativos
+               </CardTitle>
+               <CardDescription>
+                 Distribución de usuarios administrativos
+               </CardDescription>
+             </CardHeader>
+             <CardContent>
+               <div className="h-80">
+                 {isLoading ? (
+                   <div className="flex items-center justify-center h-full">
+                     <Skeleton className="h-full w-full" />
+                   </div>
+                 ) : (() => {
+                   const cargosAdmin = cargosStats.filter(cargo => 
+                     ['SUPERNUMERARIO', 'TESORERÍA', 'AUXILIAR TESORERÍA', 'CONTADOR', 
+                      'AUXILIAR CONTABLE', 'AUXILIAR DE ARCHIVO', 'AUXILIAR DE RECEPCIÓN', 
+                      'AUXILIAR SERVICIOS GENERALES', 'SERVICIOS GENERALES', 'CAMARERA/RECEPCIONISTA', 
+                      'AUXILIAR ADMINISTRATIVO', 'COORDINADOR GESTIÓN DOCUMENTAL', 'AUXILIAR CONTRATACIÓN', 
+                      'ANALISTA DE NÓMINA', 'DIRECTOR TALENTO HUMANO', 'PSICÓLOGA DE SELECCIÓN Y BIENESTAR', 
+                      'COORDINADOR SEGURIDAD Y SALUD EN EL TRABAJO', 'AUXILIAR DE SOPORTE', 
+                      'CONTROL INTERNO', 'AUXILIAR CONTROL INTERNO', 'DIRECTOR CONTROL INTERNO', 
+                      'LÍDER TICS'].includes(cargo.nombre.toUpperCase())
+                   )
+                   
+                   return cargosAdmin.length === 0 ? (
+                     <div className="flex items-center justify-center h-full">
+                       <p className="text-gray-500">Sin datos disponibles</p>
+                     </div>
+                   ) : (
+                     <ResponsiveContainer width="100%" height="100%">
+                       <BarChart
+                         data={cargosAdmin.slice(0, 10)}
+                         margin={{
+                           top: 20,
+                           right: 30,
+                           left: 20,
+                           bottom: 60,
+                         }}
+                       >
+                         <CartesianGrid strokeDasharray="3 3" />
+                         <XAxis 
+                           dataKey="nombre" 
+                           angle={-45}
+                           textAnchor="end"
+                           height={80}
+                           fontSize={12}
+                           interval={0}
+                         />
+                         <YAxis fontSize={12} />
+                         <Tooltip 
+                           formatter={(value: any, name: any, props: any) => [
+                             `${value} usuarios (${props.payload.porcentaje}%)`,
+                             'Cantidad'
+                           ]}
+                           labelFormatter={(label) => `Cargo: ${label}`}
+                         />
+                         <Bar 
+                           dataKey="cantidad" 
+                           fill="#EF4444"
+                           radius={[4, 4, 0, 0]}
+                         />
+                       </BarChart>
+                     </ResponsiveContainer>
+                   )
+                 })()}
+               </div>
+               {(() => {
+                 const cargosAdmin = cargosStats.filter(cargo => 
+                   ['SUPERNUMERARIO', 'TESORERÍA', 'AUXILIAR TESORERÍA', 'CONTADOR', 
+                    'AUXILIAR CONTABLE', 'AUXILIAR DE ARCHIVO', 'AUXILIAR DE RECEPCIÓN', 
+                    'AUXILIAR SERVICIOS GENERALES', 'SERVICIOS GENERALES', 'CAMARERA/RECEPCIONISTA', 
+                    'AUXILIAR ADMINISTRATIVO', 'COORDINADOR GESTIÓN DOCUMENTAL', 'AUXILIAR CONTRATACIÓN', 
+                    'ANALISTA DE NÓMINA', 'DIRECTOR TALENTO HUMANO', 'PSICÓLOGA DE SELECCIÓN Y BIENESTAR', 
+                    'COORDINADOR SEGURIDAD Y SALUD EN EL TRABAJO', 'AUXILIAR DE SOPORTE', 
+                    'CONTROL INTERNO', 'AUXILIAR CONTROL INTERNO', 'DIRECTOR CONTROL INTERNO', 
+                    'LÍDER TICS'].includes(cargo.nombre.toUpperCase())
+                 )
+                 
+                 return cargosAdmin.length > 0 && (
+                   <div className="mt-4 text-center">
+                     <span className="text-2xl font-bold text-red-600">
+                       {cargosAdmin.reduce((sum, cargo) => sum + cargo.cantidad, 0)}
+                     </span>
+                     <p className="text-sm text-gray-500">Total usuarios</p>
+                   </div>
+                 )
+               })()}
+             </CardContent>
+           </Card>
+           {/* Gráfico de Agencia BDATAM */}
+           <Card>
+             <CardHeader>
+               <CardTitle className="flex items-center gap-2">
+                 <FaBuilding className="h-5 w-5 text-indigo-500" />
+                 Agencia BDATAM
+               </CardTitle>
+               <CardDescription>
+                 Distribución de usuarios en agencia BDATAM
+               </CardDescription>
+             </CardHeader>
+             <CardContent>
+               <div className="h-80">
+                 {isLoading ? (
+                   <div className="flex items-center justify-center h-full">
+                     <Skeleton className="h-full w-full" />
+                   </div>
+                 ) : (() => {
+                   const cargosBdatam = cargosStats.filter(cargo => 
+                     ['GERENTE AGENCIA BDATAM', 'DISEÑADOR WEB', 'DISEÑADOR GRÁFICO', 
+                      'COMMUNITY MANAGER', 'PRODUCTOR MULTIMEDIA', 'DESARROLLADOR DE APLICACIONES'].includes(cargo.nombre.toUpperCase())
+                   )
+                   
+                   return cargosBdatam.length === 0 ? (
+                     <div className="flex items-center justify-center h-full">
+                       <p className="text-gray-500">Sin datos disponibles</p>
+                     </div>
+                   ) : (
+                     <ResponsiveContainer width="100%" height="100%">
+                       <BarChart
+                         data={cargosBdatam}
+                         margin={{
+                           top: 20,
+                           right: 30,
+                           left: 20,
+                           bottom: 60,
+                         }}
+                       >
+                         <CartesianGrid strokeDasharray="3 3" />
+                         <XAxis 
+                           dataKey="nombre" 
+                           angle={-45}
+                           textAnchor="end"
+                           height={80}
+                           fontSize={12}
+                           interval={0}
+                         />
+                         <YAxis fontSize={12} />
+                         <Tooltip 
+                           formatter={(value: any, name: any, props: any) => [
+                             `${value} usuarios (${props.payload.porcentaje}%)`,
+                             'Cantidad'
+                           ]}
+                           labelFormatter={(label) => `Cargo: ${label}`}
+                         />
+                         <Bar 
+                           dataKey="cantidad" 
+                           fill="#6366F1"
+                           radius={[4, 4, 0, 0]}
+                         />
+                       </BarChart>
+                     </ResponsiveContainer>
+                   )
+                 })()}
+               </div>
+               {(() => {
+                 const cargosBdatam = cargosStats.filter(cargo => 
+                   ['GERENTE AGENCIA BDATAM', 'DISEÑADOR WEB', 'DISEÑADOR GRÁFICO', 
+                    'COMMUNITY MANAGER', 'PRODUCTOR MULTIMEDIA', 'DESARROLLADOR DE APLICACIONES'].includes(cargo.nombre.toUpperCase())
+                 )
+                 
+                 return cargosBdatam.length > 0 && (
+                   <div className="mt-4 text-center">
+                     <span className="text-2xl font-bold text-indigo-600">
+                       {cargosBdatam.reduce((sum, cargo) => sum + cargo.cantidad, 0)}
+                     </span>
+                     <p className="text-sm text-gray-500">Total usuarios</p>
+                   </div>
+                 )
+               })()}
+             </CardContent>
+           </Card>
+           
+         </div>
+         
+         {/* Tercera fila de gráficos */}
+         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+           
+           {/* Gráfico de SENA */}
+           <Card>
+             <CardHeader>
+               <CardTitle className="flex items-center gap-2">
+                 <FaUsers className="h-5 w-5 text-teal-500" />
+                 SENA
+               </CardTitle>
+               <CardDescription>
+                 Distribución de aprendices SENA
+               </CardDescription>
+             </CardHeader>
+             <CardContent>
+               <div className="h-80">
+                 {isLoading ? (
+                   <div className="flex items-center justify-center h-full">
+                     <Skeleton className="h-full w-full" />
+                   </div>
+                 ) : (() => {
+                   const cargosSena = cargosStats.filter(cargo => 
+                     ['APRENDIZ SENA ETAPA PRODUCTIVA', 'APRENDIZ SENA ETAPA LECTIVA'].includes(cargo.nombre.toUpperCase())
+                   )
+                   
+                   return cargosSena.length === 0 ? (
+                     <div className="flex items-center justify-center h-full">
+                       <p className="text-gray-500">Sin datos disponibles</p>
+                     </div>
+                   ) : (
+                     <ResponsiveContainer width="100%" height="100%">
+                       <BarChart
+                         data={cargosSena}
+                         margin={{
+                           top: 20,
+                           right: 30,
+                           left: 20,
+                           bottom: 60,
+                         }}
+                       >
+                         <CartesianGrid strokeDasharray="3 3" />
+                         <XAxis 
+                           dataKey="nombre" 
+                           angle={-45}
+                           textAnchor="end"
+                           height={80}
+                           fontSize={12}
+                           interval={0}
+                         />
+                         <YAxis fontSize={12} />
+                         <Tooltip 
+                           formatter={(value: any, name: any, props: any) => [
+                             `${value} usuarios (${props.payload.porcentaje}%)`,
+                             'Cantidad'
+                           ]}
+                           labelFormatter={(label) => `Cargo: ${label}`}
+                         />
+                         <Bar 
+                           dataKey="cantidad" 
+                           fill="#14B8A6"
+                           radius={[4, 4, 0, 0]}
+                         />
+                       </BarChart>
+                     </ResponsiveContainer>
+                   )
+                 })()}
+               </div>
+               {(() => {
+                 const cargosSena = cargosStats.filter(cargo => 
+                   ['APRENDIZ SENA ETAPA PRODUCTIVA', 'APRENDIZ SENA ETAPA LECTIVA'].includes(cargo.nombre.toUpperCase())
+                 )
+                 
+                 return cargosSena.length > 0 && (
+                   <div className="mt-4 text-center">
+                     <span className="text-2xl font-bold text-teal-600">
+                       {cargosSena.reduce((sum, cargo) => sum + cargo.cantidad, 0)}
+                     </span>
+                     <p className="text-sm text-gray-500">Total usuarios</p>
+                   </div>
+                 )
+               })()}
+             </CardContent>
+           </Card>
+         </div>
+       </div>
+     </div>
+   )
+ }

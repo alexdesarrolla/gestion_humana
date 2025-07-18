@@ -565,7 +565,10 @@ export default function EstadisticasPage() {
       // 10. Estadísticas de retiros
       if (retirosResult.data && retirosResult.data.length > 0) {
         const retirosGrouped = retirosResult.data.reduce((acc: any, retiro: any) => {
-          const motivo = retiro.motivo_retiro
+          // Normalizar el motivo para agrupar variaciones del mismo motivo
+          const motivo = retiro.motivo_retiro ? 
+            retiro.motivo_retiro.trim().toUpperCase() : 'SIN ESPECIFICAR';
+            
           if (!acc[motivo]) {
             acc[motivo] = {
               cantidad: 0,
@@ -577,11 +580,12 @@ export default function EstadisticasPage() {
           return acc
         }, {})
         
-        const retirosArray = Object.keys(retirosGrouped)
-          .map(motivo => ({
+        // Convertir a array, sumar cantidades para motivos duplicados (después de normalizar)
+        const retirosArray = Object.entries(retirosGrouped)
+          .map(([motivo, data]: [string, any]) => ({
             motivo,
-            cantidad: retirosGrouped[motivo].cantidad,
-            fecha: retirosGrouped[motivo].fechas[retirosGrouped[motivo].fechas.length - 1]
+            cantidad: data.cantidad,
+            fecha: data.fechas[data.fechas.length - 1]
           }))
           .sort((a: any, b: any) => b.cantidad - a.cantidad)
         

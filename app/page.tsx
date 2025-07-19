@@ -338,46 +338,34 @@ export default function Home() {
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center space-x-8">
               <a
-                href="#inicio"
-                className="text-gray-600 hover:text-emerald-600 font-medium transition-colors duration-200"
-              >
-                Ingresar
-              </a>
-              <a
                 href="#novedades"
-                className="text-gray-600 hover:text-emerald-600 font-medium transition-colors duration-200"
+                className="text-gray-800 hover:text-[#F2C36B] font-medium transition-colors duration-200"
               >
                 Novedades
               </a>
               <a
                 href="#bienestar"
-                className="text-gray-600 hover:text-emerald-600 font-medium transition-colors duration-200"
+                className="text-gray-800 hover:text-[#F2C36B] font-medium transition-colors duration-200"
               >
                 Bienestar
               </a>
               <a
                 href="#actividades"
-                className="text-gray-600 hover:text-emerald-600 font-medium transition-colors duration-200"
+                className="text-gray-800 hover:text-[#F2C36B] font-medium transition-colors duration-200"
               >
                 Actividades
               </a>
               <a
                 href="#sst"
-                className="text-gray-600 hover:text-emerald-600 font-medium transition-colors duration-200"
+                className="text-gray-800 hover:text-[#F2C36B] font-medium transition-colors duration-200"
               >
                 SST
               </a>
               <a
                 href="#normatividad"
-                className="text-gray-600 hover:text-emerald-600 font-medium transition-colors duration-200"
+                className="text-gray-800 hover:text-[#F2C36B] font-medium transition-colors duration-200"
               >
                 Normatividad
-              </a>
-              <a
-                href="#contacto"
-                className="text-gray-600 hover:text-emerald-600 font-medium transition-colors duration-200"
-              >
-                Contacto
               </a>
             </nav>
 
@@ -461,10 +449,10 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             {/* Welcome Section */}
             <div className="text-center lg:text-left lg:pr-8">
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-6 leading-tight">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-neutral-800 mb-6 leading-tight">
                 Bienvenido al Portal de Gestión Humana
               </h1>
-              <p className="text-lg sm:text-xl text-gray-600 mb-8 leading-relaxed">
+              <p className="text-lg sm:text-lg text-gray-600 mb-8 leading-relaxed">
                 Tu centro de información y recursos para el desarrollo profesional y personal. Mantente al día con las
                 últimas novedades, políticas y beneficios de la empresa.
               </p>
@@ -475,9 +463,12 @@ export default function Home() {
                   { icon: "📅", text: "Cronograma de actividades y eventos" },
                   { icon: "🛡️", text: "Seguridad y salud en el trabajo" },
                 ].map((feature, index) => (
-                  <div key={index} className="flex items-center gap-3 font-medium text-gray-700">
-                    <span className="text-xl">{feature.icon}</span>
-                    <span className="text-sm sm:text-base">{feature.text}</span>
+                  <div 
+                    key={index} 
+                    className="flex items-center gap-3 p-4 rounded-lg backdrop-blur-md bg-white/60 border border-gray-200/30 shadow-sm hover:shadow-md transition-all duration-200"
+                  >
+                    <span className="text-2xl">{feature.icon}</span>
+                    <span className="text-sm sm:text-base font-medium text-gray-700">{feature.text}</span>
                   </div>
                 ))}
               </div>
@@ -577,7 +568,7 @@ export default function Home() {
                           Recordarme
                         </Label>
                       </div>
-                      <Button type="submit" className="w-full bg-[#6B487A] hover:bg-[#5a3d68]" disabled={isLoading}>
+                      <Button type="submit" className="w-full text-black bg-[#F2C36B] hover:bg-[#F2CF8D]" disabled={isLoading}>
                         {isLoading ? "Iniciando sesión..." : "Ingresar al Portal"}
                       </Button>
                       <div className="mt-4 text-center">
@@ -604,7 +595,7 @@ export default function Home() {
                           required
                         />
                       </div>
-                      <Button type="submit" className="w-full bg-[#6B487A] hover:bg-[#5a3d68]" disabled={isLoading}>
+                      <Button type="submit" className="w-full text-black bg-[#F2C36B] hover:bg-[#F2CF8D]" disabled={isLoading}>
                         {isLoading ? "Validando..." : "Validar Cédula"}
                       </Button>
                       <div className="mt-4 text-center">
@@ -674,16 +665,16 @@ export default function Home() {
           </div>
 
           {/* Featured Message */}
-          <div className="bg-gradient-to-r from-emerald-500 to-purple-600 rounded-2xl p-6 lg:p-12 mb-8 lg:mb-12 text-white relative overflow-hidden">
+          <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-6 lg:p-12 mb-8 lg:mb-12 text-white relative overflow-hidden">
             <div className="relative z-10">
               <span className="inline-block bg-white/20 backdrop-blur-sm px-3 py-1 rounded-md text-sm font-semibold uppercase tracking-wide mb-4">
                 Destacado
               </span>
               <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 leading-tight">
-                Nueva Política de Trabajo Híbrido
+                Nueva Política de Trabajo
               </h3>
               <p className="text-lg sm:text-xl mb-6 opacity-95 leading-relaxed">
-                Conoce los nuevos lineamientos para el trabajo híbrido que entrarán en vigencia el próximo mes. Incluye
+                Conoce los nuevos lineamientos para el trabajo que entrarán en vigencia el próximo mes. Incluye
                 horarios flexibles, días de oficina y herramientas digitales.
               </p>
               <div className="flex flex-wrap gap-4 mb-6 text-sm opacity-90">
@@ -981,7 +972,7 @@ export default function Home() {
           {/* Featured Birthday Section */}
           <div
             id="cumpleaños"
-            className="bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 rounded-2xl p-6 lg:p-12 text-white relative overflow-hidden"
+            className="bg-gradient-to-r from-pink-500 to-red-500 rounded-2xl p-6 lg:p-12 text-white relative overflow-hidden"
           >
             <div className="relative z-10">
               <span className="inline-block bg-white/25 backdrop-blur-sm px-3 py-1 rounded-md text-sm font-semibold uppercase tracking-wide mb-4">
@@ -1016,7 +1007,7 @@ export default function Home() {
                         "from-orange-400 to-red-500",
                         "from-purple-400 to-pink-500",
                         "from-cyan-400 to-blue-500",
-                        "from-emerald-400 to-green-500",
+                        "from-[#F2C36B] to-green-500",
                         "from-red-400 to-orange-500",
                       ]
 
@@ -1111,62 +1102,25 @@ export default function Home() {
 
               {/* Segunda serie de logos (duplicada para efecto infinito) */}
               <div className="flex space-x-8 lg:space-x-12 flex-shrink-0">
-                <div className="flex items-center justify-center w-32 h-20 lg:w-40 lg:h-24 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 flex-shrink-0">
-                  <img
-                    src="/placeholder.svg?height=60&width=120"
-                    alt="Empresa 1"
-                    className="max-w-full max-h-full object-contain opacity-70 hover:opacity-100 transition-opacity duration-300"
-                  />
-                </div>
-                <div className="flex items-center justify-center w-32 h-20 lg:w-40 lg:h-24 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 flex-shrink-0">
-                  <img
-                    src="/placeholder.svg?height=60&width=120"
-                    alt="Empresa 2"
-                    className="max-w-full max-h-full object-contain opacity-70 hover:opacity-100 transition-opacity duration-300"
-                  />
-                </div>
-                <div className="flex items-center justify-center w-32 h-20 lg:w-40 lg:h-24 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 flex-shrink-0">
-                  <img
-                    src="/placeholder.svg?height=60&width=120"
-                    alt="Empresa 3"
-                    className="max-w-full max-h-full object-contain opacity-70 hover:opacity-100 transition-opacity duration-300"
-                  />
-                </div>
-                <div className="flex items-center justify-center w-32 h-20 lg:w-40 lg:h-24 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 flex-shrink-0">
-                  <img
-                    src="/placeholder.svg?height=60&width=120"
-                    alt="Empresa 4"
-                    className="max-w-full max-h-full object-contain opacity-70 hover:opacity-100 transition-opacity duration-300"
-                  />
-                </div>
-                <div className="flex items-center justify-center w-32 h-20 lg:w-40 lg:h-24 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 flex-shrink-0">
-                  <img
-                    src="/placeholder.svg?height=60&width=120"
-                    alt="Empresa 5"
-                    className="max-w-full max-h-full object-contain opacity-70 hover:opacity-100 transition-opacity duration-300"
-                  />
-                </div>
-                <div className="flex items-center justify-center w-32 h-20 lg:w-40 lg:h-24 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 flex-shrink-0">
-                  <img
-                    src="/placeholder.svg?height=60&width=120"
-                    alt="Empresa 6"
-                    className="max-w-full max-h-full object-contain opacity-70 hover:opacity-100 transition-opacity duration-300"
-                  />
-                </div>
-                <div className="flex items-center justify-center w-32 h-20 lg:w-40 lg:h-24 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 flex-shrink-0">
-                  <img
-                    src="/placeholder.svg?height=60&width=120"
-                    alt="Empresa 7"
-                    className="max-w-full max-h-full object-contain opacity-70 hover:opacity-100 transition-opacity duration-300"
-                  />
-                </div>
-                <div className="flex items-center justify-center w-32 h-20 lg:w-40 lg:h-24 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 flex-shrink-0">
-                  <img
-                    src="/placeholder.svg?height=60&width=120"
-                    alt="Empresa 8"
-                    className="max-w-full max-h-full object-contain opacity-70 hover:opacity-100 transition-opacity duration-300"
-                  />
-                </div>
+                {[
+                  'empresa-bdatam.webp',
+                  'empresa-bestdream.webp', 
+                  'empresa-cbb.webp',
+                  'empresa-daytona.webp',
+                  'empresa-hka.webp',
+                  'empresa-japolandia.webp',
+                  'empresa-lucena.webp',
+                  'empresa-orpa.webp',
+                  'empresa-towncenter.webp'
+                ].map((image, index) => (
+                  <div key={`duplicate-${index}`} className="flex items-center justify-center w-32 h-20 lg:w-40 lg:h-24">
+                    <img
+                      src={`/empresas/${image}`}
+                      alt={`Empresa ${index + 1}`}
+                      className="max-w-full bg-white max-h-full object-contain rounded-lg hover:opacity-100 transition-opacity duration-300 border border-gray-200"
+                    />
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -1196,7 +1150,7 @@ export default function Home() {
       )}
 
       {/* Footer */}
-      <footer id="contacto" className="bg-gray-900 text-gray-300 pt-12 lg:pt-16 pb-8">
+      <footer id="contacto" className="bg-[#0D0D0D] text-gray-300 pt-12 lg:pt-16 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
             {/* Logo and Description */}
@@ -1215,8 +1169,6 @@ export default function Home() {
               <h4 className="text-white font-semibold text-lg mb-4">Enlaces Rápidos</h4>
               <ul className="space-y-2">
                 {[
-                  { href: "#inicio", label: "Ingresar" },
-                  { href: "#novedades", label: "Novedades" },
                   { href: "#bienestar", label: "Programas de bienestar" },
                   { href: "#actividades", label: "Cronograma de Actividades" },
                   { href: "#sst", label: "Seguridad y Salud en el Trabajo" },
@@ -1224,7 +1176,7 @@ export default function Home() {
                   { href: "#cumpleaños", label: "Cumpleañeros de la Semana" },
                 ].map((link) => (
                   <li key={link.href}>
-                    <a href={link.href} className="text-gray-400 hover:text-emerald-400 transition-colors duration-200">
+                    <a href={link.href} className="text-gray-400 hover:text-[#F2C36B] transition-colors duration-200">
                       {link.label}
                     </a>
                   </li>
@@ -1238,7 +1190,7 @@ export default function Home() {
               <ul className="space-y-2">
                 {["Certificacion laboral", "Vacaciones", "Permisos", "Incapacidades", "Comunicados"].map((item) => (
                   <li key={item}>
-                    <a href="#" className="text-gray-400 hover:text-emerald-400 transition-colors duration-200">
+                    <a href="#" className="text-gray-400 hover:text-[#F2C36B] transition-colors duration-200">
                       {item}
                     </a>
                   </li>
@@ -1270,7 +1222,7 @@ export default function Home() {
             <p className="text-gray-500 text-sm">© 2025 Gestión Humana 360. Todos los derechos reservados.</p>
             <p className="text-gray-500 text-sm">
               Hecho con ♥️ por{" "}
-              <a href="https://bdatam.com/" className="text-emerald-400 hover:text-emerald-300 transition-colors">
+              <a href="https://bdatam.com/" className="text-blue-400 hover:text-blue-300 transition-colors">
                 Bdatam
               </a>
             </p>

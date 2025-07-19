@@ -88,35 +88,22 @@
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
   }
-}
 
-/* Animación para el carrusel de logos */
-@keyframes scroll {
-  0% {
-    transform: translateX(0);
+  /* Animación para carrusel infinito */
+  @keyframes scroll {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-100%);
+    }
   }
-  100% {
-    transform: translateX(-50%);
+
+  .animate-scroll {
+    animation: scroll 30s linear infinite;
   }
-}
 
-.animate-scroll {
-  animation: scroll 30s linear infinite;
-}
-
-/* Pausa la animación al hacer hover */
-.animate-scroll:hover {
-  animation-play-state: paused;
-}
-
-/* Mejora para el gradiente del hero */
-@media (max-width: 768px) {
-  .hero-gradient-mobile {
-    background: linear-gradient(
-      to bottom,
-      rgba(255, 255, 255, 0.95) 0%,
-      rgba(255, 255, 255, 0.85) 50%,
-      rgba(255, 255, 255, 0.75) 100%
-    );
+  .animate-scroll:hover {
+    animation-play-state: paused;
   }
 }

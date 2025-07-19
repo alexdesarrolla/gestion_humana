@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Sidebar } from "@/components/ui/sidebar";
+// Sidebar removido - ya está en el layout
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -204,19 +204,52 @@ export default function ComunicadosPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-100">
-        <p className="text-gray-600">Cargando comunicados...</p>
+      <div className="space-y-6">
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg p-6 shadow-sm">
+          <div className="flex justify-between items-center">
+            <div className="space-y-2">
+              <div className="h-8 bg-gray-200/60 rounded animate-pulse w-48"></div>
+              <div className="h-4 bg-gray-200/40 rounded animate-pulse w-96"></div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="h-4 bg-gray-200/40 rounded animate-pulse w-16"></div>
+              <div className="h-4 bg-gray-200/40 rounded animate-pulse w-16"></div>
+              <div className="h-4 bg-gray-200/40 rounded animate-pulse w-16"></div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg border shadow-sm">
+          <div className="p-4">
+            <div className="flex flex-col md:flex-row gap-4 items-end">
+              <div className="flex-1">
+                <div className="h-4 bg-gray-200/60 rounded animate-pulse w-16 mb-2"></div>
+                <div className="h-10 bg-gray-200/40 rounded animate-pulse"></div>
+              </div>
+              <div className="h-10 bg-gray-200/40 rounded animate-pulse w-32"></div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-lg overflow-hidden shadow-sm">
+              <div className="aspect-[4/3] bg-gray-200/60 animate-pulse"></div>
+              <div className="p-4 space-y-3">
+                <div className="h-4 bg-gray-200/60 rounded animate-pulse"></div>
+                <div className="h-4 bg-gray-200/40 rounded animate-pulse w-3/4"></div>
+                <div className="h-4 bg-gray-200/40 rounded animate-pulse w-1/2"></div>
+                <div className="h-8 bg-gray-200/40 rounded animate-pulse"></div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Sidebar />
-      <div className="md:pl-64 flex flex-col flex-1">
-        <main className="flex-1">
-          <div className="py-6">
-            <div className="max-w-[90%] mx-auto px-4 sm:px-6 md:px-8 space-y-6">
+    <div className="space-y-6">
               {/* Cabecera con estilo de usuarios */}
               <div className="flex justify-between items-center">
                 <div>
@@ -233,7 +266,7 @@ export default function ComunicadosPage() {
               </div>
 
               {/* Filtros */}
-              <Card>
+              <Card className="bg-white/80 backdrop-blur-sm shadow-sm">
                 <CardContent className="p-4">
                   <div className="flex flex-col md:flex-row gap-4 items-end">
                     <div className="flex-1">
@@ -301,7 +334,7 @@ export default function ComunicadosPage() {
                       paginaActual * comunicadosPorPagina
                     )
                     .map((c) => (
-                      <div key={c.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:border-gray-300 transition-colors">
+                      <div key={c.id} className="bg-white/90 backdrop-blur-sm border border-gray-200/50 rounded-lg overflow-hidden hover:border-gray-300/70 transition-colors shadow-sm">
                         {/* Imagen con relación de aspecto 4:3 */}
                         <div className="relative aspect-[4/3] overflow-hidden">
                           <ComunicadoAvatar
@@ -344,7 +377,7 @@ export default function ComunicadosPage() {
                             <div>{c.area_responsable}</div>
                             <div>
                               {c.fecha_publicacion
-                                ? new Date(c.fecha_publicacion).toLocaleDateString('es-ES')
+                                ? new Date(c.fecha_publicacion + 'T00:00:00').toLocaleDateString('es-ES')
                                 : "-"}
                             </div>
                           </div>
@@ -383,10 +416,6 @@ export default function ComunicadosPage() {
                   </div>
                 )}
               </div>
-            </div>
-          </div>
-        </main>
-      </div>
     </div>
   );
 }

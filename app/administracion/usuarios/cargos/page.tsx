@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
-import { AdminSidebar } from "@/components/ui/admin-sidebar"
+// AdminSidebar removido - ya está en el layout
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -203,20 +203,13 @@ export default function Cargos() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <AdminSidebar />
-      <div className="max-w-[90%] mx-auto flex-1 p-8 md:pl-64">
+    <div className="py-6 flex min-h-screen">
+      <div className="w-full mx-auto flex-1">
         <Card className="shadow-md">
           <CardHeader className="bg-primary/5 pb-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <CardTitle className="text-2xl font-bold">Cargos</CardTitle>
               <div className="flex flex-col sm:flex-row gap-2">
-                <Button 
-                  onClick={handleNewCargo} 
-                  className="flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" /> Añadir cargo
-                </Button>
                 <Button 
                   variant="outline" 
                   onClick={() => router.push('/administracion/usuarios')}
@@ -224,19 +217,25 @@ export default function Cargos() {
                 >
                   <ArrowLeft className="h-4 w-4" /> Volver a usuarios
                 </Button>
+                <Button 
+                  onClick={handleNewCargo} 
+                  className="flex items-center gap-2 btn-custom"
+                >
+                  <Plus className="h-4 w-4" /> Añadir cargo
+                </Button>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent className="p-6 space-y-6">
             {error && (
-              <Alert className="mb-6 bg-red-50 text-red-800 border-red-200">
+              <Alert className="bg-red-50 text-red-800 border-red-200">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
             
             {success && (
-              <Alert className="mb-6 bg-green-50 text-green-800 border-green-200">
+              <Alert className="bg-green-50 text-green-800 border-green-200">
                 <AlertDescription>{success}</AlertDescription>
               </Alert>
             )}
@@ -297,11 +296,6 @@ export default function Cargos() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{isEditing ? "Editar" : "Nuevo"} Cargo</DialogTitle>
-              <DialogDescription>
-                {isEditing 
-                  ? "Actualice los datos del cargo."
-                  : "Complete los datos para crear un nuevo cargo."}
-              </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-4 py-4">
@@ -331,7 +325,7 @@ export default function Cargos() {
             
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-              <Button onClick={handleSaveCargo}>{isEditing ? "Actualizar" : "Crear"}</Button>
+              <Button onClick={handleSaveCargo} className="btn-custom">{isEditing ? "Actualizar" : "Crear"}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

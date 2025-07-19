@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Sidebar } from "@/components/ui/sidebar"
+// Sidebar removido - ya está en el layout
 import { createSupabaseClient } from "@/lib/supabase"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
 import { ComentariosPermisos } from "@/components/permisos/comentarios-permisos"
+// import { crearNotificacionNuevaSolicitud } from "@/lib/notificaciones" // Removido - se maneja desde el servidor
 
 export default function SolicitudPermisos() {
   const [showReasonModal, setShowReasonModal] = useState(false)
@@ -235,6 +236,17 @@ export default function SolicitudPermisos() {
         return
       }
 
+      // Obtener datos del usuario para la notificación
+      const { data: userData, error: userError } = await supabase
+        .from("usuario_nomina")
+        .select("colaborador")
+        .eq("auth_user_id", session.user.id)
+        .single()
+      
+      if (userError) {
+        console.error("Error al obtener datos del usuario:", userError)
+      }
+
       // Crear la solicitud en la base de datos
       const { data, error } = await supabase
         .from('solicitudes_permisos')
@@ -251,8 +263,11 @@ export default function SolicitudPermisos() {
           estado: 'pendiente'
         }])
         .select()
+        .single()
 
       if (error) throw error
+
+      // Las notificaciones se crean automáticamente desde el servidor
 
       // Actualizar la lista de solicitudes
       const { data: solicitudesData } = await supabase
@@ -300,6 +315,45 @@ export default function SolicitudPermisos() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex justify-between items-center">
+          <div className="h-8 bg-gray-200 rounded-md w-64 animate-pulse"></div>
+          <div className="h-10 bg-gray-200 rounded-md w-40 animate-pulse"></div>
+        </div>
+
+        {/* Card Skeleton */}
+        <Card className="bg-white/80 backdrop-blur-sm">
+          <CardHeader>
+            <div className="h-6 bg-gray-200 rounded-md w-48 animate-pulse mb-2"></div>
+            <div className="h-4 bg-gray-200 rounded-md w-72 animate-pulse"></div>
+          </CardHeader>
+          <CardContent>
+            {/* Table Header Skeleton */}
+            <div className="space-y-3">
+              <div className="grid grid-cols-6 gap-4">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                ))}
+              </div>
+              
+              {/* Table Rows Skeleton */}
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="grid grid-cols-6 gap-4 py-3 border-b">
+                  {Array.from({ length: 6 }).map((_, j) => (
+                    <div key={j} className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <>
       <Dialog open={showReasonModal} onOpenChange={setShowReasonModal}>
@@ -311,14 +365,7 @@ export default function SolicitudPermisos() {
         </DialogContent>
       </Dialog>
 
-      <div className="min-h-screen bg-slate-50">
-        <Sidebar userName={userData?.colaborador || "Usuario"} />
-
-        {/* Main content */}
-        <div className="md:pl-64 flex flex-col flex-1">
-          <main className="flex-1">
-            <div className="py-6">
-              <div className="max-w-[90%] mx-auto px-4 sm:px-6 md:px-8">
+      <div className="space-y-6">
                 <div className="flex justify-between items-center ">
                   <h1 className="text-2xl font-bold tracking-tight">Solicitudes de Permisos</h1>
                   <Button onClick={() => setShowModal(true)} className="flex items-center gap-2">
@@ -473,8 +520,8 @@ export default function SolicitudPermisos() {
                 </Dialog>
 
                 {/* Tabla de solicitudes */}
-                <div className="mt-6">
-                  <Card>
+                <div className="mt-6 w-full">
+                  <Card className="bg-white/80 backdrop-blur-sm w-full">
                     <CardHeader>
                       <CardTitle>Mis Solicitudes de Permisos</CardTitle>
                       <CardDescription>
@@ -529,19 +576,10 @@ export default function SolicitudPermisos() {
                                       <Button
                                         variant="outline"
                                         size="sm"
-                                        onClick={() => descargarPermiso(solicitud.pdf_url)}
-                                      >
-                                        <Download className="h-4 w-4 mr-1" />
-                                        Descargar
-                                      </Button>
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
                                         onClick={() => markReadAndOpen(solicitud.id)}
                                         className="relative"
                                       >
-                                        <MessageSquare className="h-4 w-4 mr-1" />
-                                        Comentarios
+                                        <MessageSquare className="h-4 w-4" />
                                         {unseenCounts[solicitud.id] > 0 && (
                                           <Badge
                                             variant="destructive"
@@ -550,6 +588,14 @@ export default function SolicitudPermisos() {
                                             {unseenCounts[solicitud.id]}
                                           </Badge>
                                         )}
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => descargarPermiso(solicitud.pdf_url)}
+                                      >
+                                        <Download className="h-4 w-4 mr-1" />
+                                        Descargar
                                       </Button>
                                     </div>
                                   )}
@@ -569,10 +615,6 @@ export default function SolicitudPermisos() {
                   </Card>
                 </div>
               </div>
-            </div>
-          </main>
-        </div>
-      </div>
       {/* Modal de comentarios */}
       <Dialog open={showComentariosModal} onOpenChange={setShowComentariosModal}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">

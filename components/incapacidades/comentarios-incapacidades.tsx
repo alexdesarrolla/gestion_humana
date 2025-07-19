@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react"
 import { createSupabaseClient } from "@/lib/supabase"
+import { getAvatarUrl } from "@/lib/avatar-utils"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
@@ -67,19 +68,9 @@ export function ComentariosIncapacidades({ incapacidadId }: { incapacidadId?: st
         .single()
         .then(({ data: perfil }) => {
           const nombre: string = String(perfil?.colaborador || "Usuario")
-          const path = perfil?.avatar_path
-          const gender = perfil?.genero
-          let avatarUrl: string
-          if (path && typeof path === 'string') {
-            const { data } = supabase.storage.from("avatar").getPublicUrl(path)
-            avatarUrl = data.publicUrl
-          } else if (gender === "F") {
-            const { data } = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-f.webp")
-            avatarUrl = data.publicUrl
-          } else {
-            const { data } = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-m.webp")
-            avatarUrl = data.publicUrl
-          }
+          const path = perfil?.avatar_path as string | null
+          const gender = perfil?.genero as string | null
+          const avatarUrl = getAvatarUrl(path, gender)
           setUser({ id: authUser.id, nombre: nombre, avatarUrl: avatarUrl })
         })
     })
@@ -183,14 +174,23 @@ export function ComentariosIncapacidades({ incapacidadId }: { incapacidadId?: st
   const handleComentar = async () => {
     if (!user || !nuevoComentario.trim() || !incapacidadId) return
     setLoading(true)
-    await supabase.from("comentarios_incapacidades").insert({
+    
+    const { error } = await supabase.from("comentarios_incapacidades").insert({
       incapacidad_id: incapacidadId,
       usuario_id: user.id,
       contenido: nuevoComentario,
       respuesta_a: null,
     })
-    setNuevoComentario("")
-    setShowConfirmModal(false)
+    
+    if (error) {
+      console.error('Error al guardar comentario:', error)
+      setErrorFetch(`Error al guardar comentario: ${error.message}`)
+    } else {
+      setNuevoComentario("")
+      setShowConfirmModal(false)
+      setErrorFetch(null)
+    }
+    
     setLoading(false)
   }
 
@@ -198,14 +198,23 @@ export function ComentariosIncapacidades({ incapacidadId }: { incapacidadId?: st
   const handleResponder = async (parentId: number) => {
     if (!user || !respuestaTexto.trim() || !incapacidadId) return
     setLoading(true)
-    await supabase.from("comentarios_incapacidades").insert({
+    
+    const { error } = await supabase.from("comentarios_incapacidades").insert({
       incapacidad_id: incapacidadId,
       usuario_id: user.id,
       contenido: respuestaTexto,
       respuesta_a: parentId,
     })
-    setRespuestaTexto("")
-    setRespondiendoA(null)
+    
+    if (error) {
+      console.error('Error al guardar respuesta:', error)
+      setErrorFetch(`Error al guardar respuesta: ${error.message}`)
+    } else {
+      setRespuestaTexto("")
+      setRespondiendoA(null)
+      setErrorFetch(null)
+    }
+    
     setLoading(false)
   }
 

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase";
-import { AdminSidebar } from "@/components/ui/admin-sidebar";
+// AdminSidebar removido - ya está en el layout
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -331,9 +331,8 @@ export default function NuevoComunicado() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <AdminSidebar />
-      <div className="max-w-[90%] mx-auto flex-1 p-8 md:pl-64">
+    <div className="py-6 flex min-h-screen">
+      <div className="w-full mx-auto flex-1">
         <Card className="shadow-md">
           <CardHeader className="bg-primary/5 pb-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -360,7 +359,7 @@ export default function NuevoComunicado() {
               </Alert>
             )}
 
-            <form onSubmit={e => handleSubmit(e, false)} className="space-y-6 md:pt-8">
+            <form onSubmit={e => handleSubmit(e, true)} className="space-y-6 md:pt-8">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Izquierda: Título y Contenido */}
                 <div className="md:col-span-2 flex flex-col space-y-6">
@@ -394,19 +393,10 @@ export default function NuevoComunicado() {
                   {/* Botones */}
                   <div className="flex flex-col sm:flex-row gap-4 pt-6 md:pt-8">
                     <Button
-                      type="submit"
-                      disabled={saving || uploadingImage || uploadingFiles}
-                      className="flex-1"
-                    >
-                      {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                      Guardar Borrador
-                    </Button>
-                    <Button
                       type="button"
-                      variant="default"
                       onClick={e => handleSubmit(e, true)}
                       disabled={saving || uploadingImage || uploadingFiles}
-                      className="flex-1"
+                      className="w-full btn-custom"
                     >
                       {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                       Publicar Comunicado

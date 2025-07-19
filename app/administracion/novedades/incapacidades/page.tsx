@@ -3,11 +3,12 @@
 import React, { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
-import { AdminSidebar } from "@/components/ui/admin-sidebar"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+// AdminSidebar removido - ya está en el layout
+// Card components removidos - usando contenedor transparente
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
@@ -69,11 +70,30 @@ export default function AdminNovedadesIncapacidades() {
     const fetchIncapacidades = async () => {
       setLoading(true)
       try {
-        // 1) datos básicos de incapacidades
-        const { data, error: err1 } = await supabase
-          .from("incapacidades")
-          .select(`id, fecha_inicio, fecha_fin, fecha_subida, documento_url, usuario_id`)
-          .order("fecha_subida", { ascending: false })
+        // Ejecutar consultas en paralelo para mejor rendimiento
+        const [incapacidadesResult, usuariosResult] = await Promise.all([
+          // 1) datos básicos de incapacidades
+          supabase
+            .from("incapacidades")
+            .select(`id, fecha_inicio, fecha_fin, fecha_subida, documento_url, usuario_id`)
+            .order("fecha_subida", { ascending: false }),
+          // 2) datos de usuarios con relación a cargos
+          supabase
+            .from("usuario_nomina")
+            .select(`
+              auth_user_id, 
+              colaborador, 
+              cedula, 
+              empresa_id,
+              cargos:cargo_id (
+                nombre
+              )
+            `)
+        ])
+
+        const { data, error: err1 } = incapacidadesResult
+        const { data: usuariosData, error: err2 } = usuariosResult
+
         if (err1) {
           console.error("Error en consulta de incapacidades:", {
             error: err1,
@@ -87,18 +107,6 @@ export default function AdminNovedadesIncapacidades() {
           throw new Error(`Error al obtener incapacidades: ${errorMsg}`)
         }
 
-        // 2) datos de usuarios con relación a cargos
-        const { data: usuariosData, error: err2 } = await supabase
-          .from("usuario_nomina")
-          .select(`
-            auth_user_id, 
-            colaborador, 
-            cedula, 
-            empresa_id,
-            cargos:cargo_id (
-              nombre
-            )
-          `)
         if (err2) {
           console.error("Error en consulta de usuarios:", {
             error: err2,
@@ -401,32 +409,31 @@ export default function AdminNovedadesIncapacidades() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <AdminSidebar />
-      <div className="max-w-[90%] mx-auto flex-1 p-8 md:pl-64">
-        <Card className="w-full">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold">Gestión de Incapacidades</CardTitle>
-            <CardDescription>
+    <div className="py-6 flex">
+      <div className="w-full mx-auto flex-1">
+        <div className="w-full bg-white rounded-lg shadow-sm p-6">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold">Gestión de Incapacidades</h1>
+            <p className="text-muted-foreground">
               Visualiza y gestiona las incapacidades registradas.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+            </p>
+          </div>
+          <div className="space-y-6">
             {error && (
-              <Alert variant="destructive" className="mb-4">
+              <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
             {success && (
-              <Alert className="mb-4 bg-green-100 text-green-800 border-green-200">
+              <Alert className="bg-green-100 text-green-800 border-green-200">
                 <CheckCircle2 className="h-4 w-4" />
                 <AlertDescription>{success}</AlertDescription>
               </Alert>
             )}
 
             {/* Filtros */}  
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="flex flex-col md:flex-row gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
                 <Input
@@ -495,11 +502,35 @@ export default function AdminNovedadesIncapacidades() {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8">
-                        <div className="animate-spin border-4 border-[#441404] border-t-transparent rounded-full w-10 h-10 mx-auto"></div>
-                      </TableCell>
-                    </TableRow>
+                    // Skeleton loader para incapacidades
+                    Array.from({ length: 5 }).map((_, index) => (
+                      <TableRow key={index}>
+                        <TableCell>
+                          <Skeleton className="h-4 w-[120px]" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-[100px]" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-[140px]" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-[100px]" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-[100px]" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-[100px]" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-8 w-[80px] rounded" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-8 w-[120px] rounded" />
+                        </TableCell>
+                      </TableRow>
+                    ))
                   ) : filteredIncapacidades.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-8">
@@ -550,8 +581,8 @@ export default function AdminNovedadesIncapacidades() {
                 </TableBody>
               </Table>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Modal de comentarios */}

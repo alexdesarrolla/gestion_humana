@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
-import { AdminSidebar } from "@/components/ui/admin-sidebar"
+// AdminSidebar removido - ya está en el layout
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { AlertCircle, ArrowLeft, Plus, Edit, Trash2 } from "lucide-react"
 
@@ -203,20 +204,13 @@ export default function CategoriasComunicados() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <AdminSidebar />
-      <div className="max-w-[90%] mx-auto flex-1 p-8 md:pl-64">
+    <div className="py-6 flex min-h-screen">
+      <div className="w-full mx-auto flex-1">
         <Card className="shadow-md">
           <CardHeader className="bg-primary/5 pb-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <CardTitle className="text-2xl font-bold">Categorías de Comunicados</CardTitle>
               <div className="flex flex-col sm:flex-row gap-2">
-                <Button 
-                  onClick={handleNewCategoria} 
-                  className="flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" /> Añadir categoría
-                </Button>
                 <Button 
                   variant="outline" 
                   onClick={() => router.push('/administracion/comunicados')}
@@ -224,43 +218,65 @@ export default function CategoriasComunicados() {
                 >
                   <ArrowLeft className="h-4 w-4" /> Volver a comunicados
                 </Button>
+                <Button 
+                  onClick={handleNewCategoria} 
+                  className="btn-custom"
+                >
+                  <Plus className="h-4 w-4" /> Añadir categoría
+                </Button>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent className="p-6 space-y-6">
             {error && (
-              <Alert className="mb-6 bg-red-50 text-red-800 border-red-200">
+              <Alert className="bg-red-50 text-red-800 border-red-200">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
             
             {success && (
-              <Alert className="mb-6 bg-green-50 text-green-800 border-green-200">
+              <Alert className="bg-green-50 text-green-800 border-green-200">
                 <AlertDescription>{success}</AlertDescription>
               </Alert>
             )}
             
-            {loading ? (
-              <div className="flex justify-center items-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              </div>
-            ) : categorias.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                No hay categorías definidas. Cree una nueva categoría para comenzar.
-              </div>
-            ) : (
-              <div className="overflow-x-auto overflow-y-hidden">
-                <Table>
-                  <TableHeader>
+            <div className="overflow-x-auto overflow-y-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[200px]">Nombre</TableHead>
+                    <TableHead>Descripción</TableHead>
+                    <TableHead className="text-right w-[120px]">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    // Skeleton loader para categorías
+                    Array.from({ length: 3 }).map((_, index) => (
+                      <TableRow key={index}>
+                        <TableCell>
+                          <Skeleton className="h-4 w-[150px]" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-[200px]" />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Skeleton className="h-8 w-8 rounded" />
+                            <Skeleton className="h-8 w-8 rounded" />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : categorias.length === 0 ? (
                     <TableRow>
-                      <TableHead className="w-[200px]">Nombre</TableHead>
-                      <TableHead>Descripción</TableHead>
-                      <TableHead className="text-right w-[120px]">Acciones</TableHead>
+                      <TableCell colSpan={3} className="text-center py-8 text-gray-500">
+                        No hay categorías definidas. Cree una nueva categoría para comenzar.
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {categorias.map((categoria) => (
+                  ) : (
+                    categorias.map((categoria) => (
                       <TableRow key={categoria.id}>
                         <TableCell className="font-medium">{categoria.nombre}</TableCell>
                         <TableCell>{categoria.descripcion || "--"}</TableCell>
@@ -284,11 +300,11 @@ export default function CategoriasComunicados() {
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
         
@@ -297,11 +313,6 @@ export default function CategoriasComunicados() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{isEditing ? "Editar" : "Nueva"} Categoría</DialogTitle>
-              <DialogDescription>
-                {isEditing 
-                  ? "Actualice los datos de la categoría."
-                  : "Complete los datos para crear una nueva categoría."}
-              </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-4 py-4">
@@ -331,7 +342,7 @@ export default function CategoriasComunicados() {
             
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-              <Button onClick={handleSaveCategoria}>{isEditing ? "Actualizar" : "Crear"}</Button>
+              <Button className="btn-custom" onClick={handleSaveCategoria}>{isEditing ? "Actualizar" : "Crear"}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

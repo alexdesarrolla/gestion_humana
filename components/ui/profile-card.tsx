@@ -44,11 +44,9 @@ export function ProfileCard({ userData }: ProfileCardProps) {
   useEffect(() => {
     if (userData) {
       if (userData.avatar_path) {
-        // Si el usuario tiene un avatar personalizado, usamos esa ruta
         const { data } = supabase.storage.from("avatar").getPublicUrl(userData.avatar_path)
         setAvatarUrl(data.publicUrl)
       } else if (userData.genero) {
-        // Si no tiene avatar personalizado, usamos el predeterminado según género
         const path = userData.genero === "F" ? "defecto/avatar-f.webp" : "defecto/avatar-m.webp"
         const { data } = supabase.storage.from("avatar").getPublicUrl(path)
         setAvatarUrl(data.publicUrl)
@@ -60,7 +58,6 @@ export function ProfileCard({ userData }: ProfileCardProps) {
     const file = event.target.files?.[0]
     if (!file) return
 
-    // Validar tipo de archivo
     const fileExt = file.name.split(".").pop()?.toLowerCase()
     const allowedExts = ["jpg", "jpeg", "png", "webp"]
 
@@ -69,7 +66,6 @@ export function ProfileCard({ userData }: ProfileCardProps) {
       return
     }
 
-    // Validar tamaño (máximo 5MB)
     if (file.size > 5 * 1024 * 1024) {
       setUploadError("El archivo es demasiado grande. Máximo 5MB.")
       return
@@ -79,7 +75,6 @@ export function ProfileCard({ userData }: ProfileCardProps) {
       setIsUploading(true)
       setUploadError(null)
 
-      // Obtener la ruta actual del avatar desde la base de datos ANTES de hacer cambios
       const { data: currentUser, error: fetchError } = await supabase
         .from("usuario_nomina")
         .select("avatar_path")
@@ -94,10 +89,12 @@ export function ProfileCard({ userData }: ProfileCardProps) {
 
       const oldAvatarPath = currentUser?.avatar_path as string | undefined
 
-      // Crear un canvas para redimensionar la imagen a exactamente 600px de ancho manteniendo relación de aspecto
       const img = document.createElement('img')
       img.src = URL.createObjectURL(file)
-      await new Promise((resolve) => { img.onload = resolve })
+      await new Promise((resolve, reject) => {
+        img.onload = resolve
+        img.onerror = () => reject(new Error('Error al cargar la imagen'))
+      })
       
       const canvas = document.createElement('canvas')
       const targetWidth = 600
@@ -111,22 +108,24 @@ export function ProfileCard({ userData }: ProfileCardProps) {
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
       }
       
-      // Convertir a webp con 85% de calidad.
-      const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob((blob) => resolve(blob), 'image/webp', 0.85)
+      const blob = await new Promise<Blob | null>((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(blob)
+          } else {
+            reject(new Error('Error al convertir la imagen a WebP'))
+          }
+        }, 'image/webp', 0.85)
       })
       
       if (!blob) throw new Error('Error al convertir la imagen')
       
-      // Generar un nombre único con hash para el archivo
       const fileHash = `${userData.auth_user_id}_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`
       const fileName = `${fileHash}.webp`
       const filePath = `usuarios/${fileName}`
 
-      // Convertir el blob a File para subirlo
       const webpFile = new File([blob], fileName, { type: 'image/webp' })
       
-      // Subir el archivo procesado (webp) a Supabase Storage
       const { error: uploadError } = await supabase.storage.from("avatar").upload(filePath, webpFile, {
         cacheControl: "3600",
         upsert: false,
@@ -138,7 +137,6 @@ export function ProfileCard({ userData }: ProfileCardProps) {
         return
       }
 
-      // Actualizar la tabla usuario_nomina con la nueva ruta del avatar
       const { error: updateError } = await supabase
         .from("usuario_nomina")
         .update({ avatar_path: filePath })
@@ -146,7 +144,6 @@ export function ProfileCard({ userData }: ProfileCardProps) {
 
       if (updateError) throw updateError
 
-      // AHORA eliminar la imagen anterior del storage (después de que todo sea exitoso)
       if (oldAvatarPath && oldAvatarPath !== filePath) {
         const { error: deleteError } = await supabase.storage
           .from("avatar")
@@ -159,13 +156,11 @@ export function ProfileCard({ userData }: ProfileCardProps) {
         }
       }
 
-      // Obtener la URL pública del nuevo avatar
       const { data } = supabase.storage.from("avatar").getPublicUrl(filePath)
       setAvatarUrl(data.publicUrl)
 
-      // Cerrar el modal de opciones de carga
       setShowUploadOptions(false)
-      setIsModalOpen(false) // Cerrar el modal principal también
+      setIsModalOpen(false)
     } catch (error) {
       console.error("Error al subir avatar:", error)
       setUploadError("Error al subir el avatar. Intente nuevamente.")
@@ -186,16 +181,25 @@ export function ProfileCard({ userData }: ProfileCardProps) {
   if (!userData) return null
 
   return (
-    <Card className="border-none shadow-md">
-      <CardHeader className="bg-primary/5 pb-5">
+    <Card className="border-none shadow-md rounded-[10px]">
+      <CardHeader className="bg-[#f1ebd0] pb-5 rounded-t-[10px]">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-5">
             <div className="relative group">
               <div
-                className="h-20 w-20 rounded-full overflow-hidden cursor-pointer border-2 border-white shadow-md"
+                className="h-20 w-20 rounded-full overflow-hidden cursor-pointer border-2 border-white shadow-md bg-white"
                 onClick={() => setIsModalOpen(true)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setIsModalOpen(true)
+                  }
+                }}
+                aria-label="Ver avatar en tamaño completo"
               >
-                <img src={avatarUrl || undefined} alt="User avatar" className="h-full w-full object-cover" />
+                <img src={avatarUrl || undefined} alt="Avatar del usuario" className="h-full w-full object-cover" />
               </div>
               <div
                 className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
@@ -208,20 +212,20 @@ export function ProfileCard({ userData }: ProfileCardProps) {
             {isModalOpen && (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={closeModal}>
                 <div
-                  className="bg-white rounded-lg max-w-md w-full mx-4 overflow-hidden"
+                  className="bg-white rounded-[10px] max-w-md w-full mx-4 overflow-hidden"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex justify-between items-center p-4 border-b">
                     <h2 className="text-lg font-semibold">Vista previa</h2>
-                    <button className="rounded-full p-1 hover:bg-gray-200 transition-colors" onClick={closeModal}>
+                    <button className="rounded-[10px] p-1 hover:bg-gray-200 transition-colors" onClick={closeModal}>
                       <X className="h-5 w-5" />
                     </button>
                   </div>
 
                   <div className="p-6 flex flex-col items-center">
                     <div className="relative mb-6">
-                      <div className="h-40 w-40 rounded-full overflow-hidden border-4 border-white shadow-lg">
-                        <img src={avatarUrl || undefined} alt="User avatar" className="h-full w-full object-cover" />
+                      <div className="h-40 w-40 rounded-[10px] overflow-hidden border-4 border-white shadow-lg">
+                        <img src={avatarUrl || undefined} alt="Avatar del usuario" className="h-full w-full object-cover" />
                       </div>
                     </div>
 
@@ -247,14 +251,13 @@ export function ProfileCard({ userData }: ProfileCardProps) {
               </div>
             )}
 
-            {/* Modal de opciones de carga */}
             {showUploadOptions && (
               <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
+                <div className="bg-white rounded-[10px] p-6 max-w-sm w-full mx-4">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-medium">Cambiar avatar</h3>
                     <button
-                      className="rounded-full p-1 hover:bg-gray-100"
+                      className="rounded-[10px] p-1 hover:bg-gray-100"
                       onClick={() => setShowUploadOptions(false)}
                       disabled={isUploading}
                     >
@@ -270,9 +273,10 @@ export function ProfileCard({ userData }: ProfileCardProps) {
 
                   <div className="space-y-4">
                     <button
-                      className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                      className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-300 rounded-[10px] hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={triggerFileInput}
                       disabled={isUploading}
+                      aria-label={isUploading ? "Subiendo imagen" : "Seleccionar imagen desde el dispositivo"}
                     >
                       {isUploading ? (
                         <Loader2 className="h-5 w-5 text-primary animate-spin" />
@@ -302,12 +306,17 @@ export function ProfileCard({ userData }: ProfileCardProps) {
               <CardTitle className="text-2xl md:text-2xl font-bold text-sm">{userData?.colaborador}</CardTitle>
               <p className="text-muted-foreground text-sm">{userData?.cargos?.nombre || "Sin cargo asignado"}</p>
               <div className="flex flex-wrap gap-2 mt-2">
-                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-3 py-1 text-sm">
+                <Badge variant="outline" className="bg-[#351e13] text-white border-[#351e13] px-3 py-1 text-sm">
                   {userData?.empresas?.nombre || "Empresa no asignada"}
                 </Badge>
+                {userData?.estado === "inactivo" && (
+                  <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200 px-3 py-1 text-sm">
+                    Inactivo
+                  </Badge>
+                )}
                 {userData?.enVacaciones && (
                   <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 px-3 py-1 text-sm">
-                    De vacaciones
+                    De vacaciones🌴
                   </Badge>
                 )}
               </div>
@@ -315,12 +324,12 @@ export function ProfileCard({ userData }: ProfileCardProps) {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="pt-6">
+      <CardContent className="pt-6 rounded-b-[10px]">
         <Tabs defaultValue="personal" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 h-auto [&>*]:whitespace-normal [&>*]:">
-            <TabsTrigger value="personal">Información Personal</TabsTrigger>
-            <TabsTrigger value="laboral">Información Laboral</TabsTrigger>
-            <TabsTrigger value="afiliaciones">Afiliaciones</TabsTrigger>
+          <TabsList className="grid w-full h-auto [&>*]:whitespace-normal grid-cols-3 rounded-[10px]">
+            <TabsTrigger value="personal" className="rounded-[10px]">Información Personal</TabsTrigger>
+            <TabsTrigger value="laboral" className="rounded-[10px]">Información Laboral</TabsTrigger>
+            <TabsTrigger value="afiliaciones" className="rounded-[10px]">Afiliaciones</TabsTrigger>
           </TabsList>
 
           <TabsContent value="personal" className="pt-4">
@@ -366,7 +375,7 @@ export function ProfileCard({ userData }: ProfileCardProps) {
               </div>
 
               <div className="flex items-start gap-3">
-                <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <User className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Edad</p>
                   <p className="text-sm font-medium">{userData?.edad || "No disponible"} años</p>
@@ -424,6 +433,52 @@ export function ProfileCard({ userData }: ProfileCardProps) {
                   <p className="text-sm font-medium">{userData?.sedes?.nombre || "No disponible"}</p>
                 </div>
               </div>
+
+              <div className="flex items-start gap-3">
+                <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Estado de Vacaciones</p>
+                  <p className="text-sm font-medium">
+                    {(() => {
+                      if (userData?.estadoVacaciones === "ya_tomo" && userData?.rangoVacaciones) {
+                        const fechaInicio = new Date(userData.rangoVacaciones.inicio + 'T00:00:00').toLocaleDateString('es-ES')
+                        const fechaFin = new Date(userData.rangoVacaciones.fin + 'T00:00:00').toLocaleDateString('es-ES')
+                        return `Ya tomó vacaciones (${fechaInicio} - ${fechaFin})`
+                      } else if (userData?.estadoVacaciones === "en_vacaciones" && userData?.rangoVacaciones) {
+                        const fechaInicio = new Date(userData.rangoVacaciones.inicio + 'T00:00:00').toLocaleDateString('es-ES')
+                        const fechaFin = new Date(userData.rangoVacaciones.fin + 'T00:00:00').toLocaleDateString('es-ES')
+                        return `Actualmente de vacaciones (${fechaInicio} - ${fechaFin})`
+                      } else if (userData?.estadoVacaciones === "pendientes" && userData?.rangoVacaciones) {
+                        const fechaInicio = new Date(userData.rangoVacaciones.inicio + 'T00:00:00').toLocaleDateString('es-ES')
+                        const fechaFin = new Date(userData.rangoVacaciones.fin + 'T00:00:00').toLocaleDateString('es-ES')
+                        return `Vacaciones pendientes para (${fechaInicio} - ${fechaFin})`
+                      } else {
+                        return "No tiene vacaciones aprobadas actualmente"
+                      }
+                    })()}
+                  </p>
+                </div>
+              </div>
+
+              {userData?.estado === "inactivo" && (
+                <>
+                  <div className="flex items-start gap-3">
+                    <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Fecha de Retiro</p>
+                      <p className="text-sm font-medium">{userData?.fecha_retiro || "No disponible"}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <User className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Motivo de Retiro</p>
+                      <p className="text-sm font-medium">{userData?.motivo_retiro || "No disponible"}</p>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </TabsContent>
 

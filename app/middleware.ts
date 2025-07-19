@@ -26,10 +26,10 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/login', request.url));
     }
 
-    // Obtener el rol del usuario
+    // Obtener el rol y estado del usuario
     const { data: userData, error: userError } = await supabase
       .from('usuario_nomina')
-      .select('rol')
+      .select('rol, estado')
       .eq('auth_user_id', session.user.id)
       .single();
 
@@ -37,12 +37,26 @@ export async function middleware(request: NextRequest) {
       throw userError;
     }
 
-    // Verificar acceso según el rol
+    // Verificar si el usuario está activo
+    if (userData.estado !== 'activo') {
+      // Si el usuario no está activo, cerrar sesión y redirigir al login
+      await supabase.auth.signOut();
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+
+    // Verificar acceso según el rol y permisos
     const path = request.nextUrl.pathname;
 
-    if (path.startsWith('/administracion') && userData.rol !== 'administrador') {
-      // Si intenta acceder a la sección de administración sin ser administrador, redirigir a perfil
-      return NextResponse.redirect(new URL('/perfil', request.url));
+    if (path.startsWith('/administracion')) {
+      // Los administradores tienen acceso completo
+      if (userData.rol === 'administrador') {
+        return NextResponse.next();
+      }
+      
+      // Solo los administradores tienen acceso a las rutas de administración
+      if (userData.rol !== 'administrador') {
+        return NextResponse.redirect(new URL('/perfil', request.url));
+      }
     }
 
     return NextResponse.next();

@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
-import { AdminSidebar } from "@/components/ui/admin-sidebar"
+// AdminSidebar removido - ya está en el layout
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import ComunicadoAvatar from "@/components/ui/comunicado-avatar"
 
 import { CalendarIcon, Building2Icon, Users2Icon, ArrowLeftIcon, FileTextIcon, BriefcaseIcon, PaperclipIcon, DownloadIcon } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 
 
 interface ComunicadoDetalle {
@@ -99,10 +100,56 @@ export default function DetalleComunicadoPage() {
 
     if (loading) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-gray-100">
-                <div className="flex flex-col items-center gap-2">
-                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-                    <p className="text-muted-foreground">Cargando comunicado...</p>
+            <div className="min-h-screen">
+                <div className="flex flex-col flex-1">
+                    <main className="flex-1 py-8">
+                        <div className="w-full mx-auto">
+                            <div className="mb-8">
+                                <Skeleton className="h-12 w-48" />
+                            </div>
+                            
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                {/* Columna principal skeleton */}
+                                <div className="lg:col-span-2 space-y-8">
+                                    <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
+                                        <Skeleton className="h-8 w-3/4 mb-5" />
+                                        <div className="space-y-4">
+                                            <Skeleton className="h-4 w-full" />
+                                            <Skeleton className="h-4 w-5/6" />
+                                            <Skeleton className="h-4 w-4/5" />
+                                            <Skeleton className="h-4 w-full" />
+                                            <Skeleton className="h-4 w-3/4" />
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <Skeleton className="w-10 h-10 rounded-full" />
+                                            <Skeleton className="h-5 w-40" />
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            <Skeleton className="h-6 w-20 rounded-md" />
+                                            <Skeleton className="h-6 w-24 rounded-md" />
+                                            <Skeleton className="h-6 w-28 rounded-md" />
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* Columna lateral skeleton */}
+                                <div className="lg:col-span-1 space-y-6">
+                                    <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
+                                        <Skeleton className="w-full h-48 rounded-lg mb-4" />
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <Skeleton className="w-10 h-10 rounded-full" />
+                                            <Skeleton className="h-5 w-32" />
+                                        </div>
+                                        <Skeleton className="h-4 w-full mb-2" />
+                                        <Skeleton className="h-4 w-3/4" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
                 </div>
             </div>
         )
@@ -151,12 +198,11 @@ export default function DetalleComunicadoPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50">
-            <AdminSidebar />
-            <div className="md:pl-64 flex flex-col flex-1">
-                <main className="flex-1 py-8 px-6">
-                    <div className="max-w-[90%]  mx-auto">
-                        <div className="mb-8">
+        <div className="min-h-screen">
+            <div className="flex flex-col flex-1">
+                <main className="flex-1 py-8">
+                    <div className="w-full mx-auto">
+                        <div className="mb-8 flex justify-end">
                             <Button 
                                 variant="outline" 
                                 className="gap-3 text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-all duration-200 border border-slate-200 bg-white shadow-sm px-6 py-3" 

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
-import { AdminSidebar } from "@/components/ui/admin-sidebar"
+// AdminSidebar removido - ya está en el layout
 import { Card, CardContent} from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,6 +17,7 @@ import { FileDown } from "lucide-react";
 import { jsPDF } from "jspdf"
 import html2canvas from "html2canvas"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Skeleton } from "@/components/ui/skeleton"
 import { ComentariosPermisos } from "@/components/permisos/comentarios-permisos"
 
 // Tipos para los datos principales
@@ -168,50 +169,55 @@ export default function AdminSolicitudesPermisos() {
         // Guardar ID del administrador para uso en comentarios
         setAdminId(session.user.id)
         
-        // Realizar la consulta con una estructura más simple
-        const { data, error } = await supabase
-          .from('solicitudes_permisos')
-          .select(`
-            id, tipo_permiso, fecha_inicio, fecha_fin, hora_inicio, hora_fin, 
-            motivo, compensacion, estado, fecha_solicitud, fecha_resolucion, 
-            motivo_rechazo, pdf_url, usuario_id, admin_id
-          `)
-          .order('fecha_solicitud', { ascending: false })
+        // Ejecutar consultas en paralelo para mejor rendimiento
+        const [solicitudesResult] = await Promise.all([
+          supabase
+            .from('solicitudes_permisos')
+            .select(`
+              id, tipo_permiso, fecha_inicio, fecha_fin, hora_inicio, hora_fin, 
+              motivo, compensacion, estado, fecha_solicitud, fecha_resolucion, 
+              motivo_rechazo, pdf_url, usuario_id, admin_id
+            `)
+            .order('fecha_solicitud', { ascending: false })
+        ])
 
-        if (error) {
-          console.error("Error al obtener solicitudes:", error)
-          setError("Error al cargar las solicitudes: " + error.message)
-          setLoading(false)
+        if (solicitudesResult.error) {
+          console.error("Error al obtener solicitudes:", solicitudesResult.error)
+          setError("Error al cargar las solicitudes: " + solicitudesResult.error.message)
           return
         }
         
-        // Si la consulta básica funciona, obtener los datos de usuario por separado
-        if (data && data.length > 0) {
+        // Si la consulta básica funciona, obtener los datos de usuario en paralelo
+        if (solicitudesResult.data && solicitudesResult.data.length > 0) {
           // Obtener IDs únicos de usuarios
-          const userIds = [...new Set(data.map(item => item.usuario_id))]
+          const userIds = [...new Set(solicitudesResult.data.map(item => item.usuario_id))]
           
-          // Obtener datos de usuarios
-          const { data: usuariosData, error: usuariosError } = await supabase
-            .from('usuario_nomina')
-            .select(`
-              auth_user_id,
-              colaborador,
-              cedula,
-              cargo_id,
-              fecha_ingreso,
-              empresa_id,
-              empresas:empresas(nombre),
-              cargos:cargo_id(nombre)
-            `)
-            .in('auth_user_id', userIds);
-          if (usuariosError) {
-            console.error('Error al obtener datos de usuarios:', usuariosError);
-            setError('Error al cargar datos de usuarios: ' + usuariosError.message);
+          // Obtener datos de usuarios en paralelo
+          const [usuariosResult] = await Promise.all([
+            supabase
+              .from('usuario_nomina')
+              .select(`
+                auth_user_id,
+                colaborador,
+                cedula,
+                cargo_id,
+                fecha_ingreso,
+                empresa_id,
+                empresas:empresas(nombre),
+                cargos:cargo_id(nombre)
+              `)
+              .in('auth_user_id', userIds)
+          ])
+          
+          if (usuariosResult.error) {
+            console.error('Error al obtener datos de usuarios:', usuariosResult.error)
+            setError('Error al cargar datos de usuarios: ' + usuariosResult.error.message)
+            return
           }
           
           // Combinar los datos
-          const solicitudesCompletas = data.map(solicitud => {
-            const usuario = usuariosData?.find(u => u.auth_user_id === solicitud.usuario_id)
+          const solicitudesCompletas = solicitudesResult.data.map(solicitud => {
+            const usuario = usuariosResult.data?.find(u => u.auth_user_id === solicitud.usuario_id)
             return {
               ...solicitud,
               usuario: usuario || null
@@ -225,12 +231,12 @@ export default function AdminSolicitudesPermisos() {
           // Extraer empresas únicas para el filtro
           const uniqueEmpresas = Array.from(
             new Set(
-              usuariosData
-?.filter(usuario => {
-  if (!usuario.empresas) return false;
-  const empresas = usuario.empresas as EmpresaData;
-  return !!empresas.nombre;
-})
+              usuariosResult.data
+                ?.filter(usuario => {
+                  if (!usuario.empresas) return false;
+                  const empresas = usuario.empresas as EmpresaData;
+                  return !!empresas.nombre;
+                })
                 .map(usuario => {
                   const empresas = usuario.empresas as { nombre?: string };
                   return empresas.nombre;
@@ -710,25 +716,90 @@ export default function AdminSolicitudesPermisos() {
 
   if (loading && solicitudes.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-100 flex flex-col justify-center items-center">
-        <div className="text-2xl font-semibold text-gray-700">Cargando...</div>
+      <div className="min-h-screen">
+        <div className="flex flex-col flex-1">
+          <main className="flex-1">
+            <div className="w-full mx-auto space-y-6">
+              {/* Header Skeleton */}
+              <div className="flex justify-between items-center">
+                <div>
+                  <Skeleton className="h-8 w-64 mb-2" />
+                  <Skeleton className="h-4 w-96" />
+                </div>
+                <Skeleton className="h-10 w-32" />
+              </div>
+
+              {/* Filtros Skeleton */}
+              <Card>
+                <CardContent className="p-6 space-y-4">
+                  <div className="flex flex-col md:flex-row gap-4 items-end">
+                    <div className="w-full md:w-1/3">
+                      <Skeleton className="h-4 w-16 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div className="w-full md:w-1/5">
+                      <Skeleton className="h-4 w-12 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div className="w-full md:w-1/5">
+                      <Skeleton className="h-4 w-16 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div className="w-full md:w-1/5">
+                      <Skeleton className="h-4 w-24 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <Skeleton className="h-10 w-32" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Tabla Skeleton */}
+              <Card>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        {Array.from({ length: 8 }).map((_, i) => (
+                          <TableHead key={i}>
+                            <Skeleton className="h-4 w-20" />
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <TableRow key={i}>
+                          {Array.from({ length: 8 }).map((_, j) => (
+                            <TableCell key={j}>
+                              <Skeleton className="h-4 w-16" />
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
+          </main>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <AdminSidebar userName="Administrador" />
-      <div className="md:pl-64 flex flex-col flex-1">
-        <main className="flex-1 py-6">
-          <div className="max-w-[90%] mx-auto space-y-6">
+    <div className="py-6 min-h-screen">
+      <div className="flex flex-col flex-1">
+        <main className="flex-1">
+          <div className="w-full mx-auto space-y-6">
             {/* Título y Descripción */}
             <div className="flex justify-between items-center">
               <div>
                 <h1 className="text-2xl font-bold tracking-tight">Solicitudes de Permisos</h1>
                 <p className="text-muted-foreground">Gestiona las solicitudes de permisos laborales.</p>
               </div>
-              <Button onClick={() => router.push('/administracion/solicitudes/permisos/historico')}>Ver histórico</Button>
+              <Button className="btn-custom" onClick={() => router.push('/administracion/solicitudes/permisos/historico')}>Ver histórico</Button>
             </div>
 
             {/* Alertas */}
@@ -747,7 +818,7 @@ export default function AdminSolicitudesPermisos() {
 
             {/* Filtros */}
             <Card>
-              <CardContent className="p-4">
+              <CardContent className="p-6 space-y-4">
                 <div className="flex flex-col md:flex-row gap-4 items-end">
                   {/* Buscar */}
                   <div className="w-full md:w-1/3">
@@ -888,12 +959,12 @@ export default function AdminSolicitudesPermisos() {
                           <TableCell>{new Date(solicitud.fecha_fin).toLocaleDateString()}</TableCell>
                           <TableCell>
                             <Badge
-                              variant={
+                              className={
                                 solicitud.estado === 'aprobado'
-                                  ? 'secondary'
+                                  ? 'bg-green-100 text-green-800'
                                   : solicitud.estado === 'rechazado'
-                                  ? 'destructive'
-                                  : 'default'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-yellow-100 text-yellow-800'
                               }
                             >
                               {solicitud.estado.charAt(0).toUpperCase() + solicitud.estado.slice(1)}
@@ -935,24 +1006,20 @@ export default function AdminSolicitudesPermisos() {
                                   Aprobar
                                 </Button>
                               )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => markReadAndOpen(solicitud.id)}
-                                className="text-gray-500 hover:text-gray-700 relative"
-                              >
-                                <div className="flex items-center">
+                              <div className="relative inline-block">
+                                {unseenCounts[solicitud.id] > 0 && (
+                                  <span className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full text-xs w-5 h-5 flex items-center justify-center">
+                                    {unseenCounts[solicitud.id]}
+                                  </span>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => markReadAndOpen(solicitud.id)}
+                                >
                                   <MessageSquare className="h-4 w-4" />
-                                  {unseenCounts[solicitud.id] > 0 && (
-                                    <Badge 
-                                      variant="destructive" 
-                                      className="ml-1 h-5 w-auto min-w-[20px] flex items-center justify-center p-1 text-xs rounded-full"
-                                    >
-                                      {unseenCounts[solicitud.id]}
-                                    </Badge>
-                                  )}
-                                </div>
-                              </Button>
+                                </Button>
+                              </div>
                             </div>
                           </TableCell>
                         </TableRow>

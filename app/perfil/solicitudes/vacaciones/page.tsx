@@ -2,19 +2,20 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Sidebar } from "@/components/ui/sidebar"
+// Sidebar removido - ya está en el layout
 import { createSupabaseClient } from "@/lib/supabase"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, CheckCircle2, Calendar } from "lucide-react"
+import { AlertCircle, CheckCircle2, Calendar, MessageSquare } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import UserVacacionesCalendar from "@/components/vacaciones/UserVacacionesCalendar"
 import { ComentariosVacaciones } from "@/components/vacaciones/comentarios-vacaciones"
+// import { crearNotificacionNuevaSolicitud } from "@/lib/notificaciones" // Removido - se maneja desde el servidor
 
 export default function SolicitudVacaciones() {
   const [showReasonModal, setShowReasonModal] = useState(false)
@@ -133,16 +134,37 @@ export default function SolicitudVacaciones() {
     checkAuth()
   }, [])
 
-  const formatDate = (date: string | Date) => {
-    const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' }
+  const formatDate = (date: string | Date | null | undefined) => {
+    if (!date) return 'Fecha no disponible'
     
-    // If it's a string in YYYY-MM-DD format, parse it manually to avoid timezone issues
-    if (typeof date === 'string' && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      const [year, month, day] = date.split('-').map(Number)
-      return new Date(year, month - 1, day).toLocaleDateString('es-CO', options)
+    try {
+      const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' }
+      
+      // If it's a string in YYYY-MM-DD format, parse it manually to avoid timezone issues
+      if (typeof date === 'string' && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = date.split('-').map(Number)
+        return new Date(year, month - 1, day).toLocaleDateString('es-CO', options)
+      }
+      
+      // Handle timestamp strings from PostgreSQL
+      if (typeof date === 'string') {
+        const parsedDate = new Date(date)
+        if (!isNaN(parsedDate.getTime())) {
+          return parsedDate.toLocaleDateString('es-CO', options)
+        }
+      }
+      
+      // Handle Date objects
+      if (date instanceof Date) {
+        return date.toLocaleDateString('es-CO', options)
+      }
+      
+      // Fallback for other string formats
+      return new Date(date + 'T00:00:00').toLocaleDateString('es-CO', options)
+    } catch (error) {
+      console.error('Error al formatear fecha:', date, error)
+      return 'Fecha inválida'
     }
-    
-    return new Date(date).toLocaleDateString('es-CO', options)
   }
 
   const enviarSolicitud = async () => {
@@ -169,6 +191,17 @@ export default function SolicitudVacaciones() {
         return
       }
 
+      // Obtener datos del usuario para la notificación
+      const { data: userData, error: userError } = await supabase
+        .from("usuario_nomina")
+        .select("colaborador")
+        .eq("auth_user_id", session.user.id)
+        .single()
+      
+      if (userError) {
+        console.error("Error al obtener datos del usuario:", userError)
+      }
+
       // Crear la solicitud en la base de datos
       const { data, error } = await supabase
         .from('solicitudes_vacaciones')
@@ -179,8 +212,11 @@ export default function SolicitudVacaciones() {
           estado: 'pendiente'
         }])
         .select()
+        .single()
 
       if (error) throw error
+
+      // Las notificaciones se crean automáticamente desde el servidor
 
       // Actualizar la lista de solicitudes
       const { data: solicitudesData } = await supabase
@@ -204,8 +240,21 @@ export default function SolicitudVacaciones() {
   const calcularDiasVacaciones = (fechaInicio: string | Date, fechaFin: string | Date) => {
     const inicio = typeof fechaInicio === 'string' ? new Date(fechaInicio) : fechaInicio
     const fin = typeof fechaFin === 'string' ? new Date(fechaFin) : fechaFin
-    const diferencia = fin.getTime() - inicio.getTime()
-    return Math.ceil(diferencia / (1000 * 3600 * 24)) + 1 // +1 para incluir el día de inicio
+    
+    let diasVacaciones = 0
+    const fechaActual = new Date(inicio)
+    
+    // Iterar día por día desde la fecha de inicio hasta la fecha de fin
+    while (fechaActual <= fin) {
+      // Solo contar si no es domingo (día 0)
+      if (fechaActual.getDay() !== 0) {
+        diasVacaciones++
+      }
+      // Avanzar al siguiente día
+      fechaActual.setDate(fechaActual.getDate() + 1)
+    }
+    
+    return diasVacaciones
   }
 
   const handleDateRangeSelect = (range: { from: Date | undefined; to: Date | undefined }) => {
@@ -326,20 +375,47 @@ export default function SolicitudVacaciones() {
         </DialogContent>
       </Dialog>
 
-      {loading && !userData ? (
-        <div className="min-h-screen bg-gray-100 flex flex-col justify-center items-center">
-          <div className="text-2xl font-semibold text-gray-700">Cargando...</div>
+      {loading ? (
+        <div className="space-y-6">
+          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-6 shadow-sm">
+            <div className="flex justify-between items-center">
+              <div className="space-y-2">
+                <div className="h-8 bg-gray-200/60 rounded animate-pulse w-64"></div>
+                <div className="h-4 bg-gray-200/40 rounded animate-pulse w-80"></div>
+              </div>
+              <div className="h-10 bg-gray-200/40 rounded animate-pulse w-40"></div>
+            </div>
+          </div>
+          
+          <div className="bg-white/80 backdrop-blur-sm rounded-lg border shadow-sm">
+            <div className="p-6">
+              <div className="space-y-4">
+                <div className="h-6 bg-gray-200/60 rounded animate-pulse w-40"></div>
+                <div className="h-4 bg-gray-200/40 rounded animate-pulse w-72"></div>
+              </div>
+            </div>
+            <div className="border-t">
+              <div className="p-4">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-7 gap-4">
+                    {[...Array(7)].map((_, i) => (
+                      <div key={i} className="h-4 bg-gray-200/60 rounded animate-pulse"></div>
+                    ))}
+                  </div>
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="grid grid-cols-7 gap-4">
+                      {[...Array(7)].map((_, j) => (
+                        <div key={j} className="h-4 bg-gray-200/40 rounded animate-pulse"></div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       ) : (
-        <div className="min-h-screen bg-slate-50">
-          <Sidebar userName={userData?.colaborador} />
-
-          {/* Main content */}
-          <div className="md:pl-64 flex flex-col flex-1">
-            <main className="flex-1">
-              <div className="py-6">
-                <div className="max-w-[90%] mx-auto px-4 sm:px-6 md:px-8">
-                  <div className="space-y-6">
+        <div className="space-y-6">
                     <div className="flex justify-between items-center">
                       <div>
                         <h1 className="text-2xl font-bold tracking-tight">Solicitudes de Vacaciones</h1>
@@ -366,7 +442,7 @@ export default function SolicitudVacaciones() {
                       </Alert>
                     )}
 
-                    <Card>
+                    <Card className="bg-white/80 backdrop-blur-sm shadow-sm">
                       <CardHeader>
                         <CardTitle>Mis solicitudes</CardTitle>
                         <CardDescription>
@@ -382,14 +458,13 @@ export default function SolicitudVacaciones() {
                               <TableHead>Fecha de fin</TableHead>
                               <TableHead>Días</TableHead>
                               <TableHead>Estado</TableHead>
-                              <TableHead>Comentarios</TableHead>
                               <TableHead>Acciones</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {solicitudes.length === 0 ? (
                               <TableRow>
-                                <TableCell colSpan={7} className="text-center">
+                                <TableCell colSpan={6} className="text-center">
                                   No has realizado ninguna solicitud de vacaciones.
                                 </TableCell>
                               </TableRow>
@@ -423,24 +498,24 @@ export default function SolicitudVacaciones() {
                                     </Badge>
                                   </TableCell>
                                   <TableCell>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => handleShowComments(solicitud.id.toString())}
-                                    >
-                                      Ver comentarios
-                                    </Button>
-                                  </TableCell>
-                                  <TableCell>
-                                    {solicitud.estado === "rechazado" && solicitud.motivo_rechazo && (
+                                    <div className="flex gap-2">
                                       <Button
                                         variant="outline"
                                         size="sm"
-                                        onClick={() => handleShowReason(solicitud.motivo_rechazo)}
+                                        onClick={() => handleShowComments(solicitud.id.toString())}
                                       >
-                                        Ver motivo
+                                        <MessageSquare className="h-4 w-4" />
                                       </Button>
-                                    )}
+                                      {solicitud.estado === "rechazado" && solicitud.motivo_rechazo && (
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => handleShowReason(solicitud.motivo_rechazo)}
+                                        >
+                                          Ver motivo
+                                        </Button>
+                                      )}
+                                    </div>
                                   </TableCell>
                                 </TableRow>
                               ))
@@ -449,11 +524,6 @@ export default function SolicitudVacaciones() {
                         </Table>
                       </CardContent>
                     </Card>
-                  </div>
-                </div>
-              </div>
-            </main>
-          </div>
         </div>
       )}
     </>

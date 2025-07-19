@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Sidebar } from "@/components/ui/sidebar"
+// Sidebar removido - ya está en el layout
 import { createSupabaseClient } from "@/lib/supabase"
 import {
   Card,
@@ -147,14 +147,26 @@ export default function CertificacionLaboral() {
   // enviar nueva solicitud
   const enviarSolicitud = async () => {
     if (!formData.dirigidoA) {
-      setError("Por favor completa el campo ‘Dirigido a’")
+      setError("Por favor completa el campo 'Dirigido a'")
       return
     }
     setLoading(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return router.push("/login")
-      const { error: insErr } = await supabase
+      
+      // Obtener datos del usuario para la notificación
+      const { data: userData, error: userError } = await supabase
+        .from("usuario_nomina")
+        .select("colaborador")
+        .eq("auth_user_id", session.user.id)
+        .single()
+      
+      if (userError) {
+        console.error("Error al obtener datos del usuario:", userError)
+      }
+      
+      const { data: nuevaSolicitud, error: insErr } = await supabase
         .from("solicitudes_certificacion")
         .insert([{
           usuario_id: session.user.id,
@@ -163,7 +175,12 @@ export default function CertificacionLaboral() {
           estado: "pendiente",
           salario_contrato: formData.incluirSalario ? "Si" : "No",
         }])
+        .select()
+        .single()
+      
       if (insErr) throw insErr
+
+      // Las notificaciones se crean automáticamente desde el servidor
 
       // recarga lista
       const { data: solData } = await supabase
@@ -201,6 +218,44 @@ export default function CertificacionLaboral() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex justify-between items-center">
+          <div className="h-8 bg-gray-200 rounded-md w-80 animate-pulse"></div>
+          <div className="flex gap-2">
+            <div className="h-10 bg-gray-200 rounded-md w-24 animate-pulse"></div>
+            <div className="h-10 bg-gray-200 rounded-md w-36 animate-pulse"></div>
+          </div>
+        </div>
+
+        {/* Card Skeleton */}
+        <Card className="bg-white/80 backdrop-blur-sm">
+          <CardContent className="p-0">
+            {/* Table Header Skeleton */}
+            <div className="space-y-3 p-4">
+              <div className="grid grid-cols-6 gap-4">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                ))}
+              </div>
+              
+              {/* Table Rows Skeleton */}
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="grid grid-cols-6 gap-4 py-3 border-b">
+                  {Array.from({ length: 6 }).map((_, j) => (
+                    <div key={j} className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <>
       {/* --------------------------- */}
@@ -212,6 +267,9 @@ export default function CertificacionLaboral() {
         }}
       >
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Comentarios de la solicitud</DialogTitle>
+          </DialogHeader>
           {currentSolicId && (
             <ComentariosCertificacion solicitudId={currentSolicId} />
           )}
@@ -220,22 +278,27 @@ export default function CertificacionLaboral() {
 
       {/* --------------------------- */}
       {/* Página principal */}
-      <div className="min-h-screen bg-slate-50">
-        <Sidebar userName="Usuario" />
-        <div className="md:pl-64 flex flex-col flex-1">
-          <main className="flex-1 py-6">
-            <div className="max-w-[90%] mx-auto space-y-6">
+      <div className="space-y-6">
               {/* Header */}
               <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold">
                   Solicitudes de Certificación Laboral
                 </h1>
-                <Button
-                  onClick={() => setShowNewModal(true)}
-                  className="flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" /> Nueva solicitud
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => router.push('/perfil/solicitudes/certificacion-laboral/historico')}
+                    className="flex items-center gap-2"
+                  >
+                    <FileText className="h-4 w-4" /> Histórico
+                  </Button>
+                  <Button
+                    onClick={() => setShowNewModal(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" /> Nueva solicitud
+                  </Button>
+                </div>
               </div>
 
               {/* Alerts */}
@@ -253,7 +316,7 @@ export default function CertificacionLaboral() {
               )}
 
               {/* Tabla de solicitudes */}
-              <Card>
+              <Card className="bg-white/80 backdrop-blur-sm">
                 <CardContent className="p-0">
                   <Table>
                     <TableHeader>
@@ -317,17 +380,6 @@ export default function CertificacionLaboral() {
                                 Descargar
                               </Button>
                             )}
-                            {s.estado === "rechazado" && s.motivo_rechazo && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() =>
-                                  alert(`Motivo: ${s.motivo_rechazo}`)
-                                }
-                              >
-                                Ver motivo
-                              </Button>
-                            )}
                             <div className="relative inline-block">
                               {unseenCounts[s.id] > 0 && (
                                 <span className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full text-xs w-5 h-5 flex items-center justify-center">
@@ -342,6 +394,17 @@ export default function CertificacionLaboral() {
                                 <MessageSquare className="h-4 w-4" />
                               </Button>
                             </div>
+                            {s.estado === "rechazado" && s.motivo_rechazo && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  alert(`Motivo: ${s.motivo_rechazo}`)
+                                }
+                              >
+                                Ver motivo
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -421,9 +484,6 @@ export default function CertificacionLaboral() {
                 </DialogContent>
               </Dialog>
             </div>
-          </main>
-        </div>
-      </div>
     </>
   )
 }

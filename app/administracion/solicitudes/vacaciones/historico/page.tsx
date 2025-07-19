@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
-import { AdminSidebar } from "@/components/ui/admin-sidebar"
+// AdminSidebar removido - ya está en el layout
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -24,6 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Search, X, MessageSquare } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ComentariosVacaciones } from "@/components/vacaciones/comentarios-vacaciones"
@@ -42,6 +43,8 @@ export default function AdminSolicitudesVacaciones() {
   const [selectedEmpresa, setSelectedEmpresa] = useState<string>("all")
   const [showCommentsModal, setShowCommentsModal] = useState(false)
   const [selectedSolicitudId, setSelectedSolicitudId] = useState<string | null>(null)
+  const [showMotivoModal, setShowMotivoModal] = useState(false)
+  const [selectedMotivo, setSelectedMotivo] = useState<string>("")
 
   useEffect(() => {
     const fetchSolicitudes = async () => {
@@ -50,7 +53,7 @@ export default function AdminSolicitudesVacaciones() {
         const supabase = createSupabaseClient()
 
         // 1. Obtener solicitudes de vacaciones
-        const { data, error: fetchError } = await supabase
+        const solicitudesPromise = supabase
           .from("solicitudes_vacaciones")
           .select(
             `
@@ -67,6 +70,8 @@ export default function AdminSolicitudesVacaciones() {
           )
           .order("fecha_solicitud", { ascending: false })
 
+        const [{ data, error: fetchError }] = await Promise.all([solicitudesPromise])
+
         if (fetchError) throw fetchError
         if (!data) {
           setSolicitudes([])
@@ -74,13 +79,13 @@ export default function AdminSolicitudesVacaciones() {
           return
         }
 
-        // 2. Obtener datos de usuarios y admins
+        // 2. Obtener datos de usuarios y admins en paralelo
         const userIds = Array.from(new Set(data.map((s) => s.usuario_id)))
         const adminIds = Array.from(
           new Set(data.filter((s) => s.admin_id).map((s) => s.admin_id!))
         )
 
-        const { data: usuariosData, error: usuariosError } = await supabase
+        const usuariosPromise = supabase
           .from("usuario_nomina")
           .select(
             `
@@ -95,13 +100,17 @@ export default function AdminSolicitudesVacaciones() {
           )
           .in("auth_user_id", userIds)
 
-        if (usuariosError) throw usuariosError
-
-        const { data: adminsData, error: adminsError } = await supabase
+        const adminsPromise = supabase
           .from("usuario_nomina")
           .select("auth_user_id, colaborador")
           .in("auth_user_id", adminIds)
 
+        const [
+          { data: usuariosData, error: usuariosError },
+          { data: adminsData, error: adminsError }
+        ] = await Promise.all([usuariosPromise, adminsPromise])
+
+        if (usuariosError) throw usuariosError
         if (adminsError) throw adminsError
 
         // 3. Combinar y extraer empresas
@@ -153,7 +162,6 @@ export default function AdminSolicitudesVacaciones() {
         const u = s.usuario
         return (
           u?.colaborador.toLowerCase().includes(term) ||
-          u?.cedula.toLowerCase().includes(term) ||
           u?.cargos?.nombre?.toLowerCase().includes(term) ||
           u?.empresas?.nombre.toLowerCase().includes(term)
         )
@@ -213,19 +221,23 @@ export default function AdminSolicitudesVacaciones() {
     setShowCommentsModal(true)
   }
 
+  const handleShowMotivo = (motivo: string) => {
+    setSelectedMotivo(motivo)
+    setShowMotivoModal(true)
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50">
-      <AdminSidebar userName="Administrador" />
-      <div className="md:pl-64 flex flex-col flex-1">
+    <div className="min-h-screen">
+      <div className="flex flex-col flex-1">
         <main className="flex-1 py-6">
-          <div className="max-w-[90%] mx-auto space-y-6">
+          <div className="w-full mx-auto space-y-6">
             {/* Título */}
             <div className="flex justify-between items-center">
               <div>
                 <h1 className="text-2xl font-bold">Histórico - Solicitudes de Vacaciones</h1>
             <p className="text-muted-foreground">Gestiona las solicitudes de vacaciones.</p>
             </div>
-            <Button onClick={() => router.push('/administracion/solicitudes/vacaciones')}>Ir a vacaciones Pendientes</Button>
+            <Button variant="outline" onClick={() => router.push('/administracion/solicitudes/vacaciones')}>Volver a vacaciones</Button>
             </div>
             {/* filtros */}
             <Card>
@@ -240,7 +252,7 @@ export default function AdminSolicitudesVacaciones() {
                       <Input
                         id="search"
                         className="pl-8"
-                        placeholder="Buscar por nombre, cédula..."
+                        placeholder="Buscar por nombre, cargo, empresa..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                       />
@@ -305,31 +317,47 @@ export default function AdminSolicitudesVacaciones() {
             {/* tabla */}
             <Card>
               <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Colaborador</TableHead>
-                      <TableHead>Cédula</TableHead>
-                      <TableHead>Cargo</TableHead>
-                      <TableHead>Inicio</TableHead>
-                      <TableHead>Fin</TableHead>
-                      <TableHead>Días</TableHead>
-                      <TableHead>Solicitud</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead>Empresa</TableHead>
-                      <TableHead>Comentarios</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loading ? (
+                {loading ? (
+                  <div className="space-y-4 p-6">
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-[300px]" />
+                      <Skeleton className="h-4 w-[250px]" />
+                    </div>
+                    <div className="space-y-3">
+                      {[...Array(8)].map((_, i) => (
+                        <div key={i} className="flex space-x-4">
+                          <Skeleton className="h-4 w-[120px]" />
+                          <Skeleton className="h-4 w-[100px]" />
+                          <Skeleton className="h-4 w-[80px]" />
+                          <Skeleton className="h-4 w-[80px]" />
+                          <Skeleton className="h-4 w-[60px]" />
+                          <Skeleton className="h-4 w-[100px]" />
+                          <Skeleton className="h-6 w-[80px]" />
+                          <Skeleton className="h-4 w-[100px]" />
+                          <Skeleton className="h-8 w-[80px]" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={10} className="text-center py-4">
-                          Cargando...
-                        </TableCell>
+                        <TableHead>Colaborador</TableHead>
+                        <TableHead>Cargo</TableHead>
+                        <TableHead>Inicio</TableHead>
+                        <TableHead>Fin</TableHead>
+                        <TableHead>Días</TableHead>
+                        <TableHead>Solicitud</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead>Empresa</TableHead>
+                        <TableHead>Acciones</TableHead>
                       </TableRow>
-                    ) : filteredSolicitudes.length === 0 ? (
+                    </TableHeader>
+                    <TableBody>
+                      { filteredSolicitudes.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={10} className="text-center py-4">
+                        <TableCell colSpan={9} className="text-center py-4">
                           No hay solicitudes.
                         </TableCell>
                       </TableRow>
@@ -337,7 +365,6 @@ export default function AdminSolicitudesVacaciones() {
                       filteredSolicitudes.map((sol) => (
                         <TableRow key={sol.id}>
                           <TableCell>{sol.usuario?.colaborador}</TableCell>
-                          <TableCell>{sol.usuario?.cedula}</TableCell>
                           <TableCell>{sol.usuario?.cargos?.nombre || 'N/A'}</TableCell>
                           <TableCell>{formatDate(sol.fecha_inicio)}</TableCell>
                           <TableCell>{formatDate(sol.fecha_fin)}</TableCell>
@@ -373,12 +400,6 @@ export default function AdminSolicitudesVacaciones() {
                               {sol.estado.charAt(0).toUpperCase() +
                                 sol.estado.slice(1)}
                             </Badge>
-                            {sol.estado === "rechazado" &&
-                              sol.motivo_rechazo && (
-                                <div className="text-xs text-gray-500 mt-1">
-                                  Motivo: {sol.motivo_rechazo}
-                                </div>
-                              )}
                             {sol.admin && (
                               <div className="text-xs text-gray-500 mt-1">
                                 Por: {sol.admin.colaborador}
@@ -391,19 +412,31 @@ export default function AdminSolicitudesVacaciones() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleShowComments(sol.id)}
-                            >
-                              <MessageSquare className="h-4 w-4" />
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleShowComments(sol.id)}
+                              >
+                                <MessageSquare className="h-4 w-4" />
+                              </Button>
+                              {sol.estado === "rechazado" && sol.motivo_rechazo && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleShowMotivo(sol.motivo_rechazo)}
+                                >
+                                  Ver motivo
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
                     )}
                   </TableBody>
                 </Table>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -419,6 +452,18 @@ export default function AdminSolicitudesVacaciones() {
           {selectedSolicitudId && (
             <ComentariosVacaciones solicitudId={selectedSolicitudId} />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Motivo de Rechazo */}
+      <Dialog open={showMotivoModal} onOpenChange={setShowMotivoModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Motivo de rechazo</DialogTitle>
+          </DialogHeader>
+          <div className="p-4">
+            <p className="text-sm text-gray-700">{selectedMotivo}</p>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

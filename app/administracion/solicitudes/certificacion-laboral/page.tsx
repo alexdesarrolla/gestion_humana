@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
-import { AdminSidebar } from "@/components/ui/admin-sidebar"
+// AdminSidebar removido - ya está en el layout
 import {
   Card,
   CardContent,
@@ -48,6 +48,7 @@ import {
   SelectItem,
 } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Skeleton } from "@/components/ui/skeleton"
 import { ComentariosCertificacion } from "@/components/certificacion-laboral/certificacion-laboral"
 
 export default function AdminCertificacionLaboral() {
@@ -63,7 +64,7 @@ export default function AdminCertificacionLaboral() {
   }, [supabase.auth])
 
   // — Estados generales
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [solicitudes, setSolicitudes] = useState<any[]>([])
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -99,12 +100,41 @@ export default function AdminCertificacionLaboral() {
   })
 
   // — Formatea fecha en español
-  const formatDate = (d: Date) =>
-    d.toLocaleDateString("es-CO", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
+  const formatDate = (d: Date | string | null | undefined) => {
+    if (!d) return 'Fecha no disponible'
+    try {
+      // Manejar diferentes formatos de fecha de PostgreSQL
+      let date: Date
+      if (typeof d === 'string') {
+        // Si ya incluye información de tiempo, usar directamente
+        if (d.includes('T') || d.includes(' ')) {
+          date = new Date(d)
+        } else {
+          // Si es solo fecha, agregar tiempo
+          date = new Date(d + 'T00:00:00')
+        }
+      } else {
+        date = d
+      }
+      
+      // Verificar si la fecha es válida
+      if (isNaN(date.getTime())) {
+        console.error('Fecha inválida:', d)
+        return 'Fecha inválida'
+      }
+      
+      const formatted = date.toLocaleDateString("es-CO", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+      console.log('Fecha formateada:', d, '->', formatted)
+      return formatted
+    } catch (error) {
+      console.error('Error al formatear fecha:', d, error)
+      return 'Fecha inválida'
+    }
+  }
 
   //
   // 1️⃣ Cargar solicitudes pendientes
@@ -115,7 +145,17 @@ export default function AdminCertificacionLaboral() {
       const { data, error } = await supabase
         .from("solicitudes_certificacion")
         .select(`
-          *,
+          id,
+          usuario_id,
+          admin_id,
+          estado,
+          dirigido_a,
+          ciudad,
+          fecha_solicitud,
+          fecha_resolucion,
+          motivo_rechazo,
+          pdf_url,
+          salario_contrato,
           usuario_nomina:usuario_id(
             colaborador,
             cedula,
@@ -129,6 +169,12 @@ export default function AdminCertificacionLaboral() {
         .order("fecha_solicitud", { ascending: true })
 
       if (error) throw error
+      console.log('Solicitudes encontradas:', data?.length || 0)
+      console.log('Datos de solicitudes:', data)
+      if (data && data.length > 0) {
+        console.log('Primera solicitud fecha_solicitud:', data[0].fecha_solicitud)
+        console.log('Tipo de fecha_solicitud:', typeof data[0].fecha_solicitud)
+      }
       setSolicitudes(data || [])
     } catch (err: any) {
       console.error("Error en fetchSolicitudes:", err)
@@ -164,15 +210,16 @@ export default function AdminCertificacionLaboral() {
   }, [solicitudes, adminId])
 
   //
-  // 3️⃣ Realtime: suscripción a nuevos comentarios
+  // 3️⃣ Realtime: suscripción a nuevos comentarios y solicitudes
   //
   useEffect(() => {
     if (!adminId) return
 
-    const comentarioChannel = supabase
-      .channel("comentarios_admin_channel", {
+    const realtimeChannel = supabase
+      .channel("admin_certificacion_channel", {
         config: { broadcast: { ack: false } },
       })
+      // Suscripción a nuevos comentarios
       .on(
         "postgres_changes",
         {
@@ -190,12 +237,56 @@ export default function AdminCertificacionLaboral() {
           }
         }
       )
+      // Suscripción a nuevas solicitudes
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "solicitudes_certificacion",
+        },
+        (payload) => {
+          const nuevaSolicitud = payload.new as any
+          if (nuevaSolicitud.estado === "pendiente") {
+            // Recargar solicitudes para obtener datos completos con joins
+            fetchSolicitudes()
+          }
+        }
+      )
+      // Suscripción a cambios de estado en solicitudes
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "solicitudes_certificacion",
+        },
+        (payload) => {
+          const solicitudActualizada = payload.new as any
+          const solicitudAnterior = payload.old as any
+          
+          // Si cambió de pendiente a otro estado, remover de la lista
+          if (solicitudAnterior.estado === "pendiente" && solicitudActualizada.estado !== "pendiente") {
+            setSolicitudes((prev) => prev.filter((s) => s.id !== solicitudActualizada.id))
+            // Limpiar contador de comentarios no vistos
+            setUnseenCounts((prev) => {
+              const newCounts = { ...prev }
+              delete newCounts[solicitudActualizada.id]
+              return newCounts
+            })
+          }
+          // Si cambió de otro estado a pendiente, recargar lista
+          else if (solicitudAnterior.estado !== "pendiente" && solicitudActualizada.estado === "pendiente") {
+            fetchSolicitudes()
+          }
+        }
+      )
       .subscribe()
 
     return () => {
-      supabase.removeChannel(comentarioChannel)
+      supabase.removeChannel(realtimeChannel)
     }
-  }, [adminId, supabase])
+  }, [adminId, supabase, fetchSolicitudes])
 
   //
   // 4️⃣ Abrir modal de comentarios
@@ -240,24 +331,93 @@ export default function AdminCertificacionLaboral() {
         .single()
       if (solErr) throw solErr
 
-      const precargarImagen = (src: string) =>
-        new Promise<HTMLImageElement>((resolve, reject) => {
+      // Función mejorada para cargar imágenes con múltiples intentos
+      const precargarImagen = async (src: string): Promise<string> => {
+        console.log('Intentando cargar imagen:', src)
+        
+        // Primero intentar cargar sin CORS
+        const cargarSinCORS = () => new Promise<HTMLImageElement>((resolve, reject) => {
           const img = new Image()
-          img.crossOrigin = "anonymous"
-          img.onload = () => resolve(img)
-          img.onerror = () => reject(new Error(`Error al cargar imagen: ${src}`))
+          img.onload = () => {
+            console.log('Imagen cargada sin CORS:', src)
+            resolve(img)
+          }
+          img.onerror = () => reject(new Error('Error sin CORS'))
           img.src = src
         })
+        
+        // Luego intentar con CORS
+        const cargarConCORS = () => new Promise<HTMLImageElement>((resolve, reject) => {
+          const img = new Image()
+          img.crossOrigin = "anonymous"
+          img.onload = () => {
+            console.log('Imagen cargada con CORS:', src)
+            resolve(img)
+          }
+          img.onerror = () => reject(new Error('Error con CORS'))
+          img.src = src
+        })
+        
+        try {
+          // Intentar primero sin CORS
+          const img = await cargarSinCORS()
+          
+          // Convertir a base64
+          const canvas = document.createElement('canvas')
+          const ctx = canvas.getContext('2d')!
+          canvas.width = img.width || 200
+          canvas.height = img.height || 100
+          ctx.drawImage(img, 0, 0)
+          const base64 = canvas.toDataURL('image/png', 1.0)
+          console.log('Imagen convertida a base64:', src, 'Tamaño:', base64.length)
+          return base64
+        } catch (error1) {
+          console.warn('Fallo carga sin CORS, intentando con CORS:', error1)
+          try {
+            const img = await cargarConCORS()
+            const canvas = document.createElement('canvas')
+            const ctx = canvas.getContext('2d')!
+            canvas.width = img.width || 200
+            canvas.height = img.height || 100
+            ctx.drawImage(img, 0, 0)
+            const base64 = canvas.toDataURL('image/png', 1.0)
+            console.log('Imagen convertida a base64 con CORS:', src, 'Tamaño:', base64.length)
+            return base64
+          } catch (error2) {
+            console.error('Error cargando imagen con ambos métodos:', src, error2)
+            return ''
+          }
+        }
+      }
 
       const fechaActual = formatDate(new Date())
       const empresa = usuarioData.empresas?.razon_social || "BDATAM"
       const pathLogo = `${window.location.origin}/img/membrete/membrete-${usuarioData.empresa_id || 1}.jpg`
-      const pathFirma = "/img/firma/firma-lissette.png"
+      const pathFirma = `${window.location.origin}/img/firma/firma-lissette.png`
 
+      console.log('Rutas de imágenes:')
+      console.log('Logo:', pathLogo)
+      console.log('Firma:', pathFirma)
+
+      // Precargar imágenes y convertirlas a base64
+      let logoBase64 = ""
+      let firmaBase64 = ""
+      
       try {
-        await Promise.all([precargarImagen(pathLogo), precargarImagen(pathFirma)])
-      } catch {
-        // ignorar
+        console.log('Iniciando carga de imágenes...')
+        const [logo, firma] = await Promise.all([
+          precargarImagen(pathLogo),
+          precargarImagen(pathFirma)
+        ])
+        
+        logoBase64 = logo
+        firmaBase64 = firma
+        
+        console.log('Imágenes cargadas exitosamente:')
+        console.log('Logo base64 disponible:', logoBase64.length > 0)
+        console.log('Firma base64 disponible:', firmaBase64.length > 0)
+      } catch (error) {
+        console.error('Error al cargar imágenes:', error)
       }
 
       const container = document.createElement("div")
@@ -268,8 +428,11 @@ export default function AdminCertificacionLaboral() {
       container.style.backgroundColor = "white"
       container.style.fontFamily = "Arial, sans-serif"
 
+      // Usar imágenes base64 si están disponibles, sino usar URLs
+      const backgroundImage = logoBase64 ? `url('${logoBase64}')` : `url('${pathLogo}')`
+      
       let html = `
-        <div style="background-image:url('${pathLogo}'); background-size:cover; background-blend-mode:lighten; background-color:rgba(255,255,255,0.85); width:215.9mm; height:279.4mm;">
+        <div style="background-image:${backgroundImage}; background-size:cover; background-repeat:no-repeat; background-position:top center; width:215.9mm; height:279.4mm; position:relative;">
           <div style="padding:180px 100px 0;"><h1 style="text-align:center; text-transform:uppercase; font-size:16px;">
             LA DIRECTORA DE TALENTO HUMANO DE ${empresa}
           </h1></div>
@@ -302,8 +465,11 @@ export default function AdminCertificacionLaboral() {
         </div>
         <div style="padding:0 100px; margin-top:80px;">
           <p>Atentamente,</p>
-          <div style="position:relative; height:100px;">
-            <img src="${pathFirma}" style="width:200px; position:absolute; top:0; left:0;" />
+          <div style="margin:20px 0; min-height:60px;">
+            ${firmaBase64 ? 
+              `<img src="${firmaBase64}" style="width:200px; height:auto; display:block; margin-bottom:10px; max-width:200px;" alt="Firma LISSETTE VANESSA CALDERON" />` : 
+              `<div style="width:200px; height:60px; border:1px dashed #ccc; display:flex; align-items:center; justify-content:center; margin-bottom:10px; font-size:12px; color:#666;">[Firma Digital]</div>`
+            }
           </div>
           <p><strong>LISSETTE VANESSA CALDERON</strong><br>
           Directora de Talento Humano<br>
@@ -314,22 +480,69 @@ export default function AdminCertificacionLaboral() {
 
       container.innerHTML = html
       document.body.appendChild(container)
+      
+      // Función simplificada para verificar imágenes
+      const verificarImagenes = () => {
+        const images = container.getElementsByTagName('img')
+        console.log('Verificando imágenes en el contenedor:', images.length)
+        
+        Array.from(images).forEach((img, index) => {
+          console.log(`Imagen ${index}:`, {
+            src: img.src.startsWith('data:') ? 'Base64 Image' : img.src,
+            width: img.width,
+            height: img.height,
+            complete: img.complete,
+            naturalWidth: img.naturalWidth,
+            naturalHeight: img.naturalHeight
+          })
+          
+          // Forzar propiedades para imágenes base64
+          if (img.src.startsWith('data:')) {
+            img.style.display = 'block'
+            img.style.visibility = 'visible'
+            img.style.opacity = '1'
+          }
+        })
+      }
+      
+      // Verificar imágenes y esperar un momento para el renderizado
+      verificarImagenes()
       await new Promise((r) => setTimeout(r, 500))
 
+      console.log('Iniciando html2canvas...')
       const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        width: 816,
-        height: 1056,
-        windowWidth: 816,
-        windowHeight: 1056,
-        onclone: (clonedDoc) => {
-          Array.from(clonedDoc.getElementsByTagName("img")).forEach((img) => {
-            img.crossOrigin = "anonymous"
-          })
-        },
-      })
+          scale: 2,
+          useCORS: false,
+          allowTaint: true,
+          width: 816,
+          height: 1056,
+          windowWidth: 816,
+          windowHeight: 1056,
+          logging: false,
+          imageTimeout: 0,
+          onclone: (clonedDoc) => {
+            console.log('Procesando documento clonado...')
+            const clonedImages = clonedDoc.getElementsByTagName('img')
+            console.log('Imágenes en el clon:', clonedImages.length)
+            
+            Array.from(clonedImages).forEach((img, index) => {
+              console.log(`Imagen ${index} en clon:`, {
+                src: img.src.startsWith('data:') ? 'Base64 Image' : img.src,
+                width: img.width,
+                height: img.height
+              })
+              
+              // Configurar estilos para asegurar visibilidad
+              img.style.display = 'block'
+              img.style.visibility = 'visible'
+              img.style.opacity = '1'
+              img.style.maxWidth = '200px'
+              img.style.height = 'auto'
+            })
+          }
+        })
+      
+      console.log('html2canvas completado. Canvas:', canvas.width, 'x', canvas.height)
       document.body.removeChild(container)
 
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "letter", compress: true })
@@ -471,19 +684,18 @@ export default function AdminCertificacionLaboral() {
   // Renderizar UI
   //
   return (
-    <div className="min-h-screen bg-slate-50">
-      <AdminSidebar userName="Administrador" />
-      <div className="md:pl-64 flex flex-col flex-1">
-        <main className="py-6">
-          <div className="max-w-[90%] mx-auto space-y-6">
+    <div className="min-h-screen py-6">
+      <div className="flex flex-col flex-1">
+        <main>
+          <div className="w-full mx-auto space-y-6">
             <div className="flex justify-between items-center">
               <div>
                 <h1 className="text-2xl font-bold">Solicitudes de Certificación Laboral</h1>
                 <p className="text-muted-foreground">Gestiona las solicitudes pendientes.</p>
               </div>
-              <Button onClick={() => setShowCreateModal(true)}>
-                <Plus className="h-4 w-4 mr-1" />Nueva solicitud
-              </Button>
+              <div className="flex gap-2">
+                <Button className="btn-custom" onClick={() => router.push('/administracion/solicitudes/certificacion-laboral/historico')}>Ver histórico</Button>
+              </div>
             </div>
 
             {error && (
@@ -501,16 +713,38 @@ export default function AdminCertificacionLaboral() {
 
             <Card>
               <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Colaborador</TableHead>
-                      <TableHead>Cédula</TableHead>
-                      <TableHead>Cargo</TableHead>
-                      <TableHead>Dirigido a</TableHead>
-                      <TableHead>Ciudad</TableHead>
-                      <TableHead>SyT</TableHead>
-                      <TableHead>Fecha</TableHead>
+                {loading && solicitudes.length === 0 ? (
+                  <div className="space-y-4 p-6">
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-[250px]" />
+                      <Skeleton className="h-4 w-[200px]" />
+                    </div>
+                    <div className="space-y-3">
+                      {[...Array(5)].map((_, i) => (
+                        <div key={i} className="flex space-x-4">
+                          <Skeleton className="h-4 w-[120px]" />
+                          <Skeleton className="h-4 w-[100px]" />
+                          <Skeleton className="h-4 w-[100px]" />
+                          <Skeleton className="h-4 w-[120px]" />
+                          <Skeleton className="h-4 w-[80px]" />
+                          <Skeleton className="h-4 w-[60px]" />
+                          <Skeleton className="h-4 w-[100px]" />
+                          <Skeleton className="h-8 w-[80px]" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Colaborador</TableHead>
+                        <TableHead>Cédula</TableHead>
+                        <TableHead>Cargo</TableHead>
+                        <TableHead>Dirigido a</TableHead>
+                        <TableHead>Ciudad</TableHead>
+                        <TableHead>SyT</TableHead>
+                        <TableHead>Fecha</TableHead>
                       <TableHead>Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -536,7 +770,7 @@ export default function AdminCertificacionLaboral() {
                               {sol.salario_contrato || "No"}
                             </Badge>
                           </TableCell>
-                          <TableCell>{formatDate(new Date(sol.fecha_solicitud))}</TableCell>
+                          <TableCell>{formatDate(sol.fecha_solicitud)}</TableCell>
                           <TableCell className="flex items-center gap-2">
                             <Button
                               variant="outline"
@@ -570,7 +804,7 @@ export default function AdminCertificacionLaboral() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => openComments(sol.id, sol.usuario)}
+                                onClick={() => openComments(sol.id, sol.usuario_nomina)}
                               >
                                 <MessageSquare className="h-4 w-4" />
                               </Button>
@@ -581,6 +815,7 @@ export default function AdminCertificacionLaboral() {
                     )}
                   </TableBody>
                 </Table>
+                )}
               </CardContent>
             </Card>
           </div>

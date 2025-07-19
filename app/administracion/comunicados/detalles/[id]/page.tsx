@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
-import { AdminSidebar } from "@/components/ui/admin-sidebar"
+// AdminSidebar removido - ya está en el layout
 import {
   Card,
   CardHeader,
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   BookOpenCheckIcon,
   BarChart3Icon,
@@ -25,22 +26,41 @@ import {
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
 interface Lectura {
   usuario_id: string
   usuario_nomina: {
     colaborador: string | null
+    avatar_path: string | null
+    genero: string | null
   } | null
   leido_at: string
 }
 interface Destinatario {
   usuario_id: string
   colaborador: string | undefined
+  avatar_path: string | null
+  genero: string | null
 }
 
 export default function DetallesComunicadoPage() {
   const router = useRouter()
   const { id: comunicadoId } = useParams() as { id: string }
+  const supabase = createSupabaseClient()
+
+  // Función para obtener URL del avatar
+  const getAvatarUrl = (avatar_path: string | null, genero: string | null): string => {
+    if (avatar_path) {
+      const { data } = supabase.storage.from("avatar").getPublicUrl(avatar_path)
+      return data.publicUrl
+    } else if (genero) {
+      const path = genero === "F" ? "defecto/avatar-f.webp" : "defecto/avatar-m.webp"
+      const { data } = supabase.storage.from("avatar").getPublicUrl(path)
+      return data.publicUrl
+    }
+    return "/img/default-avatar.svg"
+  }
 
   const [comunicadoInfo, setComunicadoInfo] = useState<{
     titulo: string
@@ -56,79 +76,89 @@ export default function DetallesComunicadoPage() {
     if (!comunicadoId) return
 
     try {
-      const supabase = createSupabaseClient()
 
-      // 1) Título
-      const { data: comData, error: comErr } = await supabase
-        .from("comunicados")
-        .select("titulo")
-        .eq("id", comunicadoId)
-        .single()
-      if (comErr) throw comErr
-      const titulo = comData?.titulo as string
+      // Ejecutar consultas iniciales en paralelo
+      const [comResult, cargosResult, lecturasResult] = await Promise.all([
+        // 1) Título del comunicado
+        supabase
+          .from("comunicados")
+          .select("titulo")
+          .eq("id", comunicadoId)
+          .single(),
+        // 2) Cargos destinatarios del comunicado
+        supabase
+          .from("comunicados_cargos")
+          .select("cargo_id")
+          .eq("comunicado_id", comunicadoId),
+        // 3) Lecturas del comunicado
+        supabase
+          .from("comunicados_leidos")
+          .select(`
+            usuario_id,
+            leido_at,
+            usuario_nomina:usuario_id (colaborador, avatar_path, genero)
+          `)
+          .eq("comunicado_id", comunicadoId)
+          .order("leido_at", { ascending: false })
+      ])
 
-      // 2) Obtener cargos destinatarios del comunicado
-      const { data: cargosData, error: cargosErr } = await supabase
-        .from("comunicados_cargos")
-        .select("cargo_id")
-        .eq("comunicado_id", comunicadoId)
-      if (cargosErr) throw cargosErr
-      const cargoIds = (cargosData || []).map((r) => r.cargo_id)
+      if (comResult.error) throw comResult.error
+      if (cargosResult.error) throw cargosResult.error
+      if (lecturasResult.error) throw lecturasResult.error
 
-      // 3) Calcular total destinatarios basado en los cargos
-      let totalDest = 0
-      if (cargoIds.length > 0) {
-        const { count } = await supabase
-          .from("usuario_nomina")
-          .select("*", { head: true, count: "exact" })
-          .in("cargo_id", cargoIds)
-        totalDest = count || 0
-      }
+      const titulo = comResult.data?.titulo as string
+      const cargoIds = (cargosResult.data || []).map((r) => r.cargo_id)
       
-      setComunicadoInfo({
-        titulo: titulo,
-        total_destinatarios: totalDest,
-      })
-
-      // 4) Obtener lecturas
-      const { data: lecturasData, error: leErr } = await supabase
-        .from("comunicados_leidos")
-        .select(`
-          usuario_id,
-          leido_at,
-          usuario_nomina:usuario_id (colaborador)
-        `)
-        .eq("comunicado_id", comunicadoId)
-        .order("leido_at", { ascending: false })
-      if (leErr) throw leErr
-      const leData = lecturasData || []
-      // Convertir explícitamente los datos al tipo Lectura
+      // Procesar lecturas
+      const leData = lecturasResult.data || []
       const lecturas: Lectura[] = leData.map(item => ({
           usuario_id: item.usuario_id as string,
           usuario_nomina: item.usuario_nomina && typeof item.usuario_nomina === 'object' ? {
-            colaborador: (item.usuario_nomina as { colaborador: string | null }).colaborador || "Usuario desconocido"
+            colaborador: (item.usuario_nomina as { colaborador: string | null; avatar_path: string | null; genero: string | null }).colaborador || "Usuario desconocido",
+            avatar_path: (item.usuario_nomina as { colaborador: string | null; avatar_path: string | null; genero: string | null }).avatar_path,
+            genero: (item.usuario_nomina as { colaborador: string | null; avatar_path: string | null; genero: string | null }).genero
           } : null,
           leido_at: item.leido_at as string
         }))
       setUsuariosLeidos(lecturas)
 
-      // 5) Obtener todos los destinatarios basados en los cargos
+      // Ejecutar consultas dependientes en paralelo si hay cargos
       if (cargoIds.length > 0) {
-        const { data: recData = [], error: recErr } = await supabase
-          .from("usuario_nomina")
-          .select("auth_user_id, colaborador")
-          .in("cargo_id", cargoIds)
-        
-        if (recErr) throw recErr
+        const [countResult, destinatariosResult] = await Promise.all([
+          // Contar total destinatarios
+          supabase
+            .from("usuario_nomina")
+            .select("*", { head: true, count: "exact" })
+            .in("cargo_id", cargoIds),
+          // Obtener destinatarios
+          supabase
+            .from("usuario_nomina")
+            .select("auth_user_id, colaborador, avatar_path, genero")
+            .in("cargo_id", cargoIds)
+        ])
 
-        // Asegurarse de que recData sea un array antes de mapearlo
-        const destinatariosData = Array.isArray(recData) ? recData.map((u) => ({
-          usuario_id: u.auth_user_id as string,
-          colaborador: u.colaborador as string | undefined,
-        })) : []
+        const totalDest = countResult.count || 0
         
-        setDestinatarios(destinatariosData)
+        setComunicadoInfo({
+          titulo: titulo,
+          total_destinatarios: totalDest,
+        })
+
+        if (!destinatariosResult.error) {
+          const destinatariosData = Array.isArray(destinatariosResult.data) ? destinatariosResult.data.map((u) => ({
+            usuario_id: u.auth_user_id as string,
+            colaborador: u.colaborador as string | undefined,
+            avatar_path: u.avatar_path as string | null,
+            genero: u.genero as string | null,
+          })) : []
+          
+          setDestinatarios(destinatariosData)
+        }
       } else {
+        setComunicadoInfo({
+          titulo: titulo,
+          total_destinatarios: 0,
+        })
         setDestinatarios([])
       }
     } catch (err: any) {
@@ -190,20 +220,12 @@ export default function DetallesComunicadoPage() {
   )
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
-      <AdminSidebar />
-      <div className="flex-1 p-6 md:pl-64">
-        <div className="max-w-[90%] mx-auto">
+    <div className="py-6 flex min-h-screen">
+      <div className="flex-1">
+        <div className="w-full mx-auto">
           {/* Header */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <div>
-              <Button
-                variant="ghost"
-                onClick={() => router.back()}
-                className="gap-2 -ml-2 mb-2 hover:bg-slate-100"
-              >
-                <ArrowLeftIcon className="h-4 w-4" /> Volver
-              </Button>
               <h1 className="text-2xl font-bold tracking-tight">
                 {loading
                   ? "Cargando detalles..."
@@ -214,11 +236,11 @@ export default function DetallesComunicadoPage() {
               </p>
             </div>
             <div className="flex items-center gap-2 self-end md:self-auto">
-              <Badge variant="outline" className="px-3 py-1">
+              <Badge variant="outline" className="px-3 py-1 bg-white">
                 <BookOpenCheckIcon className="h-3.5 w-3.5 mr-1" />{" "}
                 {usuariosLeidos.length} lecturas
               </Badge>
-              <Badge variant="outline" className="px-3 py-1">
+              <Badge variant="outline" className="px-3 py-1 bg-white">
                 <UsersIcon className="h-3.5 w-3.5 mr-1" />{" "}
                 {comunicadoInfo?.total_destinatarios || 0} destinatarios
               </Badge>
@@ -309,9 +331,19 @@ export default function DetallesComunicadoPage() {
                 </CardHeader>
                 <CardContent className="p-0">
                   {loading ? (
-                    <div className="flex justify-center p-8">
-                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                    </div>
+                    // Skeleton loader para lecturas
+                    Array.from({ length: 5 }).map((_, index) => (
+                      <div key={index} className="flex justify-between items-center p-4">
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="h-9 w-9 rounded-full" />
+                          <Skeleton className="h-4 w-[180px]" />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Skeleton className="h-4 w-4" />
+                          <Skeleton className="h-4 w-[120px]" />
+                        </div>
+                      </div>
+                    ))
                   ) : filteredLeidos.length === 0 ? (
                     <div className="text-center py-8">
                       <BookOpenCheckIcon className="h-12 w-12 opacity-20 mx-auto mb-3" />
@@ -328,16 +360,23 @@ export default function DetallesComunicadoPage() {
                         className="flex justify-between items-center p-4 hover:bg-slate-50"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                            {u.usuario_nomina?.colaborador
-                              ? u.usuario_nomina.colaborador
-                                .split(" ")
-                                .map((w) => w[0])
-                                .join("")
-                                .toUpperCase()
-                                .slice(0, 2)
-                              : "--"}
-                          </div>
+                          <Avatar className="h-9 w-9">
+                            <AvatarImage 
+                              src={getAvatarUrl(u.usuario_nomina?.avatar_path || null, u.usuario_nomina?.genero || null)} 
+                              alt={u.usuario_nomina?.colaborador || "Usuario"}
+                              className="object-cover"
+                            />
+                            <AvatarFallback className="bg-primary/10 text-primary">
+                              {u.usuario_nomina?.colaborador
+                                ? u.usuario_nomina.colaborador
+                                  .split(" ")
+                                  .map((w) => w[0])
+                                  .join("")
+                                  .toUpperCase()
+                                  .slice(0, 2)
+                                : "--"}
+                            </AvatarFallback>
+                          </Avatar>
                           <span>{u.usuario_nomina?.colaborador || "Usuario desconocido"}</span>
                         </div>
                         <div className="text-sm text-muted-foreground flex items-center">
@@ -378,9 +417,13 @@ export default function DetallesComunicadoPage() {
                 </CardHeader>
                 <CardContent className="p-0">
                   {loading ? (
-                    <div className="flex justify-center p-8">
-                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-destructive border-t-transparent" />
-                    </div>
+                    // Skeleton loader para faltantes
+                    Array.from({ length: 5 }).map((_, index) => (
+                      <div key={index} className="flex items-center gap-3 p-4">
+                        <Skeleton className="h-9 w-9 rounded-full" />
+                        <Skeleton className="h-4 w-[180px]" />
+                      </div>
+                    ))
                   ) : filteredFaltantes.length === 0 ? (
                     <div className="text-center py-8">
                       <UserRoundX className="h-12 w-12 opacity-20 mx-auto mb-3" />
@@ -396,16 +439,23 @@ export default function DetallesComunicadoPage() {
                         key={i}
                         className="flex items-center gap-3 p-4 hover:bg-slate-50"
                       >
-                        <div className="h-9 w-9 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
-                          {d.colaborador
-                            ? d.colaborador
-                              .split(" ")
-                              .map((w) => w[0])
-                              .join("")
-                              .toUpperCase()
-                              .slice(0, 2)
-                            : "--"}
-                        </div>
+                        <Avatar className="h-9 w-9">
+                          <AvatarImage 
+                            src={getAvatarUrl(d.avatar_path, d.genero)} 
+                            alt={d.colaborador || "Usuario"}
+                            className="object-cover"
+                          />
+                          <AvatarFallback className="bg-destructive/10 text-destructive">
+                            {d.colaborador
+                              ? d.colaborador
+                                .split(" ")
+                                .map((w) => w[0])
+                                .join("")
+                                .toUpperCase()
+                                .slice(0, 2)
+                              : "--"}
+                          </AvatarFallback>
+                        </Avatar>
                         <span>{d.colaborador || "Usuario desconocido"}</span>
                       </div>
                     ))

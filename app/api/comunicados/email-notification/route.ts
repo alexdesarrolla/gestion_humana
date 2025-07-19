@@ -28,11 +28,11 @@ function getSMTPConfig() {
     isLocal
   });
   
-  // Credenciales corregidas - la contraseña correcta es &k&)&lTpnq8E
+  // Credenciales de Gmail
   const defaultCredentials = {
-    host: 'mail.orpainversiones.com',
-    user: 'smtpbdatam@orpainversiones.com',
-    pass: '&k&)&lTpnq8E' // Contraseña corregida
+    host: 'smtp.gmail.com',
+    user: 'digital@bdatam.com',
+    pass: 'ewjqvsntmbadbzah' // App Password de Gmail
   };
   
   const config: any = {
@@ -162,11 +162,12 @@ export async function POST(request: NextRequest) {
     // Obtener los IDs de los cargos
     const cargoIds = comunicadoCargos.map(cc => cc.cargo_id);
 
-    // Obtener usuarios con esos cargos y sus correos electrónicos
+    // Obtener usuarios con esos cargos y sus correos electrónicos (solo usuarios activos)
     const { data: usuarios, error: usuariosError } = await supabase
       .from('usuario_nomina')
-      .select('correo_electronico, colaborador')
+      .select('correo_electronico, colaborador, estado')
       .in('cargo_id', cargoIds)
+      .eq('estado', 'activo')
       .not('correo_electronico', 'is', null);
 
     if (usuariosError) {
@@ -179,7 +180,7 @@ export async function POST(request: NextRequest) {
 
     if (!usuarios || usuarios.length === 0) {
       return NextResponse.json(
-        { message: 'No se encontraron usuarios con correos electrónicos para los cargos especificados' },
+        { message: 'No se encontraron usuarios activos con correos electrónicos para los cargos especificados' },
         { status: 200 }
       );
     }
@@ -196,7 +197,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`Procesando ${usuariosValidos.length} usuarios con emails válidos de ${usuarios.length} usuarios totales`);
+    console.log(`Procesando ${usuariosValidos.length} usuarios activos con emails válidos de ${usuarios.length} usuarios activos totales`);
 
     debugLog('Iniciando proceso de envío de emails');
     

@@ -4,19 +4,22 @@ import type React from "react"
 
 import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { AdminSidebar } from "@/components/ui/admin-sidebar"
+// AdminSidebar removido - ya está en el layout
 import { createSupabaseClient } from "@/lib/supabase"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ChevronDown, ChevronUp, Search, X, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Loader2, Plus, EyeIcon, EyeOff, Edit } from "lucide-react"
+import { ChevronDown, ChevronUp, Search, X, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Loader2, Plus, Edit } from "lucide-react"
 import { ProfileCard } from "@/components/ui/profile-card"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { PermissionsManager } from "@/components/ui/permissions-manager"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
 export default function Usuarios() {
   const router = useRouter()
@@ -34,6 +37,8 @@ export default function Usuarios() {
   const [cargos, setCargos] = useState<any[]>([])
   const [selectedEmpresa, setSelectedEmpresa] = useState<string>("")
   const [selectedCargo, setSelectedCargo] = useState<string>("all")
+  const [selectedEstado, setSelectedEstado] = useState<string>("all")
+  const [selectedRol, setSelectedRol] = useState<string>("all")
   const [selectedUser, setSelectedUser] = useState<any>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false)
@@ -43,8 +48,6 @@ export default function Usuarios() {
     nombre: '',
     correo: '',
     telefono: '',
-    password: '',
-    confirmPassword: '',
     rol: 'usuario',
     genero: '',
     cedula: '',
@@ -61,18 +64,21 @@ export default function Usuarios() {
     caja_de_compensacion_id: '',
     direccion_residencia: ''
   })
-  const [sedes, setSedes] = useState<any[]>([])
-  const [eps, setEps] = useState<any[]>([])
-  const [afps, setAfps] = useState<any[]>([])
-  const [cajaDeCompensacionOptions, setCajaDeCompensacionOptions] = useState<any[]>([])
+  const [sedes, setSedes] = useState<any[]>([]);
+  const [eps, setEps] = useState<any[]>([]);
+  const [afps, setAfps] = useState<any[]>([]);
+  const [cesantias, setCesantias] = useState<any[]>([]);
+  const [cajaDeCompensacionOptions, setCajaDeCompensacionOptions] = useState<any[]>([]);
   const [addUserError, setAddUserError] = useState('')
   const [addUserSuccess, setAddUserSuccess] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
   const [addUserLoading, setAddUserLoading] = useState(false)
   const [editUserError, setEditUserError] = useState('')
   const [editUserSuccess, setEditUserSuccess] = useState(false)
   const [editUserLoading, setEditUserLoading] = useState(false)
+  
+  // Estados para permisos
+  const [userPermissions, setUserPermissions] = useState<any[]>([])
 
   // Paginación
   const [currentPage, setCurrentPage] = useState(1)
@@ -82,6 +88,27 @@ export default function Usuarios() {
 
   // Referencia para el timeout de búsqueda
   const searchTimeout = useRef<NodeJS.Timeout | null>(null)
+
+  // Función helper para obtener la URL del avatar
+  const getAvatarUrl = (avatar_path: string | null, genero: string | null) => {
+    const supabase = createSupabaseClient()
+    
+    if (avatar_path) {
+      const { data } = supabase.storage.from("avatar").getPublicUrl(avatar_path)
+      return data.publicUrl
+    }
+    
+    // Imagen por defecto basada en género desde Supabase Storage
+    if (genero) {
+      const path = genero === "F" ? "defecto/avatar-f.webp" : "defecto/avatar-m.webp"
+      const { data } = supabase.storage.from("avatar").getPublicUrl(path)
+      return data.publicUrl
+    }
+    
+    // Imagen por defecto del sistema desde Supabase Storage
+    const { data } = supabase.storage.from("avatar").getPublicUrl("defecto/avatar-m.webp")
+    return data.publicUrl
+  }
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -115,101 +142,124 @@ export default function Usuarios() {
         return
       }
 
-      // Obtener lista de usuarios con rol 'usuario' incluyendo todas las relaciones
-      const { data: usuarios, error: usuariosError } = await supabase
-        .from("usuario_nomina")
-        .select(`
-          *,
-          empresas:empresa_id(id, nombre),
-          sedes:sede_id(id, nombre),
-          eps:eps_id(id, nombre),
-          afp:afp_id(id, nombre),
-          cesantias:cesantias_id(id, nombre),
-          caja_de_compensacion:caja_de_compensacion_id(id, nombre),
-          cargos:cargo_id(id, nombre)
-        `)
-        .eq("rol", "usuario")
+      try {
+        // Ejecutar todas las consultas en paralelo para mejorar el rendimiento
+        const today = new Date().toISOString().split('T')[0]
+        
+        const [
+          { data: usuarios, error: usuariosError },
+          { data: todasEmpresas },
+          { data: sedesData },
+          { data: epsData },
+          { data: afpsData },
+          { data: cajasData },
+          { data: cesantiasData },
+          { data: vacacionesActivas },
+          { data: cargosData, error: cargosError }
+        ] = await Promise.all([
+          // Usuarios con relaciones optimizadas
+          supabase
+            .from("usuario_nomina")
+            .select(`
+              id, auth_user_id, colaborador, correo_electronico, telefono, rol, estado, genero, cedula,
+              fecha_ingreso, empresa_id, cargo_id, sede_id, fecha_nacimiento, edad, rh, eps_id, afp_id,
+              cesantias_id, caja_de_compensacion_id, direccion_residencia, avatar_path,
+              empresas:empresa_id(id, nombre),
+              sedes:sede_id(id, nombre),
+              eps:eps_id(id, nombre),
+              afp:afp_id(id, nombre),
+              cesantias:cesantias_id(id, nombre),
+              caja_de_compensacion:caja_de_compensacion_id(id, nombre),
+              cargos:cargo_id(id, nombre)
+            `)
+            .eq("rol", "usuario"),
+          // Empresas
+          supabase
+            .from("empresas")
+            .select("id, nombre")
+            .order("nombre"),
+          // Sedes
+          supabase
+            .from("sedes")
+            .select("id, nombre")
+            .order("nombre"),
+          // EPS
+          supabase
+            .from("eps")
+            .select("id, nombre")
+            .order("nombre"),
+          // AFP
+          supabase
+            .from("afp")
+            .select("id, nombre")
+            .order("nombre"),
+          // Cajas de compensación
+          supabase
+            .from("caja_de_compensacion")
+            .select("id, nombre")
+            .order("nombre"),
+          // Cesantías
+          supabase
+            .from("cesantias")
+            .select("id, nombre")
+            .order("nombre"),
+          // Vacaciones activas
+          supabase
+            .from("solicitudes_vacaciones")
+            .select("usuario_id")
+            .eq("estado", "aprobado")
+            .lte("fecha_inicio", today)
+            .gte("fecha_fin", today),
+          // Cargos
+          supabase
+            .from("cargos")
+            .select("id, nombre")
+            .order("nombre")
+        ])
 
-      if (usuariosError) {
-        console.error("Error al obtener usuarios:", usuariosError)
-        setLoading(false)
-        return
-      }
-
-      // Obtener todas las empresas para el formulario de agregar usuario
-      const { data: todasEmpresas } = await supabase
-        .from("empresas")
-        .select("id, nombre")
-        .order("nombre")
-
-      // Obtener sedes, EPS, AFP y cajas de compensación para formularios
-      const { data: sedesData } = await supabase
-        .from("sedes")
-        .select("id, nombre")
-        .order("nombre")
-
-      const { data: epsData } = await supabase
-        .from("eps")
-        .select("id, nombre")
-        .order("nombre")
-
-      const { data: afpsData } = await supabase
-        .from("afp")
-        .select("id, nombre")
-        .order("nombre")
-
-      const { data: cajasData } = await supabase
-        .from("caja_de_compensacion")
-        .select("id, nombre")
-        .order("nombre")
-
-      setSedes(sedesData || [])
-      setEps(epsData || [])
-      setAfps(afpsData || [])
-      setCajaDeCompensacionOptions(cajasData || [])
-
-      // Obtener vacaciones activas para todos los usuarios
-      const today = new Date().toISOString().split('T')[0]
-      const { data: vacacionesActivas } = await supabase
-        .from("solicitudes_vacaciones")
-        .select("usuario_id")
-        .eq("estado", "aprobado")
-        .lte("fecha_inicio", today)
-        .gte("fecha_fin", today)
-
-      // Agregar información de vacaciones a cada usuario
-      const usuariosConVacaciones = usuarios?.map(user => ({
-        ...user,
-        enVacaciones: vacacionesActivas?.some(vacacion => vacacion.usuario_id === user.auth_user_id) || false
-      })) || []
-
-      setUsers(usuariosConVacaciones)
-      setFilteredUsers(usuariosConVacaciones)
-
-      // Extraer empresas únicas para filtros
-      const uniqueEmpresas = Array.from(new Set(usuariosConVacaciones?.map(user => {
-        // Verificar si empresas existe y tiene la propiedad nombre
-        if (user.empresas && typeof user.empresas === 'object' && 'nombre' in user.empresas) {
-          return (user.empresas as any).nombre
+        if (usuariosError) {
+          console.error("Error al obtener usuarios:", usuariosError)
+          setLoading(false)
+          return
         }
-        return null
-      }).filter(Boolean)))
-      setEmpresas(todasEmpresas || [])
-      setEmpresasFilter(uniqueEmpresas)
 
-      // Cargar cargos desde la tabla cargos
-      const { data: cargosData, error: cargosError } = await supabase
-        .from("cargos")
-        .select("id, nombre")
-        .order("nombre")
-      
-      if (cargosError) {
-        console.error("Error al cargar cargos:", cargosError)
-      } else {
+        if (cargosError) {
+          console.error("Error al cargar cargos:", cargosError)
+        }
+
+        // Establecer datos de formularios
+        setSedes(sedesData || [])
+        setEps(epsData || [])
+        setAfps(afpsData || [])
+        setCesantias(cesantiasData || [])
+        setCajaDeCompensacionOptions(cajasData || [])
         setCargos(cargosData || [])
-      }
+        setEmpresas(todasEmpresas || [])
 
-      setLoading(false)
+        // Agregar información de vacaciones a cada usuario
+        const usuariosConVacaciones = usuarios?.map(user => ({
+          ...user,
+          enVacaciones: user.auth_user_id ? vacacionesActivas?.some(vacacion => vacacion.usuario_id === user.auth_user_id) || false : false
+        })) || []
+
+        setUsers(usuariosConVacaciones)
+        setFilteredUsers(usuariosConVacaciones)
+
+        // Extraer empresas únicas para filtros
+        const uniqueEmpresas = Array.from(new Set(usuariosConVacaciones?.map(user => {
+          // Verificar si empresas existe y tiene la propiedad nombre
+          if (user.empresas && typeof user.empresas === 'object' && 'nombre' in user.empresas) {
+            return (user.empresas as any).nombre
+          }
+          return null
+        }).filter(Boolean)))
+        setEmpresasFilter(uniqueEmpresas)
+
+        setLoading(false)
+      } catch (error) {
+        console.error("Error al cargar datos:", error)
+        setLoading(false)
+      }
     }
 
     checkAuth()
@@ -241,7 +291,7 @@ export default function Usuarios() {
 
     // Establecer un nuevo timeout para aplicar la búsqueda después de 300ms
     searchTimeout.current = setTimeout(() => {
-      applyFilters(value, selectedEmpresa, selectedCargo, sortConfig)
+      applyFilters(value, selectedEmpresa, selectedCargo, selectedEstado, selectedRol, sortConfig)
     }, 300)
   }
 
@@ -250,6 +300,8 @@ export default function Usuarios() {
     search: string,
     empresa: string,
     cargo: string,
+    estado: string,
+    rol: string,
     sort: { key: string; direction: "asc" | "desc" } | null,
   ) => {
     let result = [...users]
@@ -274,6 +326,16 @@ export default function Usuarios() {
     // Aplicar filtro de cargo
     if (cargo && cargo !== "all") {
       result = result.filter((user) => user.cargos?.nombre === cargo)
+    }
+
+    // Aplicar filtro de estado
+    if (estado && estado !== "all") {
+      result = result.filter((user) => user.estado === estado)
+    }
+
+    // Aplicar filtro de rol
+    if (rol && rol !== "all") {
+      result = result.filter((user) => user.rol === rol)
     }
 
     // Aplicar ordenamiento
@@ -329,9 +391,10 @@ export default function Usuarios() {
 
     setSearchLoading(true)
     searchTimeout.current = setTimeout(() => {
-      applyFilters(searchTerm, selectedEmpresa, selectedCargo, sortConfig)
+      applyFilters(searchTerm, selectedEmpresa, selectedCargo, selectedEstado, selectedRol, sortConfig)
+      setCurrentPage(1)
     }, 300)
-  }, [selectedEmpresa, selectedCargo, sortConfig, users])
+  }, [selectedEmpresa, selectedCargo, selectedEstado, selectedRol, sortConfig, users])
 
   // Efecto para calcular la paginación
   useEffect(() => {
@@ -347,16 +410,87 @@ export default function Usuarios() {
     setSearchTerm("")
     setSelectedEmpresa("")
     setSelectedCargo("all")
+    setSelectedEstado("all")
+    setSelectedRol("all")
     setSortConfig(null)
     setCurrentPage(1)
 
     // Aplicar filtros inmediatamente sin esperar
-    applyFilters("", "", "all", null)
+    applyFilters("", "", "all", "all", "all", null)
   }
 
-  const handleViewDetails = (user: any) => {
-    setSelectedUser(user)
-    setIsModalOpen(true)
+  const handleViewDetails = async (user: any) => {
+    try {
+      const supabase = createSupabaseClient()
+      // Obtener información completa de vacaciones para el usuario seleccionado
+      const today = new Date().toISOString().split('T')[0]
+      
+      // Obtener todas las vacaciones aprobadas del usuario para determinar el estado
+      const { data: todasVacacionesAprobadas } = await supabase
+        .from("solicitudes_vacaciones")
+        .select("fecha_inicio, fecha_fin")
+        .eq("usuario_id", user.auth_user_id)
+        .eq("estado", "aprobado")
+        .order("fecha_inicio", { ascending: false })
+
+      let estadoVacaciones = "sin_vacaciones"
+      let rangoVacaciones = null
+      
+      if (todasVacacionesAprobadas && todasVacacionesAprobadas.length > 0) {
+        const currentYear = new Date().getFullYear()
+        
+        // Buscar vacaciones del año actual
+        const vacacionesEsteAno = todasVacacionesAprobadas.filter((v: any) => {
+          const fechaInicio = new Date(v.fecha_inicio)
+          return fechaInicio.getFullYear() === currentYear
+        })
+        
+        if (vacacionesEsteAno.length > 0) {
+          const proximasVacaciones: any = vacacionesEsteAno[0]
+          const fechaInicio = new Date(proximasVacaciones.fecha_inicio)
+          const fechaFin = new Date(proximasVacaciones.fecha_fin)
+          const hoy = new Date()
+          
+          if (fechaFin < hoy) {
+            // Ya tomó vacaciones este año
+            estadoVacaciones = "ya_tomo"
+            rangoVacaciones = {
+              inicio: proximasVacaciones.fecha_inicio,
+              fin: proximasVacaciones.fecha_fin
+            }
+          } else if (fechaInicio <= hoy && fechaFin >= hoy) {
+            // Está actualmente de vacaciones
+            estadoVacaciones = "en_vacaciones"
+            rangoVacaciones = {
+              inicio: proximasVacaciones.fecha_inicio,
+              fin: proximasVacaciones.fecha_fin
+            }
+          } else if (fechaInicio > hoy) {
+            // Tiene vacaciones pendientes
+            estadoVacaciones = "pendientes"
+            rangoVacaciones = {
+              inicio: proximasVacaciones.fecha_inicio,
+              fin: proximasVacaciones.fecha_fin
+            }
+          }
+        }
+      }
+
+      // Agregar el estado de vacaciones al userData
+      const userDataWithVacaciones = {
+        ...user,
+        estadoVacaciones,
+        rangoVacaciones
+      }
+
+      setSelectedUser(userDataWithVacaciones)
+      setIsModalOpen(true)
+    } catch (error) {
+      console.error('Error al obtener información de vacaciones:', error)
+      // En caso de error, mostrar el usuario sin información adicional de vacaciones
+      setSelectedUser(user)
+      setIsModalOpen(true)
+    }
   }
 
   const handleAddUser = () => {
@@ -369,11 +503,13 @@ export default function Usuarios() {
     console.log('Usuario seleccionado:', user);
     console.log('Género del usuario:', user.genero);
     setEditUserData({
-      id: user.id,
+      id: user.id, // ID de la tabla usuario_nomina para actualizar
+      auth_user_id: user.auth_user_id, // ID de auth para permisos
       nombre: user.colaborador || '',
       correo: user.correo_electronico || '',
       telefono: user.telefono || '',
       rol: user.rol || 'usuario',
+      estado: user.estado || 'activo',
       genero: user.genero ? user.genero.toLowerCase() : '',
       cedula: user.cedula || '',
       fecha_ingreso: user.fecha_ingreso || '',
@@ -395,45 +531,132 @@ export default function Usuarios() {
   }
 
   const fetchUsers = async () => {
-    const supabase = createSupabaseClient()
-    
-    // Obtener lista de usuarios con rol 'usuario' incluyendo todas las relaciones
-    const { data: usuarios, error: usuariosError } = await supabase
-      .from("usuario_nomina")
-      .select(`
-        *,
-        empresas:empresa_id(id, nombre),
-        sedes:sede_id(id, nombre),
-        eps:eps_id(id, nombre),
-        afp:afp_id(id, nombre),
-        cesantias:cesantias_id(id, nombre),
-        caja_de_compensacion:caja_de_compensacion_id(id, nombre),
-        cargos:cargo_id(id, nombre)
-      `)
-      .eq("rol", "usuario")
+    try {
+      const supabase = createSupabaseClient()
+      const today = new Date().toISOString().split('T')[0]
+      
+      // Ejecutar consultas en paralelo para mejorar el rendimiento
+      const [
+        { data: usuarios, error: usuariosError },
+        { data: vacacionesActivas, error: vacacionesError },
+        { data: todasLasVacaciones, error: todasVacacionesError }
+      ] = await Promise.all([
+        // Usuarios con relaciones optimizadas
+        supabase
+          .from("usuario_nomina")
+          .select(`
+            id, auth_user_id, colaborador, correo_electronico, telefono, rol, estado, genero, cedula,
+            fecha_ingreso, empresa_id, cargo_id, sede_id, fecha_nacimiento, edad, rh, eps_id, afp_id,
+            cesantias_id, caja_de_compensacion_id, direccion_residencia, avatar_path,
+            empresas:empresa_id(id, nombre),
+            sedes:sede_id(id, nombre),
+            eps:eps_id(id, nombre),
+            afp:afp_id(id, nombre),
+            cesantias:cesantias_id(id, nombre),
+            caja_de_compensacion:caja_de_compensacion_id(id, nombre),
+            cargos:cargo_id(id, nombre)
+          `)
+          .eq("rol", "usuario"),
+        // Vacaciones activas
+        supabase
+          .from("solicitudes_vacaciones")
+          .select("usuario_id")
+          .eq("estado", "aprobado")
+          .lte("fecha_inicio", today)
+          .gte("fecha_fin", today),
+        // Todas las vacaciones aprobadas
+        supabase
+          .from("solicitudes_vacaciones")
+          .select("usuario_id, fecha_inicio, fecha_fin")
+          .eq("estado", "aprobado")
+          .order("fecha_inicio", { ascending: true })
+      ])
 
-    if (usuariosError) {
-      console.error("Error al obtener usuarios:", usuariosError)
-      return
+      if (usuariosError) {
+        console.error("Error al obtener usuarios:", usuariosError)
+        return
+      }
+      
+      if (vacacionesError) {
+        console.error("Error en vacaciones activas:", vacacionesError)
+      }
+      
+      if (todasVacacionesError) {
+        console.error("Error en todas las vacaciones:", todasVacacionesError)
+      }
+
+      // Agregar información completa de vacaciones a cada usuario
+      const usuariosConVacaciones = usuarios?.map(user => {
+        let estadoVacaciones = "sin_vacaciones"
+        let rangoVacaciones = null
+        const enVacaciones = user.auth_user_id ? vacacionesActivas?.some(vacacion => vacacion.usuario_id === user.auth_user_id) || false : false
+        
+        if (user.auth_user_id && todasLasVacaciones) {
+          const anoActual = new Date().getFullYear()
+          const vacacionesEsteAno = todasLasVacaciones
+            .filter((vacacion: any) => vacacion.usuario_id === user.auth_user_id)
+            .filter((vacacion: any) => {
+              const fechaInicio = new Date(vacacion.fecha_inicio)
+              return fechaInicio.getFullYear() === anoActual
+            })
+          
+          if (vacacionesEsteAno.length > 0) {
+            const hoy = new Date()
+            
+            // Buscar vacaciones actuales primero
+            const vacacionActual = vacacionesEsteAno.find((v: any) => {
+              const fechaInicio = new Date(v.fecha_inicio)
+              const fechaFin = new Date(v.fecha_fin)
+              return fechaInicio <= hoy && fechaFin >= hoy
+            })
+            
+            if (vacacionActual) {
+              // Está actualmente de vacaciones
+              estadoVacaciones = "en_vacaciones"
+              rangoVacaciones = {
+                inicio: vacacionActual.fecha_inicio,
+                fin: vacacionActual.fecha_fin
+              }
+            } else {
+              // Buscar vacaciones futuras
+              const vacacionFutura = vacacionesEsteAno.find((v: any) => {
+                const fechaInicio = new Date(v.fecha_inicio)
+                return fechaInicio > hoy
+              })
+              
+              if (vacacionFutura) {
+                // Tiene vacaciones pendientes
+                estadoVacaciones = "pendientes"
+                rangoVacaciones = {
+                  inicio: vacacionFutura.fecha_inicio,
+                  fin: vacacionFutura.fecha_fin
+                }
+              } else {
+                // Ya tomó vacaciones este año (todas las fechas de fin son pasadas)
+                const vacacionPasada = vacacionesEsteAno[vacacionesEsteAno.length - 1] // La más reciente
+                estadoVacaciones = "ya_tomo"
+                rangoVacaciones = {
+                  inicio: vacacionPasada.fecha_inicio,
+                  fin: vacacionPasada.fecha_fin
+                }
+              }
+            }
+          }
+        }
+        
+        return {
+          ...user,
+          enVacaciones,
+          estadoVacaciones,
+          rangoVacaciones
+        }
+      }) || []
+
+      setUsers(usuariosConVacaciones)
+      setFilteredUsers(usuariosConVacaciones)
+    } catch (error) {
+      console.error('Error al cargar usuarios:', error)
     }
-
-    // Obtener vacaciones activas para todos los usuarios
-    const today = new Date().toISOString().split('T')[0]
-    const { data: vacacionesActivas } = await supabase
-      .from("solicitudes_vacaciones")
-      .select("usuario_id")
-      .eq("estado", "aprobado")
-      .lte("fecha_inicio", today)
-      .gte("fecha_fin", today)
-
-    // Agregar información de vacaciones a cada usuario
-    const usuariosConVacaciones = usuarios?.map(user => ({
-      ...user,
-      enVacaciones: vacacionesActivas?.some(vacacion => vacacion.usuario_id === user.auth_user_id) || false
-    })) || []
-
-    setUsers(usuariosConVacaciones)
-    setFilteredUsers(usuariosConVacaciones)
   }
 
   const handleAddUserSubmit = async (e: React.FormEvent) => {
@@ -442,92 +665,63 @@ export default function Usuarios() {
     setAddUserSuccess(false)
     setAddUserLoading(true)
 
-    if (newUserData.password !== newUserData.confirmPassword) {
-      setAddUserError('Las contraseñas no coinciden')
-      setAddUserLoading(false)
-      return
-    }
-
     try {
       const supabase = createSupabaseClient()
 
-      // Obtener la sesión actual del administrador antes de crear el nuevo usuario
-      const { data: { session: currentSession } } = await supabase.auth.getSession()
+      // Insertar directamente en la tabla usuario_nomina sin crear autenticación
+      const { error: dbError } = await supabase
+        .from('usuario_nomina')
+        .insert([
+          {
+            colaborador: newUserData.nombre,
+            correo_electronico: newUserData.correo,
+            telefono: newUserData.telefono,
+            rol: newUserData.rol,
+            genero: newUserData.genero || null,
+            cedula: newUserData.cedula || null,
+            fecha_ingreso: newUserData.fecha_ingreso || null,
+            empresa_id: newUserData.empresa_id ? parseInt(newUserData.empresa_id) : null,
+            cargo_id: newUserData.cargo_id || null,
+            sede_id: newUserData.sede_id ? parseInt(newUserData.sede_id) : null,
+            fecha_nacimiento: newUserData.fecha_nacimiento || null,
+            edad: newUserData.edad ? parseInt(newUserData.edad) : null,
+            rh: newUserData.rh || null,
+            eps_id: newUserData.eps_id ? parseInt(newUserData.eps_id) : null,
+            afp_id: newUserData.afp_id ? parseInt(newUserData.afp_id) : null,
+            cesantias_id: newUserData.cesantias_id ? parseInt(newUserData.cesantias_id) : null,
+            caja_de_compensacion_id: newUserData.caja_de_compensacion_id ? parseInt(newUserData.caja_de_compensacion_id) : null,
+            direccion_residencia: newUserData.direccion_residencia || null,
+            estado: 'activo'
+          }
+        ])
 
-      // Crear el usuario usando la función admin de Supabase
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: newUserData.correo,
-        password: newUserData.password,
-        email_confirm: true
+      if (dbError) throw dbError
+      
+      setAddUserSuccess(true)
+      setNewUserData({
+        nombre: '',
+        correo: '',
+        telefono: '',
+        rol: 'usuario',
+        genero: '',
+        cedula: '',
+        fecha_ingreso: '',
+        empresa_id: '',
+        cargo_id: '',
+        sede_id: '',
+        fecha_nacimiento: '',
+        edad: '',
+        rh: '',
+        eps_id: '',
+        afp_id: '',
+        cesantias_id: '',
+        caja_de_compensacion_id: '',
+        direccion_residencia: ''
       })
-
-      if (authError) throw authError
-
-      if (authData.user) {
-        const { error: dbError } = await supabase
-          .from('usuario_nomina')
-          .insert([
-            {
-              colaborador: newUserData.nombre,
-              correo_electronico: newUserData.correo,
-              telefono: newUserData.telefono,
-              auth_user_id: authData.user.id,
-              user_id: authData.user.id,
-              rol: newUserData.rol,
-              genero: newUserData.genero || null,
-              cedula: newUserData.cedula || null,
-              fecha_ingreso: newUserData.fecha_ingreso || null,
-              empresa_id: newUserData.empresa_id ? parseInt(newUserData.empresa_id) : null,
-              cargo_id: newUserData.cargo_id ? parseInt(newUserData.cargo_id) : null,
-              sede_id: newUserData.sede_id ? parseInt(newUserData.sede_id) : null,
-              fecha_nacimiento: newUserData.fecha_nacimiento || null,
-              edad: newUserData.edad ? parseInt(newUserData.edad) : null,
-              rh: newUserData.rh || null,
-              eps_id: newUserData.eps_id || null,
-              afp_id: newUserData.afp_id || null,
-              cesantias_id: newUserData.cesantias_id ? parseInt(newUserData.cesantias_id) : null,
-              caja_de_compensacion_id: newUserData.caja_de_compensacion_id ? parseInt(newUserData.caja_de_compensacion_id) : null,
-              direccion_residencia: newUserData.direccion_residencia || null
-            }
-          ])
-
-        if (dbError) throw dbError
-        
-        // Restaurar la sesión del administrador si es necesario
-        if (currentSession) {
-          await supabase.auth.setSession({
-            access_token: currentSession.access_token,
-            refresh_token: currentSession.refresh_token
-          })
-        }
-        
-        setAddUserSuccess(true)
-        setNewUserData({
-          nombre: '',
-          correo: '',
-          telefono: '',
-          password: '',
-          confirmPassword: '',
-          rol: 'usuario',
-          genero: '',
-          cedula: '',
-          fecha_ingreso: '',
-          empresa_id: '',
-          cargo_id: '',
-          sede_id: '',
-          fecha_nacimiento: '',
-          edad: '',
-          rh: '',
-          eps_id: '',
-          afp_id: '',
-          cesantias_id: '',
-          caja_de_compensacion_id: '',
-          direccion_residencia: ''
-        })
-        
-        // Recargar la lista de usuarios
-        await fetchUsers()
-      }
+      
+      // Recargar la lista de usuarios
+      await fetchUsers()
+      
     } catch (err: any) {
       setAddUserError(err.message)
     } finally {
@@ -549,6 +743,7 @@ export default function Usuarios() {
         correo_electronico: editUserData.correo,
         telefono: editUserData.telefono,
         rol: editUserData.rol,
+        estado: editUserData.estado,
         genero: editUserData.genero || null,
         cedula: editUserData.cedula || null,
         fecha_ingreso: editUserData.fecha_ingreso || null,
@@ -558,11 +753,13 @@ export default function Usuarios() {
         fecha_nacimiento: editUserData.fecha_nacimiento || null,
         edad: editUserData.edad ? parseInt(editUserData.edad) : null,
         rh: editUserData.rh || null,
-        eps_id: editUserData.eps_id || null,
-        afp_id: editUserData.afp_id || null,
+        eps_id: editUserData.eps_id ? parseInt(editUserData.eps_id) : null,
+        afp_id: editUserData.afp_id ? parseInt(editUserData.afp_id) : null,
         cesantias_id: editUserData.cesantias_id ? parseInt(editUserData.cesantias_id) : null,
         caja_de_compensacion_id: editUserData.caja_de_compensacion_id ? parseInt(editUserData.caja_de_compensacion_id) : null,
-        direccion_residencia: editUserData.direccion_residencia || null
+        direccion_residencia: editUserData.direccion_residencia || null,
+        motivo_retiro: editUserData.estado === 'inactivo' ? (editUserData.motivo_retiro || null) : null,
+        fecha_retiro: editUserData.estado === 'inactivo' ? (editUserData.fecha_retiro || null) : null
       }
 
       const { error: dbError } = await supabase
@@ -572,8 +769,11 @@ export default function Usuarios() {
 
       if (dbError) throw dbError
       
+      // Sistema simplificado: solo roles básicos (usuario/administrador)
+      
       setEditUserSuccess(true)
       setEditUserData(null)
+      setUserPermissions([])
       
       // Recargar la lista de usuarios
       await fetchUsers()
@@ -651,28 +851,121 @@ export default function Usuarios() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex flex-col justify-center items-center">
-        <div className="text-2xl font-semibold text-gray-700">Cargando...</div>
+      <div className="min-h-screen">
+        <div className="flex flex-col flex-1">
+          <main className="flex-1">
+            <div className="py-6">
+              <div className="w-full mx-auto">
+                <div className="space-y-6">
+                  {/* Header skeleton */}
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <Skeleton className="h-8 w-64 mb-2" />
+                      <Skeleton className="h-4 w-48" />
+                    </div>
+                    <Skeleton className="h-10 w-32" />
+                  </div>
+
+                  {/* Filters skeleton */}
+                  <Card>
+                    <CardContent className="p-6 space-y-4">
+                      <div className="flex flex-col md:flex-row gap-4 items-end">
+                        <div className="flex-1">
+                          <Skeleton className="h-4 w-16 mb-1" />
+                          <Skeleton className="h-10 w-full" />
+                        </div>
+                        <div className="w-full md:w-48">
+                          <Skeleton className="h-4 w-16 mb-1" />
+                          <Skeleton className="h-10 w-full" />
+                        </div>
+                        <div className="w-full md:w-48">
+                          <Skeleton className="h-4 w-16 mb-1" />
+                          <Skeleton className="h-10 w-full" />
+                        </div>
+                        <div className="w-full md:w-48">
+                          <Skeleton className="h-4 w-16 mb-1" />
+                          <Skeleton className="h-10 w-full" />
+                        </div>
+                        <div className="w-full md:w-48">
+                          <Skeleton className="h-4 w-16 mb-1" />
+                          <Skeleton className="h-10 w-full" />
+                        </div>
+                        <Skeleton className="h-10 w-32" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Table skeleton */}
+                  <div className="rounded-md border bg-white">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead><Skeleton className="h-4 w-16" /></TableHead>
+                            <TableHead><Skeleton className="h-4 w-20" /></TableHead>
+                            <TableHead><Skeleton className="h-4 w-16" /></TableHead>
+                            <TableHead><Skeleton className="h-4 w-20" /></TableHead>
+                            <TableHead><Skeleton className="h-4 w-16" /></TableHead>
+                            <TableHead><Skeleton className="h-4 w-16" /></TableHead>
+                            <TableHead><Skeleton className="h-4 w-20" /></TableHead>
+                            <TableHead><Skeleton className="h-4 w-20" /></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {Array.from({ length: 10 }).map((_, index) => (
+                            <TableRow key={index}>
+                              <TableCell><Skeleton className="h-10 w-10 rounded-full" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                              <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
+                              <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                              <TableCell><Skeleton className="h-8 w-16" /></TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    {/* Pagination skeleton */}
+                    <div className="flex items-center justify-between px-6 py-4 border-t">
+                      <Skeleton className="h-4 w-32" />
+                      <div className="flex items-center space-x-2">
+                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-8" />
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Skeleton className="h-4 w-20" />
+                        <Skeleton className="h-8 w-16" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <AdminSidebar userName="Administrador" />
-
+    <div className="min-h-screen">
       {/* Main content */}
-      <div className="md:pl-64 flex flex-col flex-1">
+      <div className="flex flex-col flex-1">
         <main className="flex-1">
           <div className="py-6">
-            <div className="max-w-[90%] mx-auto px-4 sm:px-6 md:px-8">
+            <div className="w-full mx-auto">
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <div>
                     <h1 className="text-2xl font-bold tracking-tight">Listado de Usuarios</h1>
                     <p className="text-muted-foreground">Gestiona los usuarios del sistema.</p>
                   </div>
-                  <Button onClick={handleAddUser} className="flex items-center gap-2">
+                  <Button onClick={handleAddUser} className="flex items-center gap-2 btn-custom">
                     <Plus className="h-4 w-4" />
                     Añadir Usuario
                   </Button>
@@ -680,7 +973,7 @@ export default function Usuarios() {
 
                 {/* Filtros */}
                 <Card>
-                  <CardContent className="p-4">
+                  <CardContent className="p-6 space-y-4">
                     <div className="flex flex-col md:flex-row gap-4 items-end">
                       <div className="flex-1">
                         <label className="text-sm font-medium mb-1 block">Buscar</label>
@@ -729,6 +1022,34 @@ export default function Usuarios() {
                         </Select>
                       </div>
 
+                      <div className="w-full md:w-48">
+                        <label className="text-sm font-medium mb-1 block">Estado</label>
+                        <Select value={selectedEstado} onValueChange={setSelectedEstado}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Todos los estados" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Todos los estados</SelectItem>
+                            <SelectItem value="activo">Activo</SelectItem>
+                            <SelectItem value="inactivo">Inactivo</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="w-full md:w-48">
+                        <label className="text-sm font-medium mb-1 block">Rol</label>
+                        <Select value={selectedRol} onValueChange={setSelectedRol}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Todos los roles" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Todos los roles</SelectItem>
+                            <SelectItem value="usuario">Usuario</SelectItem>
+
+                          </SelectContent>
+                        </Select>
+                      </div>
+
                       <Button variant="outline" onClick={clearFilters} className="flex items-center gap-1">
                         <X className="h-4 w-4" />
                         Limpiar filtros
@@ -736,7 +1057,7 @@ export default function Usuarios() {
                     </div>
 
                     {/* Indicadores de filtros activos */}
-                    {(searchTerm || selectedEmpresa || selectedCargo || sortConfig) && (
+                    {(searchTerm || selectedEmpresa || selectedCargo || selectedEstado !== "all" || selectedRol !== "all" || sortConfig) && (
                       <div className="flex flex-wrap gap-2 mt-4">
                         <div className="text-sm text-muted-foreground">Filtros activos:</div>
                         {searchTerm && (
@@ -752,6 +1073,16 @@ export default function Usuarios() {
                         {selectedCargo && selectedCargo !== "all" && (
                           <Badge variant="outline" className="flex items-center gap-1">
                             Cargo: {selectedCargo}
+                          </Badge>
+                        )}
+                        {selectedEstado && selectedEstado !== "all" && (
+                          <Badge variant="outline" className="flex items-center gap-1">
+                            Estado: {selectedEstado === "activo" ? "Activo" : "Inactivo"}
+                          </Badge>
+                        )}
+                        {selectedRol && selectedRol !== "all" && (
+                          <Badge variant="outline" className="flex items-center gap-1">
+                            Rol: Usuario
                           </Badge>
                         )}
                         {sortConfig && (
@@ -817,13 +1148,22 @@ export default function Usuarios() {
                                 {getSortIcon("correo_electronico")}
                               </div>
                             </TableHead>
+                            <TableHead
+                              className="cursor-pointer hover:bg-muted/50"
+                              onClick={() => requestSort("estado")}
+                            >
+                              <div className="flex items-center">
+                                Estado
+                                {getSortIcon("estado")}
+                              </div>
+                            </TableHead>
                             <TableHead>Acciones</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {paginatedUsers.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                                 No se encontraron usuarios con los filtros aplicados
                               </TableCell>
                             </TableRow>
@@ -831,18 +1171,17 @@ export default function Usuarios() {
                             paginatedUsers.map((user) => (
                               <TableRow key={user.id}>
                                 <TableCell>
-                                  {user.avatar_path ? (
-                                    <img
-                                      src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatar/${user.avatar_path}`}
-                                      className="h-10 w-10 rounded-full object-cover border border-gray-200"
-                                      alt="Avatar"
-                                    />
-                                  ) : (
-                                    <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-medium">
-                                      {user.colaborador?.charAt(0) || "?"}
-                                    </div>
-                                  )}
-                                </TableCell>
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage 
+                      src={getAvatarUrl(user.avatar_path, user.genero)} 
+                      alt={user.colaborador || 'Usuario'}
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                      {user.colaborador?.charAt(0) || "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                </TableCell>
                                 <TableCell className="font-medium">{user.colaborador}</TableCell>
                                 <TableCell>{user.cargos?.nombre || "N/A"}</TableCell>
                                 <TableCell>
@@ -855,6 +1194,14 @@ export default function Usuarios() {
                   )}
                                 </TableCell>
                                 <TableCell>{user.correo_electronico}</TableCell>
+                                <TableCell>
+                                  <Badge 
+                                    variant={user.estado === 'activo' ? 'default' : 'destructive'}
+                                    className={user.estado === 'activo' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}
+                                  >
+                                    {user.estado === 'activo' ? 'Activo' : 'Inactivo'}
+                                  </Badge>
+                                </TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-2">
                                     <Button
@@ -955,7 +1302,7 @@ export default function Usuarios() {
 
       {/* Modal de detalles de usuario */}
       {isModalOpen && selectedUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4 overflow-y-auto" onClick={() => setIsModalOpen(false)}>
           <div
             className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
@@ -1037,56 +1384,13 @@ export default function Usuarios() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="usuario">Usuario</SelectItem>
+
                       <SelectItem value="administrador">Administrador</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div>
-                  <Label htmlFor="password">Contraseña *</Label>
-                  <div className="relative mt-1">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      required
-                      value={newUserData.password}
-                      onChange={(e) => setNewUserData({ ...newUserData, password: e.target.value })}
-                      className="border-2 focus:border-blue-500 transition-colors px-3 py-2"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </div>
 
-                <div>
-                  <Label htmlFor="confirmPassword">Confirmar Contraseña *</Label>
-                  <div className="relative mt-1">
-                    <Input
-                      id="confirmPassword"
-                      type={showConfirmPassword ? "text" : "password"}
-                      required
-                      value={newUserData.confirmPassword}
-                      onChange={(e) => setNewUserData({ ...newUserData, confirmPassword: e.target.value })}
-                      className="border-2 focus:border-blue-500 transition-colors px-3 py-2"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    >
-                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </div>
               </div>
 
               {/* Información adicional */}
@@ -1268,6 +1572,25 @@ export default function Usuarios() {
                   </div>
 
                   <div>
+                    <Label htmlFor="cesantias">Cesantías</Label>
+                    <Select value={newUserData.cesantias_id} onValueChange={(value) => setNewUserData({ ...newUserData, cesantias_id: value })}>
+                      <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                        <SelectValue placeholder="Seleccionar cesantías" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cesantias
+                          .filter(cesantia => cesantia && cesantia.id && cesantia.nombre)
+                          .filter((cesantia, index, self) => self.findIndex(c => c.id === cesantia.id) === index)
+                          .map((cesantia) => (
+                            <SelectItem key={`cesantia-${cesantia.id}`} value={cesantia.id.toString()}>
+                              {cesantia.nombre}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
                     <Label htmlFor="caja_compensacion">Caja de Compensación</Label>
                     <Select value={newUserData.caja_de_compensacion_id} onValueChange={(value) => setNewUserData({ ...newUserData, caja_de_compensacion_id: value })}>
                       <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
@@ -1303,7 +1626,7 @@ export default function Usuarios() {
                 <Button type="button" variant="outline" onClick={() => setIsAddUserModalOpen(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={addUserLoading}>
+                <Button type="submit" className="btn-custom" disabled={addUserLoading}>
                   {addUserLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1339,8 +1662,7 @@ export default function Usuarios() {
             {editUserData && (
               <form className="space-y-6 px-2" onSubmit={handleEditUserSubmit}>
                 {/* Campos obligatorios */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+                <div>
                     <Label htmlFor="edit-nombre">Nombre completo *</Label>
                     <Input
                       id="edit-nombre"
@@ -1351,6 +1673,7 @@ export default function Usuarios() {
                       className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
                     />
                   </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                   <div>
                     <Label htmlFor="edit-email">Correo electrónico *</Label>
@@ -1384,10 +1707,52 @@ export default function Usuarios() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="usuario">Usuario</SelectItem>
+
                         <SelectItem value="administrador">Administrador</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+
+                  <div>
+                    <Label htmlFor="edit-estado">Estado *</Label>
+                    <Select value={editUserData.estado} onValueChange={(value) => setEditUserData({ ...editUserData, estado: value })}>
+                      <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                        <SelectValue placeholder="Seleccionar estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="activo">Activo</SelectItem>
+                        <SelectItem value="inactivo">Inactivo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Campos específicos para usuarios inactivos */}
+                  {editUserData.estado === 'inactivo' && (
+                    <>
+                      <div>
+                        <Label htmlFor="edit-motivo_retiro">Motivo de Retiro</Label>
+                        <Textarea
+                          id="edit-motivo_retiro"
+                          value={editUserData.motivo_retiro || ''}
+                          onChange={(e) => setEditUserData({ ...editUserData, motivo_retiro: e.target.value })}
+                          className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
+                          rows={3}
+                          placeholder="Especifique el motivo del retiro..."
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="edit-fecha_retiro">Fecha de Retiro</Label>
+                        <Input
+                          id="edit-fecha_retiro"
+                          type="date"
+                          value={editUserData.fecha_retiro || ''}
+                          onChange={(e) => setEditUserData({ ...editUserData, fecha_retiro: e.target.value })}
+                          className="mt-1 border-2 focus:border-blue-500 transition-colors px-3 py-2"
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Información adicional */}
@@ -1565,6 +1930,25 @@ export default function Usuarios() {
                     </div>
 
                     <div>
+                      <Label htmlFor="edit-cesantias">Cesantías</Label>
+                      <Select value={editUserData.cesantias_id} onValueChange={(value) => setEditUserData({ ...editUserData, cesantias_id: value })}>
+                        <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                          <SelectValue placeholder="Seleccionar cesantías" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {cesantias
+                            .filter(cesantia => cesantia && cesantia.id && cesantia.nombre)
+                            .filter((cesantia, index, self) => self.findIndex(c => c.id === cesantia.id) === index)
+                            .map((cesantia) => (
+                              <SelectItem key={`edit-cesantia-${cesantia.id}`} value={cesantia.id.toString()}>
+                                {cesantia.nombre}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
                       <Label htmlFor="edit-caja_compensacion">Caja de Compensación</Label>
                       <Select value={editUserData.caja_de_compensacion_id} onValueChange={(value) => setEditUserData({ ...editUserData, caja_de_compensacion_id: value })}>
                         <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
@@ -1595,6 +1979,8 @@ export default function Usuarios() {
                     />
                   </div>
                 </div>
+
+
 
                 <div className="flex justify-end gap-2 pt-4 border-t">
                   <Button type="button" variant="outline" onClick={() => setIsEditUserModalOpen(false)}>

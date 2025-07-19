@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase"
-import { Sidebar } from "@/components/ui/sidebar"
+// import { crearNotificacionNuevaSolicitud } from "@/lib/notificaciones" // Removido - se maneja desde el servidor
+// Sidebar removido - ya está en el layout
 import { Card, CardContent, CardHeader, CardDescription, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -47,9 +48,9 @@ export default function IncapacidadesUsuario() {
   const [unseenCounts, setUnseenCounts] = useState<Record<string, number>>({})
 
   // Formatea fecha
-  const formatDate = (date: string | Date) => {
+  const formatDate = (date: string) => {
     const options: Intl.DateTimeFormatOptions = { year: "numeric", month: "long", day: "numeric" }
-    return new Date(date).toLocaleDateString("es-CO", options)
+    return new Date(date + 'T00:00:00').toLocaleDateString("es-CO", options)
   }
 
   // Función para contar comentarios no vistos por el usuario
@@ -189,6 +190,17 @@ export default function IncapacidadesUsuario() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return router.push("/login")
 
+      // Obtener datos del usuario para la notificación
+      const { data: userData, error: userError } = await supabase
+        .from("usuario_nomina")
+        .select("colaborador")
+        .eq("auth_user_id", session.user.id)
+        .single()
+      
+      if (userError) {
+        console.error("Error al obtener datos del usuario:", userError)
+      }
+
       const fileName = `${session.user.id}_${Date.now().toString(36)}.pdf`
       const { error: uploadError } = await supabase
         .storage.from("incapacidades")
@@ -196,7 +208,7 @@ export default function IncapacidadesUsuario() {
       if (uploadError) throw uploadError
 
       const { data: urlData } = supabase.storage.from("incapacidades").getPublicUrl(fileName)
-      const { error: dbError } = await supabase
+      const { data: incapacidadData, error: dbError } = await supabase
         .from("incapacidades")
         .insert([{
           usuario_id: session.user.id,
@@ -205,7 +217,11 @@ export default function IncapacidadesUsuario() {
           fecha_subida: new Date().toISOString(),
           documento_url: urlData.publicUrl,
         }])
+        .select()
+        .single()
       if (dbError) throw dbError
+
+      // Las notificaciones se crean automáticamente desde el servidor
 
       // Refrescar lista y contadores
       const { data: incs } = await supabase
@@ -248,104 +264,131 @@ export default function IncapacidadesUsuario() {
 
   return (
     <>
-      {!userData && loading ? (
-        <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-          Cargando…
+      {loading ? (
+        <div className="space-y-6">
+          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-6 shadow-sm">
+            <div className="flex justify-between items-center">
+              <div className="h-8 bg-gray-200/60 rounded animate-pulse w-48"></div>
+              <div className="h-10 bg-gray-200/40 rounded animate-pulse w-24"></div>
+            </div>
+          </div>
+          
+          <div className="bg-white/80 backdrop-blur-sm rounded-lg border shadow-sm">
+            <div className="p-6">
+              <div className="space-y-4">
+                <div className="h-6 bg-gray-200/60 rounded animate-pulse w-32"></div>
+                <div className="h-4 bg-gray-200/40 rounded animate-pulse w-64"></div>
+              </div>
+            </div>
+            <div className="border-t">
+              <div className="p-4">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-5 gap-4">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="h-4 bg-gray-200/60 rounded animate-pulse"></div>
+                    ))}
+                  </div>
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="grid grid-cols-5 gap-4">
+                      {[...Array(5)].map((_, j) => (
+                        <div key={j} className="h-4 bg-gray-200/40 rounded animate-pulse"></div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       ) : (
-        <div className="flex min-h-screen bg-slate-50">
-          <Sidebar userName={userData?.colaborador} />
+        <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h1 className="text-2xl font-bold">Mis Incapacidades</h1>
+                  <Button onClick={() => setShowModal(true)}>
+                    <Plus className="mr-2 h-4 w-4" /> Nueva
+                  </Button>
+                </div>
 
-          {/* ↓ El cambio visual principal: */}
-          <div className="max-w-[90%] mx-auto flex-1 p-8 md:pl-64">
-            <div className="flex justify-between items-center mb-6">
-              <h1 className="text-2xl font-bold">Mis Incapacidades</h1>
-              <Button onClick={() => setShowModal(true)}>
-                <Plus className="mr-2 h-4 w-4" /> Nueva
-              </Button>
-            </div>
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+                {success && (
+                  <Alert className="bg-green-50 text-green-800 border-green-200">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <AlertDescription>{success}</AlertDescription>
+                  </Alert>
+                )}
 
-            {error && (
-              <Alert variant="destructive" className="mb-4">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            {success && (
-              <Alert className="mb-4 bg-green-50 text-green-800 border-green-200">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <AlertDescription>{success}</AlertDescription>
-              </Alert>
-            )}
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Historial</CardTitle>
-                <CardDescription>Documentos de incapacidad</CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Inicio</TableHead>
-                      <TableHead>Fin</TableHead>
-                      <TableHead>Registro</TableHead>
-                      <TableHead>Documento</TableHead>
-                      <TableHead>Comentarios</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loading ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8">
-                          <div className="animate-spin border-4 border-[#441404] border-t-transparent rounded-full w-10 h-10 mx-auto" />
-                        </TableCell>
-                      </TableRow>
-                    ) : incapacidades.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8">
-                          No has registrado incapacidades.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      incapacidades.map(inc => (
-                        <TableRow key={inc.id}>
-                          <TableCell>{formatDate(inc.fecha_inicio)}</TableCell>
-                          <TableCell>{formatDate(inc.fecha_fin)}</TableCell>
-                          <TableCell>{formatDate(inc.fecha_subida)}</TableCell>
-                          <TableCell>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => descargarDocumento(inc.documento_url)}
-                            >
-                              <Download className="h-4 w-4 mr-1" /> PDF
-                            </Button>
-                          </TableCell>
-                          <TableCell>
-                            <div className="relative inline-block">
-                              {unseenCounts[inc.id] > 0 && (
-                                <span className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full text-xs w-5 h-5 flex items-center justify-center">
-                                  {unseenCounts[inc.id]}
-                                </span>
-                              )}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openComments(inc.id)}
-                              >
-                                <MessageSquare className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
+                <Card className="bg-white/80 backdrop-blur-sm shadow-sm">
+                  <CardHeader>
+                    <CardTitle>Historial</CardTitle>
+                    <CardDescription>Documentos de incapacidad</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Inicio</TableHead>
+                          <TableHead>Fin</TableHead>
+                          <TableHead>Registro</TableHead>
+                          <TableHead>Documento</TableHead>
+                          <TableHead>Comentarios</TableHead>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </div>
+                      </TableHeader>
+                      <TableBody>
+                        {loading ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-8">
+                              <div className="animate-spin border-4 border-[#441404] border-t-transparent rounded-full w-10 h-10 mx-auto" />
+                            </TableCell>
+                          </TableRow>
+                        ) : incapacidades.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-8">
+                              No has registrado incapacidades.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          incapacidades.map(inc => (
+                            <TableRow key={inc.id}>
+                              <TableCell>{formatDate(inc.fecha_inicio)}</TableCell>
+                              <TableCell>{formatDate(inc.fecha_fin)}</TableCell>
+                              <TableCell>{formatDate(inc.fecha_subida)}</TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => descargarDocumento(inc.documento_url)}
+                                >
+                                  <Download className="h-4 w-4 mr-1" /> PDF
+                                </Button>
+                              </TableCell>
+                              <TableCell>
+                                <div className="relative inline-block">
+                                  {unseenCounts[inc.id] > 0 && (
+                                    <span className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full text-xs w-5 h-5 flex items-center justify-center">
+                                      {unseenCounts[inc.id]}
+                                    </span>
+                                  )}
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openComments(inc.id)}
+                                  >
+                                    <MessageSquare className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
         </div>
       )}
 

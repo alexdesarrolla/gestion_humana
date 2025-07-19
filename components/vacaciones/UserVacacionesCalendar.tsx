@@ -227,14 +227,19 @@ export default function UserVacacionesCalendar({ onDateRangeSelect, selectedRang
       }
     })
 
+  // Función para identificar domingos
+  const isSunday = (date: Date) => date.getDay() === 0
+
   const modifiers = {
     booked: bookedDays,
     blocked: blockedDays,
+    sunday: isSunday,
   }
 
   const modifiersClassNames = {
     booked: "rdp-day_booked",
     blocked: "rdp-day_blocked",
+    sunday: "rdp-day_sunday",
   }
 
   if (loading) {
@@ -273,7 +278,7 @@ export default function UserVacacionesCalendar({ onDateRangeSelect, selectedRang
               month={currentMonth}
               onMonthChange={setCurrentMonth}
               locale={es}
-              disabled={[...blockedDays, ...bookedDays, { before: new Date() }]}
+              disabled={[...blockedDays, ...bookedDays, { before: new Date() }, isSunday]}
               modifiers={modifiers}
               modifiersClassNames={modifiersClassNames}
               className="rdp-custom"
@@ -296,6 +301,10 @@ export default function UserVacacionesCalendar({ onDateRangeSelect, selectedRang
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-gray-200 border border-gray-300 rounded"></div>
               <span>Días no disponibles</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-orange-200 border border-orange-300 rounded"></div>
+              <span>Domingos (excluidos del conteo)</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-blue-200 border border-blue-300 rounded"></div>

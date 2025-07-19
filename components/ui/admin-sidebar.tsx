@@ -1,9 +1,10 @@
+"use client"
 import * as React from "react"
 import { useState, useEffect } from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { type VariantProps, cva } from "class-variance-authority"
-import { PanelLeft, Menu, X, LogOut, User, Home, Info, FileText, Newspaper, Calendar, ChevronDown, Plus } from "lucide-react"
-import { FaUser, FaBuilding, FaFileAlt, FaCalendarAlt, FaIdCard } from 'react-icons/fa'
+import { PanelLeft, Menu, X, LogOut, User, Home, Info, FileText, Newspaper, Calendar, ChevronDown, Plus, BarChart3 } from "lucide-react"
+import { FaUser, FaBuilding, FaFileAlt, FaCalendarAlt, FaIdCard, FaChartPie } from 'react-icons/fa'
 import { useRouter } from "next/navigation"
 
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -16,6 +17,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { createClient } from "@supabase/supabase-js"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
+import { usePermissions } from "@/hooks/use-permissions"
 
 const SIDEBAR_COOKIE_NAME = "sidebar:state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -37,6 +39,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [expandedMenus, setExpandedMenus] = useState<{[key: string]: boolean}>({})
   const router = useRouter()
+  const { userData, loading: permissionsLoading } = usePermissions()
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut()
@@ -47,100 +50,140 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
 
   const currentPath = usePathname();
 
-  const menuItems = [
-    { name: "Escritorio", href: "/administracion", icon: Home, current: currentPath === "/administracion" },
-    { 
-      name: "Usuarios", 
-      icon: User, 
-      current: currentPath.includes("/administracion/usuarios"),
-      subItems: [
-        { 
-          name: "Todos", 
-          href: "/administracion/usuarios", 
-          icon: User, 
-          current: currentPath === "/administracion/usuarios" 
-        },
-        { 
-          name: "Cargos", 
-          href: "/administracion/usuarios/cargos", 
-          icon: FileText, 
-          current: currentPath === "/administracion/usuarios/cargos" 
-        },
-      ],
-    },
-    { 
-      name: "Solicitudes", 
-      icon: FileText, 
-      current: false,
-      subItems: [
-        { 
-          name: "Certificación Laboral", 
-          href: "/administracion/solicitudes/certificacion-laboral", 
-          icon: Newspaper, 
-          current: currentPath === "/administracion/solicitudes/certificacion-laboral" 
-        },
-        { 
-          name: "Vacaciones", 
-          href: "/administracion/solicitudes/vacaciones", 
-          icon: Calendar, 
-          current: currentPath === "/administracion/solicitudes/vacaciones" 
-        },
-        { 
-          name: "Permisos", 
-          href: "/administracion/solicitudes/permisos", 
-          icon: FileText, 
-          current: currentPath === "/administracion/solicitudes/permisos" 
-        },
-      ],
-    },
-    { 
-      name: "Comunicados", 
-      icon: Newspaper, 
-      current: currentPath.includes("/administracion/comunicados"),
-      subItems: [
-        { 
-          name: "Todos", 
-          href: "/administracion/comunicados", 
-          icon: FileText, 
-          current: currentPath === "/administracion/comunicados" 
-        },
-        { 
-          name: "Añadir nuevo", 
-          href: "/administracion/comunicados/nuevo", 
-          icon: Plus, 
-          current: currentPath === "/administracion/comunicados/nuevo" 
-        },
-        { 
-          name: "Categorías", 
-          href: "/administracion/comunicados/categorias", 
-          icon: FaFileAlt, 
-          current: currentPath === "/administracion/comunicados/categorias" 
-        },
-      ],
-    },
-    { 
-      name: "Novedades", 
-      icon: FileText, 
-      current: false,
-      subItems: [
-        { 
-          name: "Incapacidades", 
-          href: "/administracion/novedades/incapacidades", 
-          icon: FaFileAlt, 
-          current: currentPath === "/administracion/novedades/incapacidades" 
-        },
-        // Aquí se pueden agregar más submenús de novedades en el futuro
-      ],
-    },
-    { name: "Mis datos", href: "/administracion/perfil", icon: Info, current: currentPath === "/administracion/perfil" },
-  ]
+  // Generar menuItems dinámicamente basado en rol
+  const menuItems = React.useMemo(() => {
+    if (permissionsLoading || !userData) return [];
+    
+    const items = [];
+    
+    // Siempre incluir Escritorio
+    items.push({ 
+      name: "Escritorio", 
+      href: "/administracion", 
+      icon: Home, 
+      current: currentPath === "/administracion" 
+    });
+    
+    // Estadísticas - disponible para administradores
+    if (userData.rol === 'administrador') {
+      items.push({ 
+        name: "Estadísticas", 
+        href: "/administracion/estadisticas", 
+        icon: FaChartPie, 
+        current: currentPath === "/administracion/estadisticas" 
+      });
+    }
+    
+    // Solo administradores tienen acceso completo
+    if (userData.rol === 'administrador') {
+      // Usuarios
+      items.push({
+        name: "Usuarios",
+        icon: User,
+        current: currentPath.includes("/administracion/usuarios"),
+        subItems: [
+          {
+            name: "Todos",
+            href: "/administracion/usuarios",
+            icon: User,
+            current: currentPath === "/administracion/usuarios"
+          },
+          {
+            name: "Cargos",
+            href: "/administracion/usuarios/cargos",
+            icon: FileText,
+            current: currentPath === "/administracion/usuarios/cargos"
+          },
+        ],
+      });
+      
+      // Solicitudes
+      items.push({
+        name: "Solicitudes",
+        icon: FileText,
+        current: currentPath.includes("/administracion/solicitudes"),
+        subItems: [
+          {
+            name: "Certificación Laboral",
+            href: "/administracion/solicitudes/certificacion-laboral",
+            icon: Newspaper,
+            current: currentPath === "/administracion/solicitudes/certificacion-laboral"
+          },
+          {
+            name: "Vacaciones",
+            href: "/administracion/solicitudes/vacaciones",
+            icon: Calendar,
+            current: currentPath === "/administracion/solicitudes/vacaciones"
+          },
+          {
+            name: "Permisos",
+            href: "/administracion/solicitudes/permisos",
+            icon: FileText,
+            current: currentPath === "/administracion/solicitudes/permisos"
+          },
+        ],
+      });
+      
+      // Comunicados
+      items.push({
+        name: "Comunicados",
+        icon: Newspaper,
+        current: currentPath.includes("/administracion/comunicados"),
+        subItems: [
+          {
+            name: "Todos",
+            href: "/administracion/comunicados",
+            icon: FileText,
+            current: currentPath === "/administracion/comunicados"
+          },
+          {
+            name: "Añadir nuevo",
+            href: "/administracion/comunicados/nuevo",
+            icon: Plus,
+            current: currentPath === "/administracion/comunicados/nuevo"
+          },
+          {
+            name: "Categorías",
+            href: "/administracion/comunicados/categorias",
+            icon: FaFileAlt,
+            current: currentPath === "/administracion/comunicados/categorias"
+          },
+        ],
+      });
+      
+      // Novedades
+      items.push({
+        name: "Novedades",
+        icon: FileText,
+        current: currentPath.includes("/administracion/novedades"),
+        subItems: [
+          {
+            name: "Incapacidades",
+            href: "/administracion/novedades/incapacidades",
+            icon: FaFileAlt,
+            current: currentPath === "/administracion/novedades/incapacidades"
+          },
+        ],
+      });
+    }
+    
+    // Siempre incluir Mis datos
+    items.push({ 
+      name: "Mis datos", 
+      href: "/administracion/perfil", 
+      icon: Info, 
+      current: currentPath === "/administracion/perfil" 
+    });
+    
+    return items;
+  }, [permissionsLoading, userData, currentPath]);
   
   // Inicializar el estado de expansión basado en la ruta actual
   useEffect(() => {
     const newExpandedMenus = {...expandedMenus};
     menuItems.forEach((item, index) => {
-      if (item.subItems) {
-        const hasActiveSubItem = item.subItems.some(subItem => subItem.current);
+      if ('subItems' in item && item.subItems && Array.isArray(item.subItems)) {
+        const hasActiveSubItem = item.subItems.some((subItem: any) => subItem.current);
         if (hasActiveSubItem) {
           newExpandedMenus[index] = true;
         }
@@ -201,7 +244,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
             <nav className="mt-5 px-2 space-y-1">
               {menuItems.map((item, index) => (
                 <div key={item.name}>
-                  {item.subItems ? (
+                  {('subItems' in item && item.subItems) ? (
                     <>
                       <button
                         onClick={() => toggleMenu(index)}
@@ -229,7 +272,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
                       </button>
                       {expandedMenus[index] && (
                         <div className="pl-8 mt-1 space-y-1">
-                          {item.subItems.map((subItem) => (
+                          {('subItems' in item && item.subItems && Array.isArray(item.subItems)) && item.subItems.map((subItem: any) => (
                             <Link
                               key={subItem.name}
                               href={subItem.href}
@@ -294,7 +337,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
             <nav className="mt-8 flex-1 px-2 space-y-1">
               {menuItems.map((item, index) => (
                 <div key={item.name}>
-                  {item.subItems ? (
+                  {('subItems' in item && item.subItems) ? (
                     <>
                       <button
                         onClick={() => toggleMenu(index)}
@@ -322,7 +365,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
                       </button>
                       {expandedMenus[index] && (
                         <div className="pl-8 mt-1 space-y-1">
-                          {item.subItems.map((subItem) => (
+                          {('subItems' in item && item.subItems && Array.isArray(item.subItems)) && item.subItems.map((subItem: any) => (
                             <Link
                               key={subItem.name}
                               href={subItem.href}

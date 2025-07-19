@@ -27,13 +27,13 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+
 import { Heart, Plus, Edit, Trash2, Search } from "lucide-react";
 
 interface Categoria {
   id: string;
   nombre: string;
   descripcion: string;
-  color: string;
   activa: boolean;
   created_at: string;
   _count?: {
@@ -44,7 +44,6 @@ interface Categoria {
 interface FormData {
   nombre: string;
   descripcion: string;
-  color: string;
   activa: boolean;
 }
 
@@ -64,20 +63,10 @@ export default function CategoriasBienestar() {
   const [formData, setFormData] = useState<FormData>({
     nombre: "",
     descripcion: "",
-    color: "#3B82F6",
     activa: true,
   });
 
-  const coloresDisponibles = [
-    { nombre: "Azul", valor: "#3B82F6" },
-    { nombre: "Verde", valor: "#10B981" },
-    { nombre: "Rojo", valor: "#EF4444" },
-    { nombre: "Amarillo", valor: "#F59E0B" },
-    { nombre: "Púrpura", valor: "#8B5CF6" },
-    { nombre: "Rosa", valor: "#EC4899" },
-    { nombre: "Índigo", valor: "#6366F1" },
-    { nombre: "Gris", valor: "#6B7280" },
-  ];
+
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -148,7 +137,6 @@ export default function CategoriasBienestar() {
     setFormData({
       nombre: "",
       descripcion: "",
-      color: "#3B82F6",
       activa: true,
     });
     setEditingCategoria(null);
@@ -162,7 +150,6 @@ export default function CategoriasBienestar() {
       setFormData({
         nombre: categoria.nombre,
         descripcion: categoria.descripcion,
-        color: categoria.color,
         activa: categoria.activa,
       });
     } else {
@@ -196,7 +183,6 @@ export default function CategoriasBienestar() {
           .update({
             nombre: formData.nombre,
             descripcion: formData.descripcion,
-            color: formData.color,
             activa: formData.activa,
           })
           .eq("id", editingCategoria.id);
@@ -210,7 +196,6 @@ export default function CategoriasBienestar() {
           .insert({
             nombre: formData.nombre,
             descripcion: formData.descripcion,
-            color: formData.color,
             activa: formData.activa,
           });
 
@@ -314,7 +299,11 @@ export default function CategoriasBienestar() {
               <Heart className="h-6 w-6 text-red-500" />
               Categorías de Bienestar
             </CardTitle>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+              if (!open) {
+                closeDialog();
+              }
+            }}>
               <DialogTrigger asChild>
                 <Button onClick={() => openDialog()} className="btn-custom">
                   <Plus className="h-4 w-4 mr-2" />
@@ -356,25 +345,7 @@ export default function CategoriasBienestar() {
                       />
                     </div>
                     
-                    <div className="space-y-2">
-                      <Label>Color</Label>
-                      <div className="grid grid-cols-4 gap-2">
-                        {coloresDisponibles.map((color) => (
-                          <button
-                            key={color.valor}
-                            type="button"
-                            onClick={() => handleInputChange("color", color.valor)}
-                            className={`w-full h-10 rounded border-2 transition-all ${
-                              formData.color === color.valor
-                                ? "border-gray-800 scale-110"
-                                : "border-gray-300 hover:border-gray-500"
-                            }`}
-                            style={{ backgroundColor: color.valor }}
-                            title={color.nombre}
-                          />
-                        ))}
-                      </div>
-                    </div>
+
                     
                     <div className="flex items-center space-x-2">
                       <input
@@ -382,7 +353,7 @@ export default function CategoriasBienestar() {
                         id="activa"
                         checked={formData.activa}
                         onChange={(e) => handleInputChange("activa", e.target.checked)}
-                        className="rounded"
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
                       <Label htmlFor="activa">Categoría activa</Label>
                     </div>
@@ -436,7 +407,6 @@ export default function CategoriasBienestar() {
                 <TableRow>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Descripción</TableHead>
-                  <TableHead>Color</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Publicaciones</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
@@ -445,7 +415,7 @@ export default function CategoriasBienestar() {
               <TableBody>
                 {filteredCategorias.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                       {searchTerm ? "No se encontraron categorías" : "No hay categorías creadas"}
                     </TableCell>
                   </TableRow>
@@ -455,15 +425,6 @@ export default function CategoriasBienestar() {
                       <TableCell className="font-medium">{categoria.nombre}</TableCell>
                       <TableCell className="max-w-xs truncate">
                         {categoria.descripcion || "Sin descripción"}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="w-4 h-4 rounded-full border"
-                            style={{ backgroundColor: categoria.color }}
-                          />
-                          <span className="text-sm text-gray-600">{categoria.color}</span>
-                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant={categoria.activa ? "default" : "secondary"}>
@@ -484,9 +445,24 @@ export default function CategoriasBienestar() {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Dialog>
+                          <Dialog open={deletingId === categoria.id} onOpenChange={(open) => {
+                            if (!open) {
+                              setDeletingId(null);
+                              setDeleteConfirm("");
+                              setError(null);
+                            }
+                          }}>
                             <DialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="text-red-600">
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="text-red-600"
+                                onClick={() => {
+                                  setDeletingId(categoria.id);
+                                  setDeleteConfirm("");
+                                  setError(null);
+                                }}
+                              >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </DialogTrigger>
@@ -522,6 +498,7 @@ export default function CategoriasBienestar() {
                                   onClick={() => {
                                     setDeleteConfirm("");
                                     setError(null);
+                                    setDeletingId(null);
                                   }}
                                 >
                                   Cancelar

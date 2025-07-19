@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Calendar, User, Heart, Star, Eye, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 interface PublicacionDetalle {
   id: string;
@@ -36,9 +37,7 @@ export default function DetallePublicacionBienestarPage() {
   const [publicacion, setPublicacion] = useState<PublicacionDetalle | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   // Formatear la fecha de publicación
   const formatDate = (dateString: string | null) => {
@@ -63,47 +62,14 @@ export default function DetallePublicacionBienestarPage() {
       .substring(0, 2);
   };
 
-  // Funciones para el lightbox
-  const openLightbox = (images: string[], index: number) => {
-    setLightboxImages(images);
-    setCurrentImageIndex(index);
-    setLightboxOpen(true);
-    alert('Lightbox opened');
+  // Funciones para el modal de imagen
+  const openImageModal = (imageUrl: string) => {
+    setSelectedImage(imageUrl);
   };
 
-  const closeLightbox = () => {
-    setLightboxOpen(false);
+  const closeImageModal = () => {
+    setSelectedImage(null);
   };
-
-  const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % lightboxImages.length);
-  };
-
-  const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + lightboxImages.length) % lightboxImages.length);
-  };
-
-  // Manejar eventos de teclado para el lightbox
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!lightboxOpen) return;
-      
-      switch (e.key) {
-        case 'Escape':
-          closeLightbox();
-          break;
-        case 'ArrowLeft':
-          prevImage();
-          break;
-        case 'ArrowRight':
-          nextImage();
-          break;
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [lightboxOpen, lightboxImages.length]);
 
   useEffect(() => {
     const fetchPublicacion = async () => {
@@ -379,87 +345,46 @@ export default function DetallePublicacionBienestarPage() {
                 <Heart className="h-5 w-5 text-pink-500" />
                 Galería de Imágenes
               </h3>
-              <Button onClick={() => openLightbox(publicacion.galeria_imagenes, 0)}>
-                Abrir Lightbox de Prueba
-              </Button>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {publicacion.galeria_imagenes.map((url, index) => (
-                  <div key={index} className="relative group cursor-pointer" onClick={() => openLightbox(publicacion.galeria_imagenes, index)}>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {publicacion.galeria_imagenes.map((img, index) => (
+                  <div
+                    key={index}
+                    className="cursor-pointer overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300"
+                    onClick={() => openImageModal(img)}
+                  >
                     <img
-                      src={url}
-                      alt={`Imagen ${index + 1} de la galería`}
-                      className="w-full h-48 object-cover rounded-lg border transition-transform group-hover:scale-105"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
+                      src={img}
+                      alt={`Imagen de la galería ${index + 1}`}
+                      className="w-full h-40 object-cover"
                     />
-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center pointer-events-none">
-                      <Eye className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
                   </div>
                 ))}
               </div>
+
+              {/* Modal for image preview */}
+              {selectedImage && (
+                <Dialog open={!!selectedImage} onOpenChange={() => closeImageModal()}>
+                  <DialogContent className="max-w-3xl max-h-[90vh]">
+                    <img 
+                      src={selectedImage} 
+                      alt="Imagen ampliada" 
+                      className="w-full h-[90vh] rounded-lg"
+                    />
+                  </DialogContent>
+                </Dialog>
+              )}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Lightbox */}
-      {lightboxOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center">
-          <div className="relative max-w-4xl max-h-full p-4">
-            {/* Botón cerrar */}
-            <button
-              onClick={closeLightbox}
-              className="absolute top-4 right-4 z-10 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
-            >
-              <X className="h-6 w-6" />
-            </button>
-
-            {/* Botón anterior */}
-            {lightboxImages.length > 1 && (
-              <button
-                onClick={prevImage}
-                className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
-              >
-                <ChevronLeft className="h-6 w-6" />
-              </button>
-            )}
-
-            {/* Botón siguiente */}
-            {lightboxImages.length > 1 && (
-              <button
-                onClick={nextImage}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
-              >
-                <ChevronRight className="h-6 w-6" />
-              </button>
-            )}
-
-            {/* Imagen */}
-            <img
-              src={lightboxImages[currentImageIndex]}
-              alt={`Imagen ${currentImageIndex + 1}`}
-              className="max-w-full max-h-full object-contain"
-              onClick={(e) => e.stopPropagation()}
-            />
-            <p className="text-white text-center mt-4">Test Lightbox - Imagen ${currentImageIndex + 1}</p>
-
-            {/* Contador de imágenes */}
-            {lightboxImages.length > 1 && (
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
-                {currentImageIndex + 1} / {lightboxImages.length}
-              </div>
-            )}
-          </div>
-
-          {/* Overlay clickeable para cerrar */}
-          <div
-            className="absolute inset-0 -z-10"
-            onClick={closeLightbox}
-          />
-        </div>
+      {selectedImage && (
+        <Dialog open={!!selectedImage} onOpenChange={() => closeImageModal()}>
+          <DialogContent className="max-w-3xl">
+            <img src={selectedImage} alt="Imagen ampliada" className="w-full h-auto rounded-lg" />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

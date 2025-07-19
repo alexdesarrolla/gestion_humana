@@ -16,8 +16,6 @@ interface BirthdayUser {
   fecha_nacimiento: string
   avatar_path?: string | null
   genero?: string | null
-  empresas?: { nombre: string }
-  cargos?: { nombre: string }
 }
 
 export default function Home() {
@@ -82,9 +80,7 @@ export default function Home() {
             colaborador,
             fecha_nacimiento,
             avatar_path,
-            genero,
-            empresas:empresa_id(nombre),
-            cargos:cargo_id(nombre)
+            genero
           `)
           .eq('estado', 'activo')
           .not('fecha_nacimiento', 'is', null)
@@ -98,7 +94,7 @@ export default function Home() {
         const birthdayUsersThisWeek = (users || []).filter(user => {
           if (!user.fecha_nacimiento) return false
           
-          const birthDate = new Date(user.fecha_nacimiento)
+          const birthDate = new Date(user.fecha_nacimiento as string)
           const currentYear = today.getFullYear()
           
           // Crear fecha de cumpleaños para este año
@@ -108,7 +104,7 @@ export default function Home() {
           return birthdayThisYear >= currentWeekStart && birthdayThisYear <= currentWeekEnd
         })
         
-        setBirthdayUsers(birthdayUsersThisWeek)
+        setBirthdayUsers(birthdayUsersThisWeek as BirthdayUser[])
       } catch (error) {
         console.error('Error loading birthday users:', error)
       } finally {
@@ -328,9 +324,12 @@ export default function Home() {
               </div>
             </div>
             <nav className="landing-nav-links">
-              <a href="#inicio" className="landing-nav-link">Inicio</a>
+              <a href="#inicio" className="landing-nav-link">Ingresar</a>
               <a href="#novedades" className="landing-nav-link">Novedades</a>
-              <a href="#recursos" className="landing-nav-link">Recursos</a>
+              <a href="#bienestar" className="landing-nav-link">Bienestar</a>
+              <a href="#actividades" className="landing-nav-link">Actividades</a>
+              <a href="#sst" className="landing-nav-link">SST</a>
+              <a href="#normatividad" className="landing-nav-link">Normatividad</a>
               <a href="#contacto" className="landing-nav-link">Contacto</a>
             </nav>
           </div>
@@ -369,7 +368,7 @@ export default function Home() {
               </div>
             </div>
             
-            <div className="landing-login-section">
+            <div className="landing-login-section" id="inicio">
               <Card className="border-none shadow-lg glassmorphism-card max-w-md w-full">
                 <CardHeader className="space-y-1">
                   <CardTitle className="text-2xl text-center">
@@ -411,7 +410,7 @@ export default function Home() {
                             value={formData.email}
                             onChange={handleInputChange}
                             name="email"
-                            placeholder="12345678 o tu@empresa.com"
+                            placeholder="12345678 o tu@mail.com"
                             required
                           />
                         </div>
@@ -583,7 +582,7 @@ export default function Home() {
           {/* Cards Row */}
           <div className="landing-cards-row">
             {/* Bienestar Card */}
-            <div className="landing-card">
+            <div className="landing-card" id="bienestar">
               <div className="landing-card-header">
                 <span className="landing-card-category bienestar">Bienestar</span>
                 <h3 className="landing-card-title">Programas de Bienestar</h3>
@@ -632,7 +631,7 @@ export default function Home() {
             </div>
 
             {/* Actividades Card */}
-            <div className="landing-card">
+            <div className="landing-card" id="actividades">
               <div className="landing-card-header">
                 <span className="landing-card-category actividades">Actividades</span>
                 <h3 className="landing-card-title">Cronograma de Actividades</h3>
@@ -684,7 +683,7 @@ export default function Home() {
           {/* Second Cards Row */}
           <div className="landing-cards-row">
             {/* SST Card */}
-            <div className="landing-card">
+            <div className="landing-card" id="sst">
               <div className="landing-card-header">
                 <span className="landing-card-category sst">SST</span>
                 <h3 className="landing-card-title">Seguridad y Salud en el Trabajo</h3>
@@ -733,7 +732,7 @@ export default function Home() {
             </div>
 
             {/* Normatividad Card */}
-            <div className="landing-card">
+            <div className="landing-card" id="normatividad">
               <div className="landing-card-header">
                 <span className="landing-card-category normatividad">Normatividad</span>
                 <h3 className="landing-card-title">Blog de Normatividad</h3>
@@ -783,7 +782,7 @@ export default function Home() {
           </div>
 
           {/* Featured Birthday Section */}
-          <div className="landing-featured-birthday">
+          <div className="landing-featured-birthday" id="cumpleaños">
             <div className="landing-birthday-content">
               <span className="landing-birthday-badge">Esta Semana</span>
               <h3 className="landing-birthday-title">
@@ -829,7 +828,7 @@ export default function Home() {
                         <div key={user.id} className="landing-birthday-featured-person">
                           <div className="landing-birthday-avatar">
                             <img 
-                              src={getAvatarUrl(user.avatar_path, user.genero)}
+                              src={getAvatarUrl(user.avatar_path || null, user.genero || null)}
                               alt={`Avatar de ${user.colaborador}`}
                               className="w-full h-full object-cover rounded-full"
                               onError={(e) => {
@@ -845,7 +844,7 @@ export default function Home() {
                           </div>
                           <div className="landing-birthday-info">
                             <h4 className="landing-birthday-person-name">{user.colaborador}</h4>
-                            <p className="landing-birthday-person-role">{user.cargos?.nombre || 'Sin cargo'} - {user.empresas?.nombre || 'Sin empresa'}</p>
+                            <p className="landing-birthday-person-role">Colaborador</p>
                             <p className="landing-birthday-person-date">🎂 {formattedDate}</p>
                           </div>
                         </div>
@@ -857,14 +856,6 @@ export default function Home() {
                     <p className="text-gray-600">No hay cumpleañeros esta semana</p>
                   </div>
                 )}
-              </div>
-              <div className="landing-birthday-actions">
-                <a href="#" className="landing-birthday-cta primary">
-                  Enviar Felicitaciones
-                </a>
-                <a href="#" className="landing-birthday-cta secondary">
-                  Ver Todos los Cumpleaños
-                </a>
               </div>
             </div>
           </div>
@@ -906,11 +897,12 @@ export default function Home() {
               <h4>Enlaces Rápidos</h4>
               <ul className="landing-footer-links">
                 <li><a href="#inicio">Ingresar</a></li>
-                <li><a href="#novedades">Programas de bienestar</a></li>
-                <li><a href="#recursos">Cronograma de Actividades</a></li>
-                <li><a href="#contacto">Seguridad y Salud en el Trabajo</a></li>
-                <li><a href="#contacto">Blog de Normatividad</a></li>
-                <li><a href="#contacto">Cumpleañeros de la Semana</a></li>
+                <li><a href="#novedades">Novedades</a></li>
+                <li><a href="#bienestar">Programas de bienestar</a></li>
+                <li><a href="#actividades">Cronograma de Actividades</a></li>
+                <li><a href="#sst">Seguridad y Salud en el Trabajo</a></li>
+                <li><a href="#normatividad">Blog de Normatividad</a></li>
+                <li><a href="#cumpleaños">Cumpleañeros de la Semana</a></li>
               </ul>
             </div>
             

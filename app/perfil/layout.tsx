@@ -24,11 +24,7 @@ export default function PerfilLayout({
       } = await supabase.auth.getSession()
 
       if (error || !session) {
-<<<<<<< HEAD
         router.push("/")
-=======
-        router.push("/login")
->>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
         return
       }
 
@@ -50,11 +46,7 @@ export default function PerfilLayout({
 
       if (userError) {
         console.error("Error al obtener datos del usuario:", userError)
-<<<<<<< HEAD
         router.push("/")
-=======
-        router.push("/login")
->>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
         return
       }
 

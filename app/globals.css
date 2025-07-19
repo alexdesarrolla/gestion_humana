@@ -224,7 +224,15 @@
 }
 
 .landing-hero {
-  background: linear-gradient(135deg, var(--gray-50) 0%, white 100%);
+  background-image: linear-gradient(to right, 
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(255, 255, 255, 0.7) 30%,
+    rgba(255, 255, 255, 0.3) 60%,
+    rgba(255, 255, 255, 0) 100%
+  ), url('/fondosecciones.webp');
+  background-size: cover;
+  background-position: center;
+  color: var(--gray-900);
   padding: var(--spacing-3xl) 0;
 }
 

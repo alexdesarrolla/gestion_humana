@@ -30,6 +30,13 @@ export default function Home() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showValidationForm, setShowValidationForm] = useState(false);
+  const [cedula, setCedula] = useState('');
+  const [validationStep, setValidationStep] = useState(1);
+  const [validationPassword, setValidationPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [userData, setUserData] = useState<{correo_electronico: string; cedula: string} | null>(null);
+  const [showModal, setShowModal] = useState(false);
   const [birthdayUsers, setBirthdayUsers] = useState<BirthdayUser[]>([]);
   const [loadingBirthdays, setLoadingBirthdays] = useState(true);
 
@@ -178,6 +185,129 @@ export default function Home() {
      }
    };
 
+  const handleValidarCedula = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
+    try {
+      const supabase = createSupabaseClient();
+
+      // Verificar si el usuario existe en la tabla usuario_nomina
+      const { data, error: queryError } = await supabase
+        .from('usuario_nomina')
+        .select('*')
+        .eq('cedula', cedula)
+        .single();
+
+      if (queryError) {
+        // Si no se encuentra el usuario, mostrar modal
+        setShowModal(true);
+        return;
+      }
+
+      // Verificar si el usuario ya tiene una cuenta en auth
+      const { data: authData, error: authError } = await supabase
+        .from('usuario_nomina')
+        .select('auth_user_id')
+        .eq('cedula', cedula)
+        .single();
+
+      if (authData && authData.auth_user_id) {
+        setError('Ya existe una cuenta asociada a esta cédula. Por favor inicie sesión.');
+        return;
+      }
+
+      // Si el usuario existe en nomina pero no tiene cuenta, pasar al siguiente paso
+      if (data && typeof data.correo_electronico === 'string' && typeof data.cedula === 'string') {
+        setUserData({
+          correo_electronico: data.correo_electronico,
+          cedula: data.cedula
+        });
+      } else {
+        throw new Error('Datos de usuario incompletos');
+      }
+      setValidationStep(2);
+    } catch (err) {
+      setError('Error al validar la cédula. Por favor intente nuevamente.');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCrearCuenta = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
+    if (validationPassword !== confirmPassword) {
+      setError('Las contraseñas no coinciden');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const supabase = createSupabaseClient();
+
+      if (!userData?.correo_electronico) {
+        setError('Datos del usuario no encontrados');
+        setIsLoading(false);
+        return;
+      }
+
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: userData.correo_electronico,
+        password: validationPassword,
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // Actualizar el registro en usuario_nomina con el auth_user_id
+        const { error: updateError } = await supabase
+          .from('usuario_nomina')
+          .update({ auth_user_id: authData.user.id })
+          .eq('cedula', cedula);
+
+        if (updateError) throw updateError;
+
+        // Resetear formularios y volver al login
+        setShowValidationForm(false);
+        setValidationStep(1);
+        setCedula('');
+        setValidationPassword('');
+        setConfirmPassword('');
+        setUserData(null);
+        setError('');
+        alert('Cuenta creada exitosamente. Ahora puedes iniciar sesión.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al crear la cuenta');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+  };
+
+  const toggleToValidation = () => {
+    setShowValidationForm(true);
+    setError('');
+  };
+
+  const backToLogin = () => {
+    setShowValidationForm(false);
+    setValidationStep(1);
+    setCedula('');
+    setValidationPassword('');
+    setConfirmPassword('');
+    setUserData(null);
+    setError('');
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
@@ -246,8 +376,21 @@ export default function Home() {
             <div className="landing-login-section">
               <Card className="border-none shadow-lg glassmorphism-card max-w-md w-full">
                 <CardHeader className="space-y-1">
-                  <CardTitle className="text-2xl text-center">Iniciar Sesión</CardTitle>
-                  <CardDescription className="text-center">Ingresa tu correo o cédula y contraseña para acceder al sistema</CardDescription>
+                  <CardTitle className="text-2xl text-center">
+                    {showValidationForm 
+                      ? (validationStep === 1 ? 'Validar Cédula' : 'Crear Contraseña')
+                      : 'Iniciar Sesión'
+                    }
+                  </CardTitle>
+                  <CardDescription className="text-center">
+                    {showValidationForm 
+                      ? (validationStep === 1 
+                          ? 'Ingresa tu número de cédula para validar tus datos'
+                          : 'Crea una contraseña para tu cuenta'
+                        )
+                      : 'Ingresa tu correo o cédula y contraseña para acceder al sistema'
+                    }
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {error && (
@@ -256,79 +399,152 @@ export default function Home() {
                       <AlertDescription>{error}</AlertDescription>
                     </Alert>
                   )}
-                  <form onSubmit={handleLogin} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Cédula o Correo electrónico</Label>
-                      <div className="relative bg-white">
-                        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                          <UserCircle2 className="h-5 w-5 text-slate-400" />
+                  
+                  {!showValidationForm ? (
+                    <form onSubmit={handleLogin} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Cédula o Correo electrónico</Label>
+                        <div className="relative bg-white">
+                          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <UserCircle2 className="h-5 w-5 text-slate-400" />
+                          </div>
+                          <Input
+                            id="email"
+                            type="text"
+                            className="pl-10"
+                            value={formData.email}
+                            onChange={handleInputChange}
+                            name="email"
+                            placeholder="12345678 o tu@empresa.com"
+                            required
+                          />
                         </div>
-                        <Input
-                          id="email"
-                          type="text"
-                          className="pl-10"
-                          value={formData.email}
-                          onChange={handleInputChange}
-                          name="email"
-                          placeholder="12345678 o tu@empresa.com"
-                          required
-                        />
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="password">Contraseña</Label>
-                        <a href="/reset-password" className="text-sm font-medium text-primary hover:underline">
-                          ¿Olvidaste tu contraseña?
-                        </a>
-                      </div>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                          <Lock className="h-5 w-5 text-slate-400" />
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="password">Contraseña</Label>
+                          <a href="/reset-password" className="text-sm font-medium text-primary hover:underline">
+                            ¿Olvidaste tu contraseña?
+                          </a>
                         </div>
-                        <Input
-                          id="password"
-                          type={showPassword ? "text" : "password"}
-                          className="pl-10 pr-10 bg-white"
-                          value={formData.password}
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <Lock className="h-5 w-5 text-slate-400" />
+                          </div>
+                          <Input
+                            id="password"
+                            type={showPassword ? "text" : "password"}
+                            className="pl-10 pr-10 bg-white"
+                            value={formData.password}
+                            onChange={handleInputChange}
+                            name="password"
+                            placeholder="••••••••"
+                            required
+                          />
+                          <button
+                            type="button"
+                            className="absolute inset-y-0 right-0 flex items-center pr-3"
+                            onClick={() => setShowPassword(!showPassword)}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-5 w-5 text-slate-400" />
+                            ) : (
+                              <Eye className="h-5 w-5 text-slate-400" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="remember"
+                          name="remember"
+                          checked={formData.remember}
                           onChange={handleInputChange}
-                          name="password"
-                          placeholder="••••••••"
-                          required
+                          className="rounded border-gray-300"
                         />
-                        <button
+                        <Label htmlFor="remember" className="text-sm">Recordarme</Label>
+                      </div>
+                      <Button type="submit" className="w-full bg-[#6B487A]" disabled={isLoading}>
+                        {isLoading ? 'Iniciando sesión...' : 'Ingresar al Portal'}
+                      </Button>
+                      <div className="mt-4 text-center">
+                        <button 
                           type="button"
-                          className="absolute inset-y-0 right-0 flex items-center pr-3"
-                          onClick={() => setShowPassword(!showPassword)}
+                          onClick={toggleToValidation}
+                          className="text-sm font-medium text-primary hover:underline"
                         >
-                          {showPassword ? (
-                            <EyeOff className="h-5 w-5 text-slate-400" />
-                          ) : (
-                            <Eye className="h-5 w-5 text-slate-400" />
-                          )}
+                          Primera vez que voy a ingresar
                         </button>
                       </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="remember"
-                        name="remember"
-                        checked={formData.remember}
-                        onChange={handleInputChange}
-                        className="rounded border-gray-300"
-                      />
-                      <Label htmlFor="remember" className="text-sm">Recordarme</Label>
-                    </div>
-                    <Button type="submit" className="w-full bg-[#6B487A]" disabled={isLoading}>
-                      {isLoading ? 'Iniciando sesión...' : 'Ingresar al Portal'}
-                    </Button>
-                    <div className="mt-4 text-center">
-                      <a href="/validacion" className="text-sm font-medium text-primary hover:underline">
-                        Primera vez que voy a ingresar
-                      </a>
-                    </div>
-                  </form>
+                    </form>
+                  ) : (
+                    validationStep === 1 ? (
+                      <form onSubmit={handleValidarCedula} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="cedula">Número de Cédula</Label>
+                          <Input
+                            id="cedula"
+                            type="text"
+                            placeholder="Ingresa tu número de cédula"
+                            className="bg-white"
+                            value={cedula}
+                            onChange={(e) => setCedula(e.target.value)}
+                            required
+                          />
+                        </div>
+                        <Button type="submit" className="w-full bg-[#6B487A]" disabled={isLoading}>
+                          {isLoading ? 'Validando...' : 'Validar Cédula'}
+                        </Button>
+                        <div className="mt-4 text-center">
+                          <button 
+                            type="button"
+                            onClick={backToLogin}
+                            className="text-sm font-medium text-primary hover:underline"
+                          >
+                            Volver al inicio de sesión
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <form onSubmit={handleCrearCuenta} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="validationPassword">Contraseña</Label>
+                          <Input
+                            id="validationPassword"
+                            type="password"
+                            className="bg-white"
+                            value={validationPassword}
+                            onChange={(e) => setValidationPassword(e.target.value)}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
+                          <Input
+                            id="confirmPassword"
+                            type="password"
+                            className="bg-white"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            required
+                          />
+                        </div>
+                        <Button type="submit" className="w-full bg-[#6B487A]" disabled={isLoading}>
+                          {isLoading ? 'Creando cuenta...' : 'Crear Cuenta'}
+                        </Button>
+                        <div className="mt-4 text-center">
+                          <button 
+                            type="button"
+                            onClick={backToLogin}
+                            className="text-sm font-medium text-primary hover:underline"
+                          >
+                            Volver al inicio de sesión
+                          </button>
+                        </div>
+                      </form>
+                    )
+                  )}
                 </CardContent>
                 <CardFooter className="flex justify-center">
                   <p className="text-sm text-slate-500 text-center">
@@ -664,16 +880,30 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Modal para usuario no encontrado */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Usuario no encontrado</h3>
+            <p className="text-gray-600 mb-6">
+              No se encontró un usuario con la cédula ingresada. Por favor verifica el número o contacta al administrador del sistema.
+            </p>
+            <div className="flex justify-end">
+              <Button onClick={closeModal} className="bg-[#6B487A]">
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Footer */}
       <footer id="contacto" className="landing-footer">
         <div className="landing-container">
           <div className="landing-footer-content">
             <div className="landing-footer-section">
               <div className="landing-footer-logo">
-                <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold">GH</span>
-                </div>
-                <span>Portal de Gestión Humana</span>
+                  <img src="/logo-h-b.webp" alt="Logo GH" className="w-40" />
               </div>
               <p className="landing-footer-description">
                 Tu centro de información y recursos para el desarrollo profesional y personal. 
@@ -684,37 +914,40 @@ export default function Home() {
             <div className="landing-footer-section">
               <h4>Enlaces Rápidos</h4>
               <ul className="landing-footer-links">
-                <li><a href="#inicio">Inicio</a></li>
-                <li><a href="#novedades">Novedades</a></li>
-                <li><a href="#recursos">Recursos</a></li>
-                <li><a href="#contacto">Contacto</a></li>
+                <li><a href="#inicio">Ingresar</a></li>
+                <li><a href="#novedades">Programas de bienestar</a></li>
+                <li><a href="#recursos">Cronograma de Actividades</a></li>
+                <li><a href="#contacto">Seguridad y Salud en el Trabajo</a></li>
+                <li><a href="#contacto">Blog de Normatividad</a></li>
+                <li><a href="#contacto">Cumpleañeros de la Semana</a></li>
               </ul>
             </div>
             
             <div className="landing-footer-section">
               <h4>Recursos</h4>
               <ul className="landing-footer-links">
-                <li><a href="#">Manual del Empleado</a></li>
-                <li><a href="#">Políticas de la Empresa</a></li>
-                <li><a href="#">Beneficios</a></li>
-                <li><a href="#">Capacitaciones</a></li>
+                <li><a href="#">Certificacion laboral</a></li>
+                <li><a href="#">vacaciones</a></li>
+                <li><a href="#">Permisos</a></li>
+                <li><a href="#">Incapacidades</a></li>
+                <li><a href="#">Comunicados</a></li>
               </ul>
             </div>
             
             <div className="landing-footer-section">
               <h4>Contacto</h4>
               <div className="landing-contact-info">
-                <p>📧 rh@tuempresa.com</p>
-                <p>📞 +57 (1) 234-5678</p>
-                <p>📍 Bogotá, Colombia</p>
+                <p>📧 digital@bdatam.com</p>
+                <p>📞 +57 310 6456 861</p>
+                <p>📍 Cúcuta, Colombia</p>
                 <p>🕒 Lun - Vie: 8:00 AM - 6:00 PM</p>
               </div>
             </div>
           </div>
           
           <div className="landing-footer-bottom">
-            <p>© 2024 Tu Empresa. Todos los derechos reservados.</p>
-            <p>Portal de Gestión Humana - Versión 1.0</p>
+            <p>© 2025 Gestión Humana 360. Todos los derechos reservados.</p>
+            <p>Hecho con el♥️ por <a href="https://bdatam.com/">Bdatam</a></p>
           </div>
         </div>
       </footer>

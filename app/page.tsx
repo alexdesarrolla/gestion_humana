@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, UserCircle2, Lock, Eye, EyeOff } from "lucide-react";
+import { AlertCircle, UserCircle2, Lock, Eye, EyeOff, Menu, X } from "lucide-react";
 import { createSupabaseClient } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 interface BirthdayUser {
   id: string
@@ -37,6 +38,7 @@ export default function Home() {
   const [showModal, setShowModal] = useState(false);
   const [birthdayUsers, setBirthdayUsers] = useState<BirthdayUser[]>([]);
   const [loadingBirthdays, setLoadingBirthdays] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Función para verificar si el input es una cédula o un correo electrónico
   const isCedula = (input: string): boolean => {
@@ -318,12 +320,27 @@ export default function Home() {
       <header className="landing-header">
         <div className="landing-container">
           <div className="landing-header-content">
-            <div className="landing-logo-section">
-              <div className="landing-brand-info">
-                <img src="/logo-h-n.webp" alt="Portal de Gestión Humana" className=" h-12" />
+            {/* Mobile header layout - logo left, hamburger right */}
+            <div className="flex items-center justify-between w-full md:contents">
+              <div className="landing-logo-section">
+                <div className="landing-brand-info">
+                  <img src="/logo-h-n.webp" alt="Portal de Gestión Humana" className="h-12" />
+                </div>
               </div>
+              
+              {/* Mobile menu button */}
+              <button
+                type="button"
+                className="md:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary"
+                onClick={() => setMobileMenuOpen(true)}
+              >
+                <span className="sr-only">Abrir menú</span>
+                <Menu className="h-6 w-6" aria-hidden="true" />
+              </button>
             </div>
-            <nav className="landing-nav-links">
+            
+            {/* Desktop Navigation */}
+            <nav className="landing-nav-links hidden md:flex">
               <a href="#inicio" className="landing-nav-link">Ingresar</a>
               <a href="#novedades" className="landing-nav-link">Novedades</a>
               <a href="#bienestar" className="landing-nav-link">Bienestar</a>
@@ -335,6 +352,91 @@ export default function Home() {
           </div>
         </div>
       </header>
+      
+      {/* Mobile menu */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-[9999] md:hidden" role="dialog" aria-modal="true">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 backdrop-enter"
+            aria-hidden="true"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          
+          {/* Menu panel */}
+          <div className="fixed inset-y-0 left-0 flex w-full max-w-sm">
+            <div className="relative flex w-full flex-col glassmorphism-sidebar mobile-menu-enter">
+              {/* Header with logo and close button */}
+              <div className="flex h-16 flex-shrink-0 items-center justify-between px-4 border-b border-white border-opacity-30">
+                <img src="/logo-h-n.webp" alt="Portal de Gestión Humana" className="h-8 w-auto" />
+                <button
+                  type="button"
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-gray-600 hover:text-gray-800 hover:bg-white hover:bg-opacity-20 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-gray-500 transition-all duration-200"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <span className="sr-only">Cerrar menú</span>
+                  <X className="h-5 w-5" aria-hidden="true" />
+                </button>
+              </div>
+              
+              {/* Navigation */}
+              <div className="flex-1 overflow-y-auto">
+                <nav className="px-4 py-4 space-y-1">
+                  <a
+                    href="#inicio"
+                    className="block px-3 py-3 text-base font-medium text-gray-800 hover:text-gray-900 hover:bg-white hover:bg-opacity-30 rounded-md transition-all duration-200 transform hover:scale-105"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Ingresar
+                  </a>
+                  <a
+                    href="#novedades"
+                    className="block px-3 py-3 text-base font-medium text-gray-800 hover:text-gray-900 hover:bg-white hover:bg-opacity-30 rounded-md transition-all duration-200 transform hover:scale-105"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Novedades
+                  </a>
+                  <a
+                    href="#bienestar"
+                    className="block px-3 py-3 text-base font-medium text-gray-800 hover:text-gray-900 hover:bg-white hover:bg-opacity-30 rounded-md transition-all duration-200 transform hover:scale-105"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Bienestar
+                  </a>
+                  <a
+                    href="#actividades"
+                    className="block px-3 py-3 text-base font-medium text-gray-800 hover:text-gray-900 hover:bg-white hover:bg-opacity-30 rounded-md transition-all duration-200 transform hover:scale-105"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Actividades
+                  </a>
+                  <a
+                    href="#sst"
+                    className="block px-3 py-3 text-base font-medium text-gray-800 hover:text-gray-900 hover:bg-white hover:bg-opacity-30 rounded-md transition-all duration-200 transform hover:scale-105"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    SST
+                  </a>
+                  <a
+                    href="#normatividad"
+                    className="block px-3 py-3 text-base font-medium text-gray-800 hover:text-gray-900 hover:bg-white hover:bg-opacity-30 rounded-md transition-all duration-200 transform hover:scale-105"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Normatividad
+                  </a>
+                  <a
+                    href="#contacto"
+                    className="block px-3 py-3 text-base font-medium text-gray-800 hover:text-gray-900 hover:bg-white hover:bg-opacity-30 rounded-md transition-all duration-200 transform hover:scale-105"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Contacto
+                  </a>
+                </nav>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Hero Section */}
       <section id="inicio" className="landing-hero">
@@ -884,7 +986,7 @@ export default function Home() {
         <div className="landing-container">
           <div className="landing-footer-content">
             <div className="landing-footer-section">
-              <div className="landing-footer-logo">
+              <div className="landing-footer-logo flex justify-center md:justify-start">
                   <img src="/logo-h-b.webp" alt="Logo GH" className="w-40" />
               </div>
               <p className="landing-footer-description">
@@ -917,13 +1019,15 @@ export default function Home() {
               </ul>
             </div>
             
-            <div className="landing-footer-section">
+            <div className="landing-footer-section text-center md:text-left">
               <h4>Contacto</h4>
-              <div className="landing-contact-info">
-                <p>📧 digital@bdatam.com</p>
-                <p>📞 +57 310 6456 861</p>
-                <p>📍 Cúcuta, Colombia</p>
-                <p>🕒 Lun - Vie: 8:00 AM - 6:00 PM</p>
+              <div className="landing-contact-info text-center md:text-left">
+                <ul className="landing-footer-links">
+                <li><a>📧 digital@bdatam.com</a></li>
+                <li><a >📞 +57 310 6456 861</a></li>
+                <li><a >📍 Cúcuta, Colombia</a></li>
+                <li><a>🕒 Lun - Vie: 8:00 AM - 6:00 PM</a></li>
+              </ul>
               </div>
             </div>
           </div>

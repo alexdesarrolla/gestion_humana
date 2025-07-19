@@ -87,6 +87,74 @@
   border: 1px solid rgba(209, 213, 219, 0.3);
 }
 
+/* Glassmorphism sidebar effect */
+.glassmorphism-sidebar {
+  backdrop-filter: blur(25px) saturate(200%);
+  -webkit-backdrop-filter: blur(25px) saturate(200%);
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 0 12px 12px 0;
+  border: 1px solid rgba(209, 213, 219, 0.3);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Mobile menu animations */
+.mobile-menu-enter {
+  animation: slideInLeft 0.3s ease-out;
+}
+
+.mobile-menu-exit {
+  animation: slideOutLeft 0.3s ease-in;
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutLeft {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+}
+
+/* Backdrop animation */
+.backdrop-enter {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.backdrop-exit {
+  animation: fadeOut 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 /* Custom button style */
 .btn-custom {
   background: #e5d6a3; /* 200 */
@@ -212,6 +280,12 @@
 .landing-nav-links {
   display: flex;
   gap: var(--spacing-lg);
+}
+
+@media (max-width: 767px) {
+  .landing-nav-links {
+    display: none !important;
+  }
 }
 
 .landing-nav-link {

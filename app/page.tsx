@@ -4,11 +4,16 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+<<<<<<< HEAD
 import { AlertCircle, UserCircle2, Lock, Eye, EyeOff } from "lucide-react";
 import { createSupabaseClient } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+=======
+import { AlertCircle } from "lucide-react";
+import { createSupabaseClient } from "@/lib/supabase";
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
 
 interface BirthdayUser {
   id: string
@@ -16,6 +21,11 @@ interface BirthdayUser {
   fecha_nacimiento: string
   avatar_path?: string | null
   genero?: string | null
+<<<<<<< HEAD
+=======
+  empresas?: { nombre: string }
+  cargos?: { nombre: string }
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
 }
 
 export default function Home() {
@@ -27,6 +37,7 @@ export default function Home() {
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+<<<<<<< HEAD
   const [showPassword, setShowPassword] = useState(false);
   const [showValidationForm, setShowValidationForm] = useState(false);
   const [cedula, setCedula] = useState('');
@@ -35,6 +46,8 @@ export default function Home() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [userData, setUserData] = useState<{correo_electronico: string; cedula: string} | null>(null);
   const [showModal, setShowModal] = useState(false);
+=======
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
   const [birthdayUsers, setBirthdayUsers] = useState<BirthdayUser[]>([]);
   const [loadingBirthdays, setLoadingBirthdays] = useState(true);
 
@@ -80,7 +93,13 @@ export default function Home() {
             colaborador,
             fecha_nacimiento,
             avatar_path,
+<<<<<<< HEAD
             genero
+=======
+            genero,
+            empresas:empresa_id(nombre),
+            cargos:cargo_id(nombre)
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
           `)
           .eq('estado', 'activo')
           .not('fecha_nacimiento', 'is', null)
@@ -94,7 +113,11 @@ export default function Home() {
         const birthdayUsersThisWeek = (users || []).filter(user => {
           if (!user.fecha_nacimiento) return false
           
+<<<<<<< HEAD
           const birthDate = new Date(user.fecha_nacimiento as string)
+=======
+          const birthDate = new Date(user.fecha_nacimiento)
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
           const currentYear = today.getFullYear()
           
           // Crear fecha de cumpleaños para este año
@@ -104,7 +127,11 @@ export default function Home() {
           return birthdayThisYear >= currentWeekStart && birthdayThisYear <= currentWeekEnd
         })
         
+<<<<<<< HEAD
         setBirthdayUsers(birthdayUsersThisWeek as BirthdayUser[])
+=======
+        setBirthdayUsers(birthdayUsersThisWeek)
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
       } catch (error) {
         console.error('Error loading birthday users:', error)
       } finally {
@@ -181,6 +208,7 @@ export default function Home() {
      }
    };
 
+<<<<<<< HEAD
   const handleValidarCedula = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -304,6 +332,8 @@ export default function Home() {
     setError('');
   };
 
+=======
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
@@ -319,6 +349,7 @@ export default function Home() {
         <div className="landing-container">
           <div className="landing-header-content">
             <div className="landing-logo-section">
+<<<<<<< HEAD
               <div className="landing-brand-info">
                 <img src="/logo-h-n.webp" alt="Portal de Gestión Humana" className=" h-12" />
               </div>
@@ -330,6 +361,20 @@ export default function Home() {
               <a href="#actividades" className="landing-nav-link">Actividades</a>
               <a href="#sst" className="landing-nav-link">SST</a>
               <a href="#normatividad" className="landing-nav-link">Normatividad</a>
+=======
+              <div className="w-12 h-12 bg-emerald-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-xl">GH</span>
+              </div>
+              <div className="landing-brand-info">
+                <h1 className="landing-portal-title">Portal de Gestión Humana</h1>
+                <p className="landing-company-name">Tu Empresa</p>
+              </div>
+            </div>
+            <nav className="landing-nav-links">
+              <a href="#inicio" className="landing-nav-link">Inicio</a>
+              <a href="#novedades" className="landing-nav-link">Novedades</a>
+              <a href="#recursos" className="landing-nav-link">Recursos</a>
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
               <a href="#contacto" className="landing-nav-link">Contacto</a>
             </nav>
           </div>
@@ -368,6 +413,7 @@ export default function Home() {
               </div>
             </div>
             
+<<<<<<< HEAD
             <div className="landing-login-section" id="inicio">
               <Card className="border-none shadow-lg glassmorphism-card max-w-md w-full">
                 <CardHeader className="space-y-1">
@@ -542,6 +588,63 @@ export default function Home() {
                   )}
                 </CardContent>
               </Card>
+=======
+            <div className="landing-login-section">
+              <div className="landing-login-card">
+                <h3 className="landing-login-title">Iniciar Sesión</h3>
+                {error && (
+                  <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                    <div className="flex items-center">
+                      <AlertCircle className="h-4 w-4 mr-2" />
+                      <span>{error}</span>
+                    </div>
+                  </div>
+                )}
+                <form className="landing-login-form" onSubmit={handleLogin}>
+                  <div className="landing-form-group">
+                    <label htmlFor="email">Cédula o Correo electrónico</label>
+                    <input
+                      type="text"
+                      id="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      placeholder="12345678 o tu@empresa.com"
+                      required
+                    />
+                  </div>
+                  <div className="landing-form-group">
+                    <label htmlFor="password">Contraseña</label>
+                    <input
+                      type="password"
+                      id="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      placeholder="••••••••"
+                      required
+                    />
+                  </div>
+                  <div className="landing-form-options">
+                    <label className="landing-checkbox-label">
+                      <input
+                        type="checkbox"
+                        name="remember"
+                        checked={formData.remember}
+                        onChange={handleInputChange}
+                      />
+                      Recordarme
+                    </label>
+                    <a href="#" className="landing-forgot-password">
+                      ¿Olvidaste tu contraseña?
+                    </a>
+                  </div>
+                  <button type="submit" className="landing-login-btn" disabled={isLoading}>
+                    {isLoading ? 'Iniciando sesión...' : 'Ingresar al Portal'}
+                  </button>
+                </form>
+              </div>
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
             </div>
           </div>
         </div>
@@ -582,7 +685,11 @@ export default function Home() {
           {/* Cards Row */}
           <div className="landing-cards-row">
             {/* Bienestar Card */}
+<<<<<<< HEAD
             <div className="landing-card" id="bienestar">
+=======
+            <div className="landing-card">
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
               <div className="landing-card-header">
                 <span className="landing-card-category bienestar">Bienestar</span>
                 <h3 className="landing-card-title">Programas de Bienestar</h3>
@@ -631,7 +738,11 @@ export default function Home() {
             </div>
 
             {/* Actividades Card */}
+<<<<<<< HEAD
             <div className="landing-card" id="actividades">
+=======
+            <div className="landing-card">
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
               <div className="landing-card-header">
                 <span className="landing-card-category actividades">Actividades</span>
                 <h3 className="landing-card-title">Cronograma de Actividades</h3>
@@ -683,7 +794,11 @@ export default function Home() {
           {/* Second Cards Row */}
           <div className="landing-cards-row">
             {/* SST Card */}
+<<<<<<< HEAD
             <div className="landing-card" id="sst">
+=======
+            <div className="landing-card">
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
               <div className="landing-card-header">
                 <span className="landing-card-category sst">SST</span>
                 <h3 className="landing-card-title">Seguridad y Salud en el Trabajo</h3>
@@ -732,7 +847,11 @@ export default function Home() {
             </div>
 
             {/* Normatividad Card */}
+<<<<<<< HEAD
             <div className="landing-card" id="normatividad">
+=======
+            <div className="landing-card">
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
               <div className="landing-card-header">
                 <span className="landing-card-category normatividad">Normatividad</span>
                 <h3 className="landing-card-title">Blog de Normatividad</h3>
@@ -782,7 +901,11 @@ export default function Home() {
           </div>
 
           {/* Featured Birthday Section */}
+<<<<<<< HEAD
           <div className="landing-featured-birthday" id="cumpleaños">
+=======
+          <div className="landing-featured-birthday">
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
             <div className="landing-birthday-content">
               <span className="landing-birthday-badge">Esta Semana</span>
               <h3 className="landing-birthday-title">
@@ -828,7 +951,11 @@ export default function Home() {
                         <div key={user.id} className="landing-birthday-featured-person">
                           <div className="landing-birthday-avatar">
                             <img 
+<<<<<<< HEAD
                               src={getAvatarUrl(user.avatar_path || null, user.genero || null)}
+=======
+                              src={getAvatarUrl(user.avatar_path, user.genero)}
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
                               alt={`Avatar de ${user.colaborador}`}
                               className="w-full h-full object-cover rounded-full"
                               onError={(e) => {
@@ -844,7 +971,11 @@ export default function Home() {
                           </div>
                           <div className="landing-birthday-info">
                             <h4 className="landing-birthday-person-name">{user.colaborador}</h4>
+<<<<<<< HEAD
                             <p className="landing-birthday-person-role">Colaborador</p>
+=======
+                            <p className="landing-birthday-person-role">{user.cargos?.nombre || 'Sin cargo'} - {user.empresas?.nombre || 'Sin empresa'}</p>
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
                             <p className="landing-birthday-person-date">🎂 {formattedDate}</p>
                           </div>
                         </div>
@@ -857,11 +988,23 @@ export default function Home() {
                   </div>
                 )}
               </div>
+<<<<<<< HEAD
+=======
+              <div className="landing-birthday-actions">
+                <a href="#" className="landing-birthday-cta primary">
+                  Enviar Felicitaciones
+                </a>
+                <a href="#" className="landing-birthday-cta secondary">
+                  Ver Todos los Cumpleaños
+                </a>
+              </div>
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
             </div>
           </div>
         </div>
       </section>
 
+<<<<<<< HEAD
       {/* Modal para usuario no encontrado */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -879,13 +1022,22 @@ export default function Home() {
         </div>
       )}
 
+=======
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
       {/* Footer */}
       <footer id="contacto" className="landing-footer">
         <div className="landing-container">
           <div className="landing-footer-content">
             <div className="landing-footer-section">
               <div className="landing-footer-logo">
+<<<<<<< HEAD
                   <img src="/logo-h-b.webp" alt="Logo GH" className="w-40" />
+=======
+                <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold">GH</span>
+                </div>
+                <span>Portal de Gestión Humana</span>
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
               </div>
               <p className="landing-footer-description">
                 Tu centro de información y recursos para el desarrollo profesional y personal. 
@@ -896,6 +1048,7 @@ export default function Home() {
             <div className="landing-footer-section">
               <h4>Enlaces Rápidos</h4>
               <ul className="landing-footer-links">
+<<<<<<< HEAD
                 <li><a href="#inicio">Ingresar</a></li>
                 <li><a href="#novedades">Novedades</a></li>
                 <li><a href="#bienestar">Programas de bienestar</a></li>
@@ -903,34 +1056,58 @@ export default function Home() {
                 <li><a href="#sst">Seguridad y Salud en el Trabajo</a></li>
                 <li><a href="#normatividad">Blog de Normatividad</a></li>
                 <li><a href="#cumpleaños">Cumpleañeros de la Semana</a></li>
+=======
+                <li><a href="#inicio">Inicio</a></li>
+                <li><a href="#novedades">Novedades</a></li>
+                <li><a href="#recursos">Recursos</a></li>
+                <li><a href="#contacto">Contacto</a></li>
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
               </ul>
             </div>
             
             <div className="landing-footer-section">
               <h4>Recursos</h4>
               <ul className="landing-footer-links">
+<<<<<<< HEAD
                 <li><a href="#">Certificacion laboral</a></li>
                 <li><a href="#">vacaciones</a></li>
                 <li><a href="#">Permisos</a></li>
                 <li><a href="#">Incapacidades</a></li>
                 <li><a href="#">Comunicados</a></li>
+=======
+                <li><a href="#">Manual del Empleado</a></li>
+                <li><a href="#">Políticas de la Empresa</a></li>
+                <li><a href="#">Beneficios</a></li>
+                <li><a href="#">Capacitaciones</a></li>
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
               </ul>
             </div>
             
             <div className="landing-footer-section">
               <h4>Contacto</h4>
               <div className="landing-contact-info">
+<<<<<<< HEAD
                 <p>📧 digital@bdatam.com</p>
                 <p>📞 +57 310 6456 861</p>
                 <p>📍 Cúcuta, Colombia</p>
+=======
+                <p>📧 rh@tuempresa.com</p>
+                <p>📞 +57 (1) 234-5678</p>
+                <p>📍 Bogotá, Colombia</p>
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
                 <p>🕒 Lun - Vie: 8:00 AM - 6:00 PM</p>
               </div>
             </div>
           </div>
           
           <div className="landing-footer-bottom">
+<<<<<<< HEAD
             <p>© 2025 Gestión Humana 360. Todos los derechos reservados.</p>
             <p>Hecho con el♥️ por <a href="https://bdatam.com/">Bdatam</a></p>
+=======
+            <p>© 2024 Tu Empresa. Todos los derechos reservados.</p>
+            <p>Portal de Gestión Humana - Versión 1.0</p>
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
           </div>
         </div>
       </footer>

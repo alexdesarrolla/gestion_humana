@@ -27,7 +27,11 @@ export default function AdministracionLayout({
       } = await supabase.auth.getSession()
 
       if (error || !session) {
+<<<<<<< HEAD
         router.push("/")
+=======
+        router.push("/login")
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
         return
       }
 
@@ -49,19 +53,31 @@ export default function AdministracionLayout({
 
       if (userError) {
         console.error("Error al obtener datos del usuario:", userError)
+<<<<<<< HEAD
         router.push("/")
+=======
+        router.push("/login")
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
         return
       }
 
       // Verificar que el usuario tenga permisos de administración
       if (userData.rol !== 'administrador' && userData.rol !== 'moderador') {
+<<<<<<< HEAD
         router.push("/")
+=======
+        router.push("/perfil")
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
         return
       }
 
       // Verificar si el usuario está activo
       if (userData.estado !== 'activo') {
+<<<<<<< HEAD
         router.push("/")
+=======
+        router.push("/login")
+>>>>>>> d69ba97a04de535504d8166f5c4620058e2b79ac
         return
       }
 

@@ -323,12 +323,8 @@ export default function Home() {
         <div className="landing-container">
           <div className="landing-header-content">
             <div className="landing-logo-section">
-              <div className="w-12 h-12 bg-emerald-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">GH</span>
-              </div>
               <div className="landing-brand-info">
-                <h1 className="landing-portal-title">Portal de Gestión Humana</h1>
-                <p className="landing-company-name">Tu Empresa</p>
+                <img src="/logo-h-n.webp" alt="Portal de Gestión Humana" className=" h-12" />
               </div>
             </div>
             <nav className="landing-nav-links">
@@ -388,7 +384,7 @@ export default function Home() {
                           ? 'Ingresa tu número de cédula para validar tus datos'
                           : 'Crea una contraseña para tu cuenta'
                         )
-                      : 'Ingresa tu correo o cédula y contraseña para acceder al sistema'
+                      : ''
                     }
                   </CardDescription>
                 </CardHeader>
@@ -546,11 +542,6 @@ export default function Home() {
                     )
                   )}
                 </CardContent>
-                <CardFooter className="flex justify-center">
-                  <p className="text-sm text-slate-500 text-center">
-                    © {new Date().getFullYear()} Gestión Humana 360. Todos los derechos reservados.
-                  </p>
-                </CardFooter>
               </Card>
             </div>
           </div>

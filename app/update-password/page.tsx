@@ -41,7 +41,7 @@ function UpdatePasswordContent() {
 
       setSuccess("Contraseña actualizada correctamente. Serás redirigido al login.")
       setTimeout(() => {
-        router.push("/login")
+        router.push("/")
       }, 2000)
     } catch (err: any) {
       setError(err.message)

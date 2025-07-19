@@ -114,8 +114,8 @@ const [userData, setUserData] = useState<UserData | null>(null);
 
         if (updateError) throw updateError;
 
-        // Redirigir al login
-        router.push('/login');
+        // Redirigir a la página principal
+        router.push('/');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al crear la cuenta');
@@ -126,7 +126,7 @@ const [userData, setUserData] = useState<UserData | null>(null);
 
   const closeModal = () => {
     setShowModal(false);
-    router.push('/login');
+    router.push('/');
   };
 
   return (

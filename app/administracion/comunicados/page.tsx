@@ -145,7 +145,7 @@ export default function Comunicados() {
       } = await supabase.auth.getSession();
 
       if (error || !session) {
-        router.push("/login");
+        router.push("/");
         return;
       }
 

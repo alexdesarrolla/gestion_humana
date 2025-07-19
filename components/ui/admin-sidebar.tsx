@@ -44,7 +44,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut()
     if (!error) {
-      router.push("/login")
+      router.push("/")
     }
   }
 

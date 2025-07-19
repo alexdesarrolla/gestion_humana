@@ -27,7 +27,7 @@ export default function AdministracionLayout({
       } = await supabase.auth.getSession()
 
       if (error || !session) {
-        router.push("/login")
+        router.push("/")
         return
       }
 
@@ -49,19 +49,19 @@ export default function AdministracionLayout({
 
       if (userError) {
         console.error("Error al obtener datos del usuario:", userError)
-        router.push("/login")
+        router.push("/")
         return
       }
 
       // Verificar que el usuario tenga permisos de administración
       if (userData.rol !== 'administrador' && userData.rol !== 'moderador') {
-        router.push("/perfil")
+        router.push("/")
         return
       }
 
       // Verificar si el usuario está activo
       if (userData.estado !== 'activo') {
-        router.push("/login")
+        router.push("/")
         return
       }
 

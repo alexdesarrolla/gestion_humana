@@ -162,14 +162,16 @@
 
 /* Landing Page Components */
 .landing-container {
-  max-width: 1200px;
+  max-width: 1300px;
   margin: 0 auto;
   padding: 0 var(--spacing-md);
 }
 
 .landing-header {
-  background: white;
-  border-bottom: 1px solid var(--gray-200);
+  backdrop-filter: blur(25px) saturate(200%);
+  -webkit-backdrop-filter: blur(25px) saturate(200%);
+  background-color: rgba(255, 255, 255, 0.85);
+  border-bottom: 1px solid rgba(209, 213, 219, 0.3);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -180,7 +182,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-lg) 0;
+  padding: 1em;
 }
 
 .landing-logo-section {
@@ -282,7 +284,7 @@
 
 .landing-login-section {
   display: flex;
-  justify-content: center;
+  justify-content: end;
 }
 
 .landing-login-card {

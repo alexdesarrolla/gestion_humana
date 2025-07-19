@@ -3,8 +3,8 @@ import * as React from "react"
 import { useState, useEffect } from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { type VariantProps, cva } from "class-variance-authority"
-import { PanelLeft, Menu, X, LogOut, User, Home, Info, FileText, Newspaper, Calendar, ChevronDown, Plus, BarChart3 } from "lucide-react"
-import { FaUser, FaBuilding, FaFileAlt, FaCalendarAlt, FaIdCard, FaChartPie } from 'react-icons/fa'
+import { PanelLeft, Menu, X, LogOut, User, Home, Info, FileText, Newspaper, Calendar, ChevronDown, Plus, BarChart3, Heart } from "lucide-react"
+import { FaUser, FaBuilding, FaFileAlt, FaCalendarAlt, FaIdCard, FaChartPie, FaHeart } from 'react-icons/fa'
 import { useRouter } from "next/navigation"
 
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -147,6 +147,33 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
             href: "/administracion/comunicados/categorias",
             icon: FaFileAlt,
             current: currentPath === "/administracion/comunicados/categorias"
+          },
+        ],
+      });
+      
+      // Bienestar
+      items.push({
+        name: "Bienestar",
+        icon: FaHeart,
+        current: currentPath.includes("/administracion/bienestar"),
+        subItems: [
+          {
+            name: "Todas las publicaciones",
+            href: "/administracion/bienestar",
+            icon: FileText,
+            current: currentPath === "/administracion/bienestar"
+          },
+          {
+            name: "Nueva publicación",
+            href: "/administracion/bienestar/nuevo",
+            icon: Plus,
+            current: currentPath === "/administracion/bienestar/nuevo"
+          },
+          {
+            name: "Categorías",
+            href: "/administracion/bienestar/categorias",
+            icon: FaFileAlt,
+            current: currentPath === "/administracion/bienestar/categorias"
           },
         ],
       });

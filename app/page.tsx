@@ -868,8 +868,11 @@ export default function Home() {
                          </p>
                          <div className="flex items-center justify-between">
                            <span className="text-xs text-gray-500">{formatTimeAgo(post.fecha_publicacion)}</span>
-                           <button className="text-sm text-emerald-600 hover:text-emerald-700 font-medium">
-                             Ver más →
+                           <button 
+                             onClick={() => window.location.href = `/publicacion/${post.id}`}
+                             className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
+                           >
+                             Ver →
                            </button>
                          </div>
                        </div>
@@ -941,8 +944,11 @@ export default function Home() {
                          </p>
                          <div className="flex items-center justify-between">
                            <span className="text-xs text-gray-500">{formatTimeAgo(post.fecha_publicacion)}</span>
-                           <button className="text-sm text-amber-600 hover:text-amber-700 font-medium">
-                             Ver más →
+                           <button 
+                             onClick={() => window.location.href = `/publicacion/${post.id}`}
+                             className="text-xs text-amber-600 hover:text-amber-700 font-medium"
+                           >
+                             Ver →
                            </button>
                          </div>
                        </div>
@@ -1017,8 +1023,11 @@ export default function Home() {
                          </p>
                          <div className="flex items-center justify-between">
                            <span className="text-xs text-gray-500">{formatTimeAgo(post.fecha_publicacion)}</span>
-                           <button className="text-sm text-red-600 hover:text-red-700 font-medium">
-                             Ver más →
+                           <button 
+                             onClick={() => window.location.href = `/publicacion/${post.id}`}
+                             className="text-xs text-red-600 hover:text-red-700 font-medium"
+                           >
+                             Ver →
                            </button>
                          </div>
                        </div>
@@ -1090,8 +1099,11 @@ export default function Home() {
                          </p>
                          <div className="flex items-center justify-between">
                            <span className="text-xs text-gray-500">{formatTimeAgo(post.fecha_publicacion)}</span>
-                           <button className="text-sm text-purple-600 hover:text-purple-700 font-medium">
-                             Ver más →
+                           <button 
+                             onClick={() => window.location.href = `/publicacion/${post.id}`}
+                             className="text-xs text-purple-600 hover:text-purple-700 font-medium"
+                           >
+                             Ver →
                            </button>
                          </div>
                        </div>

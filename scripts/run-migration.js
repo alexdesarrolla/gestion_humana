@@ -11,7 +11,7 @@ async function runMigration() {
     );
 
     console.log('Reading migration file...');
-    const sql = fs.readFileSync('./sql/migrations/026_create_online_users_table.sql', 'utf8');
+    const sql = fs.readFileSync('./sql/migrations/030_add_tipo_seccion_to_publicaciones.sql', 'utf8');
     
     console.log('Executing migration...');
     

@@ -25,7 +25,6 @@ interface FormData {
   contenido: string;
   imagen_principal: string;
   galeria_imagenes: string[];
-  categoria_id: string;
   destacado: boolean;
 }
 
@@ -33,7 +32,7 @@ export default function NuevaPublicacionBienestar() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [categorias, setCategorias] = useState<any[]>([]);
+
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -43,7 +42,6 @@ export default function NuevaPublicacionBienestar() {
     contenido: "",
     imagen_principal: "",
     galeria_imagenes: [],
-    categoria_id: "",
     destacado: false,
   });
 
@@ -72,15 +70,7 @@ export default function NuevaPublicacionBienestar() {
         return;
       }
 
-      // Cargar categorías
-      const { data: categoriasData, error: categoriasError } = await supabase
-        .from("categorias_bienestar")
-        .select("*")
-        .order("nombre", { ascending: true });
 
-      if (!categoriasError) {
-        setCategorias(categoriasData || []);
-      }
 
       setLoading(false);
     };
@@ -99,7 +89,7 @@ export default function NuevaPublicacionBienestar() {
     e.preventDefault();
     if (!formData.titulo.trim()) return setError("El título es obligatorio");
     if (!formData.contenido.trim()) return setError("El contenido es obligatorio");
-    if (!formData.categoria_id) return setError("Debe seleccionar una categoría");
+
 
     try {
       setSaving(true);
@@ -117,10 +107,11 @@ export default function NuevaPublicacionBienestar() {
           contenido: formData.contenido,
           imagen_principal: formData.imagen_principal || null,
           galeria_imagenes: formData.galeria_imagenes.length > 0 ? formData.galeria_imagenes : [],
-          categoria_id: formData.categoria_id,
+          categoria_id: null,
           autor_id: session.user.id,
           estado: publicar ? "publicado" : "borrador",
           destacado: formData.destacado,
+          tipo_seccion: "bienestar",
         })
         .select("id");
         
@@ -199,25 +190,7 @@ export default function NuevaPublicacionBienestar() {
                 />
               </div>
 
-              {/* Categoría */}
-              <div className="space-y-2">
-                <Label htmlFor="categoria">Categoría *</Label>
-                <Select
-                  value={formData.categoria_id}
-                  onValueChange={(value) => handleInputChange("categoria_id", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccione una categoría" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categorias.map((categoria) => (
-                      <SelectItem key={categoria.id} value={categoria.id}>
-                        {categoria.nombre}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+
 
               {/* Imagen Principal */}
               <div className="space-y-2">

@@ -24,7 +24,7 @@ import {
   Eye,
   ChevronDown,
   ChevronUp,
-  Heart,
+  Calendar,
   Star,
 } from "lucide-react";
 import {
@@ -43,13 +43,14 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-export default function Bienestar() {
+export default function Actividades() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [searchLoading, setSearchLoading] = useState(false);
   const [publicaciones, setPublicaciones] = useState<any[]>([]);
   const [filteredPublicaciones, setFilteredPublicaciones] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedEstado, setSelectedEstado] = useState<string>("all");
   const [sortConfig, setSortConfig] = useState<{
     key: string;
     direction: "asc" | "desc";
@@ -145,7 +146,7 @@ export default function Bienestar() {
           *,
           usuario_nomina:autor_id(colaborador)
         `)
-        .eq("tipo_seccion", "bienestar")
+        .eq("tipo_seccion", "actividades")
         .order("fecha_publicacion", { ascending: false });
 
       if (!publicacionesError) {
@@ -204,6 +205,13 @@ export default function Bienestar() {
   };
   
 
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setSelectedEstado("all");
+    setSortConfig(null);
+    filterPublicaciones("");
+  };
   
   const filterPublicaciones = (search: string) => {
     let filtered = [...publicaciones];
@@ -233,17 +241,17 @@ export default function Bienestar() {
           <CardHeader className="bg-primary/5 pb-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <CardTitle className="text-2xl font-bold flex items-center gap-2">
-                <Heart className="h-6 w-6 text-red-500" />
-                Blog de Bienestar
+                <Calendar className="h-6 w-6 text-blue-500" />
+                Gestión de Actividades
               </CardTitle>
               <div className="flex flex-col sm:flex-row gap-2">
                 <Button
                   onClick={() =>
-                    router.push("/administracion/bienestar/nuevo")
+                    router.push("/administracion/actividades/nuevo")
                   }
                   className="btn-custom"
                 >
-                  <Plus className="h-4 w-4" /> Nueva publicación
+                  <Plus className="h-4 w-4" /> Nueva actividad
                 </Button>
               </div>
             </div>
@@ -254,7 +262,7 @@ export default function Bienestar() {
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
                 <Input
                   type="search"
-                  placeholder="Buscar publicaciones..."
+                  placeholder="Buscar actividades..."
                   className="pl-8"
                   value={searchTerm}
                   onChange={(e) => handleSearch(e.target.value)}
@@ -361,7 +369,7 @@ export default function Bienestar() {
                   ) : filteredPublicaciones.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                        No se encontraron publicaciones
+                        No se encontraron actividades
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -407,10 +415,10 @@ export default function Bienestar() {
                               size="icon"
                               onClick={() =>
                                 router.push(
-                                  `/administracion/bienestar/${p.id}`
+                                  `/administracion/actividades/${p.id}`
                                 )
                               }
-                              title="Ver publicación"
+                              title="Ver actividad"
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -419,10 +427,10 @@ export default function Bienestar() {
                               size="icon"
                               onClick={() =>
                                 router.push(
-                                  `/administracion/bienestar/editar/${p.id}`
+                                  `/administracion/actividades/editar/${p.id}`
                                 )
                               }
-                              title="Editar publicación"
+                              title="Editar actividad"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -431,7 +439,7 @@ export default function Bienestar() {
                               size="icon"
                               className="text-red-500 hover:text-red-700 hover:bg-red-50"
                               onClick={() => openDeleteDialog(p.id)}
-                              title="Eliminar publicación"
+                              title="Eliminar actividad"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -450,7 +458,7 @@ export default function Bienestar() {
                 <DialogHeader>
                   <DialogTitle>Confirmar eliminación</DialogTitle>
                   <DialogDescription>
-                    ¿Está seguro de que desea eliminar esta publicación? Esta
+                    ¿Está seguro de que desea eliminar esta actividad? Esta
                     acción no se puede deshacer.
                     <br />
                     Para confirmar, escriba{" "}
@@ -490,6 +498,18 @@ export default function Bienestar() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
+            {/* Mensajes de éxito y error */}
+            {success && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+                {success}
+              </div>
+            )}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                {error}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

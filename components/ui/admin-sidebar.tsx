@@ -3,8 +3,8 @@ import * as React from "react"
 import { useState, useEffect } from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { type VariantProps, cva } from "class-variance-authority"
-import { PanelLeft, Menu, X, LogOut, User, Home, Info, FileText, Newspaper, Calendar, ChevronDown, Plus, BarChart3, Heart } from "lucide-react"
-import { FaUser, FaBuilding, FaFileAlt, FaCalendarAlt, FaIdCard, FaChartPie, FaHeart } from 'react-icons/fa'
+import { PanelLeft, Menu, X, LogOut, User, Home, Info, FileText, Newspaper, Calendar, ChevronDown, Plus, BarChart3, Heart, Activity, Shield, Scale } from "lucide-react"
+import { FaUser, FaBuilding, FaFileAlt, FaCalendarAlt, FaIdCard, FaChartPie, FaHeart, FaRunning, FaHardHat, FaBalanceScale } from 'react-icons/fa'
 import { useRouter } from "next/navigation"
 
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -169,11 +169,68 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
             icon: Plus,
             current: currentPath === "/administracion/bienestar/nuevo"
           },
+        ],
+      });
+      
+      // Actividades
+      items.push({
+        name: "Actividades",
+        icon: FaRunning,
+        current: currentPath.includes("/administracion/actividades"),
+        subItems: [
           {
-            name: "Categorías",
-            href: "/administracion/bienestar/categorias",
-            icon: FaFileAlt,
-            current: currentPath === "/administracion/bienestar/categorias"
+            name: "Todas las publicaciones",
+            href: "/administracion/actividades",
+            icon: FileText,
+            current: currentPath === "/administracion/actividades"
+          },
+          {
+            name: "Nueva publicación",
+            href: "/administracion/actividades/nuevo",
+            icon: Plus,
+            current: currentPath === "/administracion/actividades/nuevo"
+          },
+        ],
+      });
+      
+      // SST (Seguridad y Salud en el Trabajo)
+      items.push({
+        name: "SST",
+        icon: FaHardHat,
+        current: currentPath.includes("/administracion/sst"),
+        subItems: [
+          {
+            name: "Todas las publicaciones",
+            href: "/administracion/sst",
+            icon: FileText,
+            current: currentPath === "/administracion/sst"
+          },
+          {
+            name: "Nueva publicación",
+            href: "/administracion/sst/nuevo",
+            icon: Plus,
+            current: currentPath === "/administracion/sst/nuevo"
+          },
+        ],
+      });
+      
+      // Normatividad
+      items.push({
+        name: "Normatividad",
+        icon: FaBalanceScale,
+        current: currentPath.includes("/administracion/normatividad"),
+        subItems: [
+          {
+            name: "Todas las publicaciones",
+            href: "/administracion/normatividad",
+            icon: FileText,
+            current: currentPath === "/administracion/normatividad"
+          },
+          {
+            name: "Nueva publicación",
+            href: "/administracion/normatividad/nuevo",
+            icon: Plus,
+            current: currentPath === "/administracion/normatividad/nuevo"
           },
         ],
       });

@@ -25,7 +25,6 @@ interface FormData {
   contenido: string;
   imagen_principal: string;
   galeria_imagenes: string[];
-  categoria_id: string;
   destacado: boolean;
   estado: string;
 }
@@ -36,7 +35,6 @@ interface Publicacion {
   contenido: string;
   imagen_principal: string | null;
   galeria_imagenes: string[];
-  categoria_id: string;
   destacado: boolean;
   estado: string;
   autor_id: string;
@@ -51,7 +49,7 @@ export default function EditarPublicacionBienestar() {
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [categorias, setCategorias] = useState<any[]>([]);
+
   const [publicacion, setPublicacion] = useState<Publicacion | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -62,7 +60,6 @@ export default function EditarPublicacionBienestar() {
     contenido: "",
     imagen_principal: "",
     galeria_imagenes: [],
-    categoria_id: "",
     destacado: false,
     estado: "borrador",
   });
@@ -92,22 +89,12 @@ export default function EditarPublicacionBienestar() {
         return;
       }
 
-      // Cargar datos en paralelo
-      const [categoriasResult, publicacionResult] = await Promise.all([
-        supabase
-          .from("categorias_bienestar")
-          .select("*")
-          .order("nombre", { ascending: true }),
-        supabase
-          .from("publicaciones_bienestar")
-          .select("*")
-          .eq("id", publicacionId)
-          .single()
-      ]);
-
-      if (!categoriasResult.error) {
-        setCategorias(categoriasResult.data || []);
-      }
+      // Cargar publicación
+      const publicacionResult = await supabase
+        .from("publicaciones_bienestar")
+        .select("*")
+        .eq("id", publicacionId)
+        .single();
 
       if (publicacionResult.error) {
         setError("Publicación no encontrada");
@@ -122,7 +109,6 @@ export default function EditarPublicacionBienestar() {
         contenido: pub.contenido,
         imagen_principal: pub.imagen_principal || "",
         galeria_imagenes: pub.galeria_imagenes || [],
-        categoria_id: pub.categoria_id,
         destacado: pub.destacado,
         estado: pub.estado,
       });
@@ -146,7 +132,7 @@ export default function EditarPublicacionBienestar() {
     e.preventDefault();
     if (!formData.titulo.trim()) return setError("El título es obligatorio");
     if (!formData.contenido.trim()) return setError("El contenido es obligatorio");
-    if (!formData.categoria_id) return setError("Debe seleccionar una categoría");
+
 
     try {
       setSaving(true);
@@ -163,9 +149,10 @@ export default function EditarPublicacionBienestar() {
           contenido: formData.contenido,
           imagen_principal: formData.imagen_principal || null,
           galeria_imagenes: formData.galeria_imagenes.length > 0 ? formData.galeria_imagenes : [],
-          categoria_id: formData.categoria_id,
+          categoria_id: null,
           destacado: formData.destacado,
           estado: estadoFinal,
+          tipo_seccion: "bienestar",
         })
         .eq("id", publicacionId);
         
@@ -278,25 +265,7 @@ export default function EditarPublicacionBienestar() {
                 />
               </div>
 
-              {/* Categoría */}
-              <div className="space-y-2">
-                <Label htmlFor="categoria">Categoría *</Label>
-                <Select
-                  value={formData.categoria_id}
-                  onValueChange={(value) => handleInputChange("categoria_id", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccione una categoría" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categorias.map((categoria) => (
-                      <SelectItem key={categoria.id} value={categoria.id}>
-                        {categoria.nombre}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+
 
               {/* Imagen Principal */}
               <div className="space-y-2">

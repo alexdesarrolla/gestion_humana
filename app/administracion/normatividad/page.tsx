@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -19,21 +26,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search,
   Plus,
+  Eye,
   Edit,
   Trash2,
-  Eye,
-  ChevronDown,
-  ChevronUp,
-  Heart,
+  ArrowUpDown,
+  Settings,
+  Scale,
   Star,
 } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -42,21 +42,21 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import Image from "next/image";
 
-export default function Bienestar() {
+export default function Normatividad() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [searchLoading, setSearchLoading] = useState(false);
   const [publicaciones, setPublicaciones] = useState<any[]>([]);
   const [filteredPublicaciones, setFilteredPublicaciones] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedEstado, setSelectedEstado] = useState("all");
   const [sortConfig, setSortConfig] = useState<{
     key: string;
     direction: "asc" | "desc";
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Modal de eliminación
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -86,7 +86,6 @@ export default function Bienestar() {
         return;
       }
 
-      // Eliminar la publicación principal
       const { error } = await supabase
         .from("publicaciones_bienestar")
         .delete()
@@ -97,9 +96,7 @@ export default function Bienestar() {
           "Error al eliminar la publicación. Por favor, intente nuevamente."
         );
       } else {
-        setPublicaciones((prev) =>
-          prev.filter((p) => p.id !== deletePublicacionId)
-        );
+        setPublicaciones((prev) => prev.filter((p) => p.id !== deletePublicacionId));
         setFilteredPublicaciones((prev) =>
           prev.filter((p) => p.id !== deletePublicacionId)
         );
@@ -141,12 +138,9 @@ export default function Bienestar() {
       // Cargar publicaciones
       const { data: publicacionesData, error: publicacionesError } = await supabase
         .from("publicaciones_bienestar")
-        .select(`
-          *,
-          usuario_nomina:autor_id(colaborador)
-        `)
-        .eq("tipo_seccion", "bienestar")
-        .order("fecha_publicacion", { ascending: false });
+        .select("*")
+        .eq("tipo_seccion", "normatividad")
+        .order("created_at", { ascending: false });
 
       if (!publicacionesError) {
         setPublicaciones(publicacionesData || []);
@@ -159,72 +153,73 @@ export default function Bienestar() {
     checkAuth();
   }, []);
 
-  // Ordenamiento
-  const requestSort = (key: string) => {
+  // Función de búsqueda y filtrado
+  const applyFilters = () => {
+    let filtered = [...publicaciones];
+
+    // Filtro por término de búsqueda
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (pub) =>
+          pub.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          pub.contenido.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          pub.autor.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+
+
+    // Filtro por estado
+    if (selectedEstado && selectedEstado !== "all") {
+      filtered = filtered.filter((pub) => pub.estado === selectedEstado);
+    }
+
+    // Aplicar ordenamiento
+    if (sortConfig) {
+      filtered.sort((a, b) => {
+        let aValue = a[sortConfig.key];
+        let bValue = b[sortConfig.key];
+
+        // Manejar casos especiales para fechas
+        if (sortConfig.key === "created_at") {
+          aValue = new Date(aValue).getTime();
+          bValue = new Date(bValue).getTime();
+        }
+
+        if (aValue < bValue) {
+          return sortConfig.direction === "asc" ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === "asc" ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+
+    setFilteredPublicaciones(filtered);
+  };
+
+  useEffect(() => {
+    applyFilters();
+  }, [searchTerm, selectedEstado, sortConfig, publicaciones]);
+
+  const handleSort = (key: string) => {
     let direction: "asc" | "desc" = "asc";
-    if (sortConfig?.key === key && sortConfig.direction === "asc") {
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
       direction = "desc";
     }
     setSortConfig({ key, direction });
   };
 
-  useEffect(() => {
-    if (!sortConfig) return;
-    const sorted = [...filteredPublicaciones].sort((a, b) => {
-      let aVal: any, bVal: any;
-      switch (sortConfig.key) {
-        case "autor":
-          aVal = a.usuario_nomina?.colaborador || "";
-          bVal = b.usuario_nomina?.colaborador || "";
-          break;
-        case "fecha":
-          aVal = new Date(a.fecha_publicacion).getTime();
-          bVal = new Date(b.fecha_publicacion).getTime();
-          break;
-        default:
-          aVal = a[sortConfig.key] || "";
-          bVal = b[sortConfig.key] || "";
-      }
-      if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
-      if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
-      return 0;
-    });
-    setFilteredPublicaciones(sorted);
-  }, [sortConfig]);
-
-  // Búsqueda y filtros
-  const handleSearch = (value: string) => {
-    setSearchTerm(value);
-    setSearchLoading(true);
-    if (searchTimeout.current) clearTimeout(searchTimeout.current);
-    searchTimeout.current = setTimeout(() => {
-      filterPublicaciones(value);
-      setSearchLoading(false);
-    }, 300);
-  };
-  
-
-  
-  const filterPublicaciones = (search: string) => {
-    let filtered = [...publicaciones];
-    if (search) {
-      const low = search.toLowerCase();
-      filtered = filtered.filter(
-        (item) =>
-          item.titulo.toLowerCase().includes(low) ||
-          item.contenido.toLowerCase().includes(low) ||
-          item.usuario_nomina?.colaborador.toLowerCase().includes(low)
-      );
-    }
-    setFilteredPublicaciones(filtered);
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("es-ES");
   };
 
-  const formatDate = (dateString: string) =>
-    new Date(dateString).toLocaleDateString("es-ES", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
+  const clearFilters = () => {
+    setSearchTerm("");
+    setSelectedEstado("all");
+    setSortConfig(null);
+  };
 
   return (
     <div className="py-6 flex min-h-screen">
@@ -233,98 +228,75 @@ export default function Bienestar() {
           <CardHeader className="bg-primary/5 pb-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <CardTitle className="text-2xl font-bold flex items-center gap-2">
-                <Heart className="h-6 w-6 text-red-500" />
-                Blog de Bienestar
+                <Scale className="h-6 w-6 text-blue-500" />
+                Gestión de Normatividad
               </CardTitle>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Button
-                  onClick={() =>
-                    router.push("/administracion/bienestar/nuevo")
-                  }
-                  className="btn-custom"
-                >
-                  <Plus className="h-4 w-4" /> Nueva publicación
-                </Button>
-              </div>
+              <Button
+                onClick={() => router.push("/administracion/normatividad/nuevo")}
+                className="btn-custom flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" /> Nueva publicación
+              </Button>
             </div>
           </CardHeader>
           <CardContent className="p-6 space-y-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="relative flex-1">
+            {/* Filtros */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
                 <Input
                   type="search"
                   placeholder="Buscar publicaciones..."
                   className="pl-8"
                   value={searchTerm}
-                  onChange={(e) => handleSearch(e.target.value)}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-
+              <Select value={selectedEstado} onValueChange={setSelectedEstado}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos los estados" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los estados</SelectItem>
+                  <SelectItem value="publicado">Publicado</SelectItem>
+                  <SelectItem value="borrador">Borrador</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" onClick={clearFilters}>
+                Limpiar filtros
+              </Button>
             </div>
 
+            {/* Tabla de publicaciones */}
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[300px]">
-                      <div
-                        className="flex items-center cursor-pointer"
-                        onClick={() => requestSort("titulo")}
-                      >
+                    <TableHead className="cursor-pointer" onClick={() => handleSort("titulo")}>
+                      <div className="flex items-center gap-1">
                         Título
-                        {sortConfig?.key === "titulo" &&
-                          (sortConfig.direction === "asc" ? (
-                            <ChevronUp className="ml-1 h-4 w-4" />
-                          ) : (
-                            <ChevronDown className="ml-1 h-4 w-4" />
-                          ))}
+                        <ArrowUpDown className="h-4 w-4" />
                       </div>
                     </TableHead>
-
-                    <TableHead>
-                      <div
-                        className="flex items-center cursor-pointer"
-                        onClick={() => requestSort("fecha")}
-                      >
+                    <TableHead className="cursor-pointer" onClick={() => handleSort("created_at")}>
+                      <div className="flex items-center gap-1">
                         Fecha
-                        {sortConfig?.key === "fecha" &&
-                          (sortConfig.direction === "asc" ? (
-                            <ChevronUp className="ml-1 h-4 w-4" />
-                          ) : (
-                            <ChevronDown className="ml-1 h-4 w-4" />
-                          ))}
+                        <ArrowUpDown className="h-4 w-4" />
                       </div>
                     </TableHead>
-                    <TableHead>
-                      <div
-                        className="flex items-center cursor-pointer"
-                        onClick={() => requestSort("autor")}
-                      >
+                    <TableHead className="cursor-pointer" onClick={() => handleSort("autor")}>
+                      <div className="flex items-center gap-1">
                         Autor
-                        {sortConfig?.key === "autor" &&
-                          (sortConfig.direction === "asc" ? (
-                            <ChevronUp className="ml-1 h-4 w-4" />
-                          ) : (
-                            <ChevronDown className="ml-1 h-4 w-4" />
-                          ))}
+                        <ArrowUpDown className="h-4 w-4" />
                       </div>
                     </TableHead>
-                    <TableHead>
-                      <div
-                        className="flex items-center cursor-pointer"
-                        onClick={() => requestSort("estado")}
-                      >
-                        Estado
-                        {sortConfig?.key === "estado" &&
-                          (sortConfig.direction === "asc" ? (
-                            <ChevronUp className="ml-1 h-4 w-4" />
-                          ) : (
-                            <ChevronDown className="ml-1 h-4 w-4" />
-                          ))}
+                    <TableHead>Estado</TableHead>
+                    <TableHead className="cursor-pointer" onClick={() => handleSort("vistas")}>
+                      <div className="flex items-center gap-1">
+                        Vistas
+                        <ArrowUpDown className="h-4 w-4" />
                       </div>
                     </TableHead>
-                    <TableHead>Vistas</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -334,20 +306,19 @@ export default function Bienestar() {
                     Array.from({ length: 5 }).map((_, index) => (
                       <TableRow key={index}>
                         <TableCell>
-                          <Skeleton className="h-4 w-[250px]" />
+                          <Skeleton className="h-4 w-[200px]" />
                         </TableCell>
-
                         <TableCell>
                           <Skeleton className="h-4 w-[80px]" />
                         </TableCell>
                         <TableCell>
-                          <Skeleton className="h-4 w-[120px]" />
+                          <Skeleton className="h-4 w-[100px]" />
                         </TableCell>
                         <TableCell>
                           <Skeleton className="h-6 w-[80px] rounded-full" />
                         </TableCell>
                         <TableCell>
-                          <Skeleton className="h-4 w-[40px]" />
+                          <Skeleton className="h-4 w-[60px]" />
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
@@ -365,51 +336,32 @@ export default function Bienestar() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredPublicaciones.map((p) => (
-                      <TableRow key={p.id}>
-                        <TableCell className="font-medium">
+                    filteredPublicaciones.map((publicacion) => (
+                      <TableRow key={publicacion.id}>
+                        <TableCell>
                           <div className="flex items-center gap-2">
-                            {p.destacado && (
-                              <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                            <span className="font-medium">{publicacion.titulo}</span>
+                            {publicacion.destacado && (
+                              <Star className="h-4 w-4 text-yellow-500" />
                             )}
-                            {p.titulo}
                           </div>
                         </TableCell>
-
-                        <TableCell>{formatDate(p.fecha_publicacion)}</TableCell>
-                        <TableCell>
-                          {p.usuario_nomina?.colaborador || ""}
-                        </TableCell>
+                        <TableCell>{formatDate(publicacion.created_at)}</TableCell>
+                        <TableCell>{publicacion.autor}</TableCell>
                         <TableCell>
                           <Badge
-                            variant={
-                              p.estado === "publicado"
-                                ? "default"
-                                : p.estado === "borrador"
-                                ? "outline"
-                                : "secondary"
-                            }
+                            variant={publicacion.estado === "publicado" ? "default" : "secondary"}
                           >
-                            {p.estado === "publicado"
-                              ? "Publicado"
-                              : p.estado === "borrador"
-                              ? "Borrador"
-                              : "Archivado"}
+                            {publicacion.estado === "publicado" ? "Publicado" : "Borrador"}
                           </Badge>
                         </TableCell>
-                        <TableCell>
-                          <span className="text-sm text-gray-600">{p.vistas || 0}</span>
-                        </TableCell>
+                        <TableCell>{publicacion.vistas || 0}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() =>
-                                router.push(
-                                  `/administracion/bienestar/${p.id}`
-                                )
-                              }
+                              onClick={() => router.push(`/administracion/normatividad/${publicacion.id}`)}
                               title="Ver publicación"
                             >
                               <Eye className="h-4 w-4" />
@@ -417,11 +369,7 @@ export default function Bienestar() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() =>
-                                router.push(
-                                  `/administracion/bienestar/editar/${p.id}`
-                                )
-                              }
+                              onClick={() => router.push(`/administracion/normatividad/editar/${publicacion.id}`)}
                               title="Editar publicación"
                             >
                               <Edit className="h-4 w-4" />
@@ -430,7 +378,7 @@ export default function Bienestar() {
                               variant="ghost"
                               size="icon"
                               className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => openDeleteDialog(p.id)}
+                              onClick={() => openDeleteDialog(publicacion.id)}
                               title="Eliminar publicación"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -443,6 +391,13 @@ export default function Bienestar() {
                 </TableBody>
               </Table>
             </div>
+
+            {/* Información de resultados */}
+            {!loading && (
+              <div className="text-sm text-gray-600">
+                Mostrando {filteredPublicaciones.length} de {publicaciones.length} publicaciones
+              </div>
+            )}
 
             {/* Modal de confirmación de eliminación */}
             <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -490,6 +445,18 @@ export default function Bienestar() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
+            {/* Mensajes de éxito y error */}
+            {success && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+                {success}
+              </div>
+            )}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                {error}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

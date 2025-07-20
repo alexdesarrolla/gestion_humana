@@ -24,7 +24,7 @@ import {
   Eye,
   ChevronDown,
   ChevronUp,
-  Heart,
+  Shield,
   Star,
 } from "lucide-react";
 import {
@@ -43,13 +43,14 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-export default function Bienestar() {
+export default function SST() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [searchLoading, setSearchLoading] = useState(false);
   const [publicaciones, setPublicaciones] = useState<any[]>([]);
   const [filteredPublicaciones, setFilteredPublicaciones] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedEstado, setSelectedEstado] = useState<string>("all");
   const [sortConfig, setSortConfig] = useState<{
     key: string;
     direction: "asc" | "desc";
@@ -145,7 +146,7 @@ export default function Bienestar() {
           *,
           usuario_nomina:autor_id(colaborador)
         `)
-        .eq("tipo_seccion", "bienestar")
+        .eq("tipo_seccion", "sst")
         .order("fecha_publicacion", { ascending: false });
 
       if (!publicacionesError) {
@@ -205,6 +206,17 @@ export default function Bienestar() {
   
 
   
+  const handleEstadoChange = (value: string) => {
+    setSelectedEstado(value);
+    filterPublicaciones(searchTerm, selectedCategoria);
+  };
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setSelectedEstado("all");
+    setSortConfig(null);
+  };
+  
   const filterPublicaciones = (search: string) => {
     let filtered = [...publicaciones];
     if (search) {
@@ -215,6 +227,9 @@ export default function Bienestar() {
           item.contenido.toLowerCase().includes(low) ||
           item.usuario_nomina?.colaborador.toLowerCase().includes(low)
       );
+    }
+    if (selectedEstado !== "all") {
+      filtered = filtered.filter((item) => item.estado === selectedEstado);
     }
     setFilteredPublicaciones(filtered);
   };
@@ -233,17 +248,17 @@ export default function Bienestar() {
           <CardHeader className="bg-primary/5 pb-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <CardTitle className="text-2xl font-bold flex items-center gap-2">
-                <Heart className="h-6 w-6 text-red-500" />
-                Blog de Bienestar
+                <Shield className="h-6 w-6 text-green-500" />
+                Gestión de SST
               </CardTitle>
               <div className="flex flex-col sm:flex-row gap-2">
                 <Button
                   onClick={() =>
-                    router.push("/administracion/bienestar/nuevo")
+                    router.push("/administracion/sst/nuevo")
                   }
                   className="btn-custom"
                 >
-                  <Plus className="h-4 w-4" /> Nueva publicación
+                  <Plus className="h-4 w-4" /> Nueva publicación SST
                 </Button>
               </div>
             </div>
@@ -254,13 +269,27 @@ export default function Bienestar() {
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
                 <Input
                   type="search"
-                  placeholder="Buscar publicaciones..."
+                  placeholder="Buscar publicaciones SST..."
                   className="pl-8"
                   value={searchTerm}
                   onChange={(e) => handleSearch(e.target.value)}
                 />
               </div>
 
+              <Select
+                value={selectedEstado}
+                onValueChange={handleEstadoChange}
+              >
+                <SelectTrigger className="w-full md:w-[200px]">
+                  <SelectValue placeholder="Filtrar por estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los estados</SelectItem>
+                  <SelectItem value="publicado">Publicado</SelectItem>
+                  <SelectItem value="borrador">Borrador</SelectItem>
+                  <SelectItem value="archivado">Archivado</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="overflow-x-auto">
@@ -361,7 +390,7 @@ export default function Bienestar() {
                   ) : filteredPublicaciones.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                        No se encontraron publicaciones
+                        No se encontraron publicaciones SST
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -407,10 +436,10 @@ export default function Bienestar() {
                               size="icon"
                               onClick={() =>
                                 router.push(
-                                  `/administracion/bienestar/${p.id}`
+                                  `/administracion/sst/${p.id}`
                                 )
                               }
-                              title="Ver publicación"
+                              title="Ver publicación SST"
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -419,10 +448,10 @@ export default function Bienestar() {
                               size="icon"
                               onClick={() =>
                                 router.push(
-                                  `/administracion/bienestar/editar/${p.id}`
+                                  `/administracion/sst/editar/${p.id}`
                                 )
                               }
-                              title="Editar publicación"
+                              title="Editar publicación SST"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -431,7 +460,7 @@ export default function Bienestar() {
                               size="icon"
                               className="text-red-500 hover:text-red-700 hover:bg-red-50"
                               onClick={() => openDeleteDialog(p.id)}
-                              title="Eliminar publicación"
+                              title="Eliminar publicación SST"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -450,7 +479,7 @@ export default function Bienestar() {
                 <DialogHeader>
                   <DialogTitle>Confirmar eliminación</DialogTitle>
                   <DialogDescription>
-                    ¿Está seguro de que desea eliminar esta publicación? Esta
+                    ¿Está seguro de que desea eliminar esta publicación SST? Esta
                     acción no se puede deshacer.
                     <br />
                     Para confirmar, escriba{" "}
@@ -490,6 +519,18 @@ export default function Bienestar() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
+            {/* Mensajes de éxito y error */}
+            {success && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+                {success}
+              </div>
+            )}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                {error}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -73,15 +73,15 @@ export default function EditarPublicacionBienestar() {
         .single();
 
       if (!publicacionError && publicacionData) {
-        const pub = publicacionData;
+        const pub = publicacionData as any;
 
         setFormData({
-          titulo: pub.titulo || "",
-          contenido: pub.contenido || "",
-          imagen_principal: pub.imagen_principal || "",
-          galeria_imagenes: pub.galeria_imagenes || [],
-          destacado: pub.destacado || false,
-          estado: pub.estado || "borrador",
+          titulo: (pub.titulo as string) || "",
+          contenido: (pub.contenido as string) || "",
+          imagen_principal: (pub.imagen_principal as string) || "",
+          galeria_imagenes: (pub.galeria_imagenes as string[]) || [],
+          destacado: (pub.destacado as boolean) || false,
+          estado: (pub.estado as string) || "borrador",
         });
       } else {
         setError("No se pudo cargar la actividad.");

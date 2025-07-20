@@ -80,12 +80,12 @@ export default function DetallePublicacionNormatividad() {
         return;
       }
 
-      setPublicacion(publicacionData);
+      setPublicacion(publicacionData as any);
 
       // Incrementar contador de vistas
       await supabase
         .from("publicaciones_bienestar")
-        .update({ vistas: (publicacionData.vistas || 0) + 1 })
+        .update({ vistas: ((publicacionData.vistas as number) || 0) + 1 })
         .eq("id", publicacionId);
 
       setLoading(false);

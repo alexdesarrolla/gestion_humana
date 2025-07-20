@@ -85,7 +85,7 @@ export default function PublicacionDetalle() {
         const { data: publicacionData, error: publicacionError } = await supabase
           .from('publicaciones_bienestar')
           .select('*')
-          .eq('id', params.id)
+          .eq('id', params.id as string)
           .eq('estado', 'publicado')
           .single()
 
@@ -93,29 +93,26 @@ export default function PublicacionDetalle() {
           throw new Error('Publicación no encontrada')
         }
 
-        setPublicacion(publicacionData)
+        setPublicacion(publicacionData as unknown as Publicacion)
 
         // Incrementar las vistas
         await supabase
           .from('publicaciones_bienestar')
-          .update({ vistas: (publicacionData.vistas || 0) + 1 })
-          .eq('id', params.id)
+          .update({ vistas: ((publicacionData.vistas as number) || 0) + 1 })
+          .eq('id', params.id as string)
 
         // Obtener información del autor si existe autor_id
         if (publicacionData.autor_id) {
           const { data: autorData } = await supabase
             .from('usuario_nomina')
-            .select(`
-              colaborador,
-              cargos(nombre)
-            `)
+            .select('colaborador')
             .eq('auth_user_id', publicacionData.autor_id)
             .single()
 
           if (autorData) {
             setAutor({
-              colaborador: autorData.colaborador,
-              cargo_nombre: autorData.cargos?.nombre
+              colaborador: autorData.colaborador as string,
+              cargo_nombre: undefined
             })
           }
         }

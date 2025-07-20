@@ -102,15 +102,15 @@ export default function EditarPublicacionBienestar() {
         return;
       }
 
-      const pub = publicacionResult.data;
+      const pub = publicacionResult.data as any;
       setPublicacion(pub);
       setFormData({
-        titulo: pub.titulo,
-        contenido: pub.contenido,
-        imagen_principal: pub.imagen_principal || "",
-        galeria_imagenes: pub.galeria_imagenes || [],
-        destacado: pub.destacado,
-        estado: pub.estado,
+        titulo: (pub.titulo as string) || "",
+        contenido: (pub.contenido as string) || "",
+        imagen_principal: (pub.imagen_principal as string) || "",
+        galeria_imagenes: (pub.galeria_imagenes as string[]) || [],
+        destacado: (pub.destacado as boolean) || false,
+        estado: (pub.estado as string) || "borrador",
       });
 
       setLoading(false);

@@ -82,7 +82,7 @@ export default function DetallePublicacionSST() {
       // Incrementar el contador de visualizaciones
       await supabase
         .from("publicaciones_bienestar")
-        .update({ vistas: (publicacionData.vistas || 0) + 1 })
+        .update({ vistas: ((publicacionData.vistas as number) || 0) + 1 })
         .eq("id", publicacionId);
 
       setLoading(false);

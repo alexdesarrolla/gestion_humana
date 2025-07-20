@@ -390,7 +390,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
                         </div>
                       )}
                     </>
-                  ) : (
+                  ) : item.href ? (
                     <Link
                       href={item.href}
                       className={cn(
@@ -407,7 +407,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
                       />
                       {item.name}
                     </Link>
-                  )}
+                  ) : null}
                 </div>
               ))}
             </nav>
@@ -485,7 +485,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
                         </div>
                       )}
                     </>
-                  ) : (
+                  ) : item.href ? (
                     <Link
                       href={item.href}
                       className={cn(
@@ -502,7 +502,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
                       />
                       {item.name}
                     </Link>
-                  )}
+                  ) : null}
                 </div>
               ))}
             </nav>

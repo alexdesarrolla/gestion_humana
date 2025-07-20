@@ -208,7 +208,7 @@ export default function SST() {
   
   const handleEstadoChange = (value: string) => {
     setSelectedEstado(value);
-    filterPublicaciones(searchTerm, selectedCategoria);
+    filterPublicaciones(searchTerm);
   };
 
   const clearFilters = () => {

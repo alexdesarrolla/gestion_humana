@@ -867,7 +867,7 @@ export default function AdminCertificacionLaboral() {
             <div className="flex items-center space-x-2">
               <Checkbox
                 checked={formData.incluirSalario}
-                onChange={(e) => setFormData({ ...formData, incluirSalario: e.target.checked })}
+                onChange={(e) => setFormData({ ...formData, incluirSalario: (e.target as HTMLInputElement).checked })}
               />
               <Label>Incluir salario</Label>
             </div>

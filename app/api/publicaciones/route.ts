@@ -64,9 +64,9 @@ export async function GET(request: NextRequest) {
       estado: pub.estado,
       seccion: pub.tipo_seccion,
       autor_id: pub.autor_id,
-      autor: pub.usuario_nomina ? {
-        nombre: pub.usuario_nomina.colaborador?.split(' ')[0] || '',
-        apellido: pub.usuario_nomina.colaborador?.split(' ').slice(1).join(' ') || '',
+      autor: pub.usuario_nomina && Array.isArray(pub.usuario_nomina) && pub.usuario_nomina[0] ? {
+        nombre: pub.usuario_nomina[0].colaborador?.split(' ')[0] || '',
+        apellido: pub.usuario_nomina[0].colaborador?.split(' ').slice(1).join(' ') || '',
         email: ''
       } : null
     }));

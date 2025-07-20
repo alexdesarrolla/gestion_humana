@@ -163,12 +163,12 @@ export default function DetallePublicacionBienestarPage() {
         // Incrementar contador de vistas
         await supabase
           .from("publicaciones_bienestar")
-          .update({ vistas: (data.vistas || 0) + 1 })
+          .update({ vistas: ((data.vistas as number) || 0) + 1 })
           .eq("id", publicacionId);
 
         // Para pruebas, agregar imágenes de ejemplo si no hay galería
-        const galeriaImagenes = data.galeria_imagenes && data.galeria_imagenes.length > 0 
-          ? data.galeria_imagenes 
+        const galeriaImagenes = (data.galeria_imagenes as string[]) && (data.galeria_imagenes as string[]).length > 0 
+          ? (data.galeria_imagenes as string[]) 
           : [
               'https://picsum.photos/800/600?random=1',
               'https://picsum.photos/800/600?random=2',
@@ -176,19 +176,19 @@ export default function DetallePublicacionBienestarPage() {
             ];
         
         setPublicacion({
-          id: data.id,
-          titulo: data.titulo,
-          contenido: data.contenido,
-          imagen_principal: data.imagen_principal,
+          id: data.id as string,
+          titulo: data.titulo as string,
+          contenido: data.contenido as string,
+          imagen_principal: data.imagen_principal as string,
           galeria_imagenes: galeriaImagenes,
-          fecha_publicacion: data.fecha_publicacion,
-          autor_id: data.autor_id,
-          categoria_id: data.categoria_id,
-          destacado: data.destacado,
-          vistas: (data.vistas || 0) + 1,
-          estado: data.estado,
-          categorias_bienestar: categoriaData,
-          usuario_nomina: autorData,
+          fecha_publicacion: data.fecha_publicacion as string,
+          autor_id: data.autor_id as string,
+          categoria_id: data.categoria_id as string,
+          destacado: data.destacado as boolean,
+          vistas: ((data.vistas as number) || 0) + 1,
+          estado: data.estado as string,
+          categorias_bienestar: categoriaData as { nombre: string; color: string; } | null,
+          usuario_nomina: autorData as { colaborador: string; } | null,
         });
       }
       

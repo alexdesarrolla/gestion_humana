@@ -23,13 +23,34 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+interface PublicacionActividad {
+  id: string;
+  titulo: string;
+  contenido: string;
+  imagen_principal: string | null;
+  galeria_imagenes: string[];
+  fecha_publicacion: string;
+  categoria_id: string;
+  autor_id: string;
+  estado: string;
+  vistas: number;
+  destacado: boolean;
+  tipo_seccion: string;
+  categorias_bienestar: {
+    nombre: string;
+  } | null;
+  usuario_nomina: {
+    colaborador: string;
+  } | null;
+}
+
 export default function DetallePublicacionBienestarPage() {
   const router = useRouter();
   const params = useParams();
   const publicacionId = params.id as string;
   
   const [loading, setLoading] = useState(true);
-  const [publicacion, setPublicacion] = useState<any>(null);
+  const [publicacion, setPublicacion] = useState<PublicacionActividad | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
@@ -62,9 +83,18 @@ export default function DetallePublicacionBienestarPage() {
       const { data: publicacionData, error: publicacionError } = await supabase
         .from("publicaciones_bienestar")
         .select(`
-          *,
-          categorias_bienestar:categoria_id(nombre, tipo_seccion),
-          usuario_nomina:autor_id(colaborador)
+          id,
+          titulo,
+          contenido,
+          imagen_principal,
+          galeria_imagenes,
+          fecha_publicacion,
+          autor_id,
+          categoria_id,
+          destacado,
+          vistas,
+          estado,
+          tipo_seccion
         `)
         .eq("id", publicacionId)
         .single();
@@ -76,17 +106,48 @@ export default function DetallePublicacionBienestarPage() {
       }
 
       // Verificar que la publicación pertenece a la sección de actividades
-      if (publicacionData.categorias_bienestar?.tipo_seccion !== "actividades") {
+      if (publicacionData.tipo_seccion !== "actividades") {
         router.push("/administracion/actividades");
         return;
       }
 
-      setPublicacion(publicacionData);
+      // Obtener datos relacionados por separado
+      let categoriaData = null;
+      let autorData = null;
+      
+      // Obtener categoría por separado
+      if (publicacionData.categoria_id) {
+        const { data: categoria } = await supabase
+          .from("categorias_bienestar")
+          .select("nombre")
+          .eq("id", publicacionData.categoria_id)
+          .single();
+        categoriaData = categoria;
+      }
+      
+      // Obtener autor por separado
+      if (publicacionData.autor_id) {
+        const { data: autor } = await supabase
+          .from("usuario_nomina")
+          .select("colaborador")
+          .eq("auth_user_id", publicacionData.autor_id)
+          .single();
+        autorData = autor;
+      }
+
+      // Combinar los datos
+      const publicacionCompleta: PublicacionActividad = {
+        ...(publicacionData as Omit<PublicacionActividad, 'categorias_bienestar' | 'usuario_nomina'>),
+        categorias_bienestar: categoriaData as { nombre: string } | null,
+        usuario_nomina: autorData as { colaborador: string } | null
+      };
+
+      setPublicacion(publicacionCompleta);
 
       // Incrementar contador de vistas
       await supabase
         .from("publicaciones_bienestar")
-        .update({ vistas: (publicacionData.vistas || 0) + 1 })
+        .update({ vistas: ((publicacionData.vistas as number) || 0) + 1 })
         .eq("id", publicacionId);
 
       setLoading(false);

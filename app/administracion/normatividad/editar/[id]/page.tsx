@@ -89,22 +89,22 @@ export default function EditarPublicacionNormatividad() {
 
       // Establecer datos del formulario
       setFormData({
-        titulo: publicacionData.titulo || "",
-        contenido: publicacionData.contenido || "",
+        titulo: (publicacionData.titulo as string) || "",
+        contenido: (publicacionData.contenido as string) || "",
         imagen_principal: null,
-        imagen_principal_url: publicacionData.imagen_principal || "",
+        imagen_principal_url: (publicacionData.imagen_principal as string) || "",
         galeria_imagenes: [],
-        galeria_imagenes_urls: publicacionData.galeria_imagenes || [],
-        destacado: publicacionData.destacado || false,
-        estado: publicacionData.estado || "borrador",
+        galeria_imagenes_urls: (publicacionData.galeria_imagenes as string[]) || [],
+        destacado: (publicacionData.destacado as boolean) || false,
+        estado: (publicacionData.estado as string) || "borrador",
       });
 
       // Establecer previews
       if (publicacionData.imagen_principal) {
-        setImagenPrincipalPreview(publicacionData.imagen_principal);
+        setImagenPrincipalPreview(publicacionData.imagen_principal as string);
       }
       if (publicacionData.galeria_imagenes) {
-        setGaleriaPreview(publicacionData.galeria_imagenes);
+        setGaleriaPreview(publicacionData.galeria_imagenes as string[]);
       }
 
       setLoading(false);

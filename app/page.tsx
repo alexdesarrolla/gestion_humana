@@ -886,10 +886,10 @@ export default function Home() {
               </div>
               <div className="border-t border-gray-200">
                 <a
-                  href="#"
+                  href="/publicaciones/bienestar"
                   className="block p-4 text-emerald-600 font-semibold text-sm hover:text-emerald-700 transition-colors"
                 >
-                  Ver todos los programas →
+                  Ver todas →
                 </a>
               </div>
             </div>
@@ -962,10 +962,10 @@ export default function Home() {
               </div>
               <div className="border-t border-gray-200">
                 <a
-                  href="#"
+                  href="/publicaciones/actividades"
                   className="block p-4 text-emerald-600 font-semibold text-sm hover:text-emerald-700 transition-colors"
                 >
-                  Ver cronograma completo →
+                  Ver todas →
                 </a>
               </div>
             </div>
@@ -1041,10 +1041,10 @@ export default function Home() {
               </div>
               <div className="border-t border-gray-200">
                 <a
-                  href="#"
+                  href="/publicaciones/sst"
                   className="block p-4 text-emerald-600 font-semibold text-sm hover:text-emerald-700 transition-colors"
                 >
-                  Ver recursos de SST →
+                  Ver todas →
                 </a>
               </div>
             </div>
@@ -1117,10 +1117,10 @@ export default function Home() {
               </div>
               <div className="border-t border-gray-200">
                 <a
-                  href="#"
+                  href="/publicaciones/normatividad"
                   className="block p-4 text-emerald-600 font-semibold text-sm hover:text-emerald-700 transition-colors"
                 >
-                  Ver todas las normativas →
+                  Ver todas →
                 </a>
               </div>
             </div>

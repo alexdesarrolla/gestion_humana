@@ -834,7 +834,7 @@ export default function Home() {
                   // Skeleton loading
                   Array.from({ length: 2 }).map((_, index) => (
                     <div key={index} className="flex gap-4 pb-6 border-b border-gray-100 last:border-b-0 last:pb-0">
-                      <div className="flex-shrink-0 w-20 h-16 bg-gray-200 rounded-lg animate-pulse"></div>
+                      <div className="flex-shrink-0 w-[30%] h-24 bg-gray-200 rounded-lg animate-pulse"></div>
                       <div className="flex-1 min-w-0">
                         <div className="h-4 bg-gray-200 rounded mb-2 animate-pulse"></div>
                         <div className="h-3 bg-gray-200 rounded mb-2 animate-pulse"></div>
@@ -847,8 +847,8 @@ export default function Home() {
                   ))
                 ) : bienestarPosts.length > 0 ? (
                   bienestarPosts.map((post, index) => (
-                     <article key={index} className="flex gap-4 pb-6 border-b border-gray-100 last:border-b-0 last:pb-0">
-                       <div className="flex-shrink-0 w-20 h-16 rounded-lg overflow-hidden">
+                     <article key={index} className="flex gap-6 pb-6 border-b border-gray-100 last:border-b-0 last:pb-0">
+                       <div className="flex-shrink-0 w-[30%] h-24 rounded-lg overflow-hidden">
                          {post.imagen_principal ? (
                            <img 
                              src={post.imagen_principal} 
@@ -857,19 +857,19 @@ export default function Home() {
                            />
                          ) : (
                            <div className="w-full h-full bg-emerald-100 flex items-center justify-center">
-                             <span className="text-emerald-600 text-2xl">📝</span>
+                             <span className="text-emerald-600 text-3xl">📝</span>
                            </div>
                          )}
                        </div>
                        <div className="flex-1 min-w-0">
-                         <h4 className="font-semibold text-gray-900 mb-1 line-clamp-1">{post.titulo}</h4>
-                         <p className="text-sm text-gray-600 mb-2">
-                           {post.contenido.replace(/<[^>]*>/g, '').substring(0, 25)}...
+                         <h4 className="font-semibold text-gray-900 mb-2 text-lg line-clamp-1">{post.titulo}</h4>
+                         <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                           {post.contenido.replace(/<[^>]*>/g, '').substring(0, 120)}...
                          </p>
                          <div className="flex items-center justify-between">
                            <span className="text-xs text-gray-500">{formatTimeAgo(post.fecha_publicacion)}</span>
-                           <button className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">
-                             Ver →
+                           <button className="text-sm text-emerald-600 hover:text-emerald-700 font-medium">
+                             Ver más →
                            </button>
                          </div>
                        </div>
@@ -907,7 +907,7 @@ export default function Home() {
                   // Skeleton loading
                   Array.from({ length: 2 }).map((_, index) => (
                     <div key={index} className="flex gap-4 pb-6 border-b border-gray-100 last:border-b-0 last:pb-0">
-                      <div className="flex-shrink-0 w-20 h-16 bg-gray-200 rounded-lg animate-pulse"></div>
+                      <div className="flex-shrink-0 w-[30%] h-24 bg-gray-200 rounded-lg animate-pulse"></div>
                       <div className="flex-1 min-w-0">
                         <div className="h-4 bg-gray-200 rounded mb-2 animate-pulse"></div>
                         <div className="h-3 bg-gray-200 rounded mb-2 animate-pulse"></div>
@@ -920,8 +920,8 @@ export default function Home() {
                   ))
                 ) : actividadesPosts.length > 0 ? (
                   actividadesPosts.map((post, index) => (
-                     <article key={index} className="flex gap-4 pb-6 border-b border-gray-100 last:border-b-0 last:pb-0">
-                       <div className="flex-shrink-0 w-20 h-16 rounded-lg overflow-hidden">
+                     <article key={index} className="flex gap-6 pb-6 border-b border-gray-100 last:border-b-0 last:pb-0">
+                       <div className="flex-shrink-0 w-[30%] h-24 rounded-lg overflow-hidden">
                          {post.imagen_principal ? (
                            <img 
                              src={post.imagen_principal} 
@@ -930,19 +930,19 @@ export default function Home() {
                            />
                          ) : (
                            <div className="w-full h-full bg-amber-100 flex items-center justify-center">
-                             <span className="text-amber-600 text-2xl">🎯</span>
+                             <span className="text-amber-600 text-3xl">🎯</span>
                            </div>
                          )}
                        </div>
                        <div className="flex-1 min-w-0">
-                         <h4 className="font-semibold text-gray-900 mb-1 line-clamp-1">{post.titulo}</h4>
-                         <p className="text-sm text-gray-600 mb-2">
-                           {post.contenido.replace(/<[^>]*>/g, '').substring(0, 25)}...
+                         <h4 className="font-semibold text-gray-900 mb-2 text-lg line-clamp-1">{post.titulo}</h4>
+                         <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                           {post.contenido.replace(/<[^>]*>/g, '').substring(0, 120)}...
                          </p>
                          <div className="flex items-center justify-between">
                            <span className="text-xs text-gray-500">{formatTimeAgo(post.fecha_publicacion)}</span>
-                           <button className="text-xs text-amber-600 hover:text-amber-700 font-medium">
-                             Ver →
+                           <button className="text-sm text-amber-600 hover:text-amber-700 font-medium">
+                             Ver más →
                            </button>
                          </div>
                        </div>
@@ -983,7 +983,7 @@ export default function Home() {
                   // Skeleton loading
                   Array.from({ length: 2 }).map((_, index) => (
                     <div key={index} className="flex gap-4 pb-6 border-b border-gray-100 last:border-b-0 last:pb-0">
-                      <div className="flex-shrink-0 w-20 h-16 bg-gray-200 rounded-lg animate-pulse"></div>
+                      <div className="flex-shrink-0 w-[30%] h-24 bg-gray-200 rounded-lg animate-pulse"></div>
                       <div className="flex-1 min-w-0">
                         <div className="h-4 bg-gray-200 rounded mb-2 animate-pulse"></div>
                         <div className="h-3 bg-gray-200 rounded mb-2 animate-pulse"></div>
@@ -996,8 +996,8 @@ export default function Home() {
                   ))
                 ) : sstPosts.length > 0 ? (
                   sstPosts.map((post, index) => (
-                     <article key={index} className="flex gap-4 pb-6 border-b border-gray-100 last:border-b-0 last:pb-0">
-                       <div className="flex-shrink-0 w-20 h-16 rounded-lg overflow-hidden">
+                     <article key={index} className="flex gap-6 pb-6 border-b border-gray-100 last:border-b-0 last:pb-0">
+                       <div className="flex-shrink-0 w-[30%] h-24 rounded-lg overflow-hidden">
                          {post.imagen_principal ? (
                            <img 
                              src={post.imagen_principal} 
@@ -1006,19 +1006,19 @@ export default function Home() {
                            />
                          ) : (
                            <div className="w-full h-full bg-red-100 flex items-center justify-center">
-                             <span className="text-red-600 text-2xl">🛡️</span>
+                             <span className="text-red-600 text-3xl">🛡️</span>
                            </div>
                          )}
                        </div>
                        <div className="flex-1 min-w-0">
-                         <h4 className="font-semibold text-gray-900 mb-1 line-clamp-1">{post.titulo}</h4>
-                         <p className="text-sm text-gray-600 mb-2">
-                           {post.contenido.replace(/<[^>]*>/g, '').substring(0, 25)}...
+                         <h4 className="font-semibold text-gray-900 mb-2 text-lg line-clamp-1">{post.titulo}</h4>
+                         <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                           {post.contenido.replace(/<[^>]*>/g, '').substring(0, 120)}...
                          </p>
                          <div className="flex items-center justify-between">
                            <span className="text-xs text-gray-500">{formatTimeAgo(post.fecha_publicacion)}</span>
-                           <button className="text-xs text-red-600 hover:text-red-700 font-medium">
-                             Ver →
+                           <button className="text-sm text-red-600 hover:text-red-700 font-medium">
+                             Ver más →
                            </button>
                          </div>
                        </div>
@@ -1056,7 +1056,7 @@ export default function Home() {
                   // Skeleton loading
                   Array.from({ length: 2 }).map((_, index) => (
                     <div key={index} className="flex gap-4 pb-6 border-b border-gray-100 last:border-b-0 last:pb-0">
-                      <div className="flex-shrink-0 w-20 h-16 bg-gray-200 rounded-lg animate-pulse"></div>
+                      <div className="flex-shrink-0 w-[30%] h-24 bg-gray-200 rounded-lg animate-pulse"></div>
                       <div className="flex-1 min-w-0">
                         <div className="h-4 bg-gray-200 rounded mb-2 animate-pulse"></div>
                         <div className="h-3 bg-gray-200 rounded mb-2 animate-pulse"></div>
@@ -1069,8 +1069,8 @@ export default function Home() {
                   ))
                 ) : normatividadPosts.length > 0 ? (
                   normatividadPosts.map((post, index) => (
-                     <article key={index} className="flex gap-4 pb-6 border-b border-gray-100 last:border-b-0 last:pb-0">
-                       <div className="flex-shrink-0 w-20 h-16 rounded-lg overflow-hidden">
+                     <article key={index} className="flex gap-6 pb-6 border-b border-gray-100 last:border-b-0 last:pb-0">
+                       <div className="flex-shrink-0 w-[30%] h-24 rounded-lg overflow-hidden">
                          {post.imagen_principal ? (
                            <img 
                              src={post.imagen_principal} 
@@ -1079,19 +1079,19 @@ export default function Home() {
                            />
                          ) : (
                            <div className="w-full h-full bg-purple-100 flex items-center justify-center">
-                             <span className="text-purple-600 text-2xl">📋</span>
+                             <span className="text-purple-600 text-3xl">📋</span>
                            </div>
                          )}
                        </div>
                        <div className="flex-1 min-w-0">
-                         <h4 className="font-semibold text-gray-900 mb-1 line-clamp-1">{post.titulo}</h4>
-                         <p className="text-sm text-gray-600 mb-2">
-                           {post.contenido.replace(/<[^>]*>/g, '').substring(0, 25)}...
+                         <h4 className="font-semibold text-gray-900 mb-2 text-lg line-clamp-1">{post.titulo}</h4>
+                         <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                           {post.contenido.replace(/<[^>]*>/g, '').substring(0, 120)}...
                          </p>
                          <div className="flex items-center justify-between">
                            <span className="text-xs text-gray-500">{formatTimeAgo(post.fecha_publicacion)}</span>
-                           <button className="text-xs text-purple-600 hover:text-purple-700 font-medium">
-                             Ver →
+                           <button className="text-sm text-purple-600 hover:text-purple-700 font-medium">
+                             Ver más →
                            </button>
                          </div>
                        </div>

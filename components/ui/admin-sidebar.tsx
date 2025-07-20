@@ -56,7 +56,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
     
     const items = [];
     
-    // Siempre incluir Escritorio
+    // 1. Escritorio - Siempre incluir
     items.push({ 
       name: "Escritorio", 
       href: "/administracion", 
@@ -64,19 +64,17 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
       current: currentPath === "/administracion" 
     });
     
-    // Estadísticas - disponible para administradores
+    // Solo administradores tienen acceso completo
     if (userData.rol === 'administrador') {
+      // 2. Estadísticas
       items.push({ 
         name: "Estadísticas", 
         href: "/administracion/estadisticas", 
         icon: FaChartPie, 
         current: currentPath === "/administracion/estadisticas" 
       });
-    }
-    
-    // Solo administradores tienen acceso completo
-    if (userData.rol === 'administrador') {
-      // Usuarios
+      
+      // 3. Usuarios
       items.push({
         name: "Usuarios",
         icon: User,
@@ -97,7 +95,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
         ],
       });
       
-      // Solicitudes
+      // 4. Solicitudes
       items.push({
         name: "Solicitudes",
         icon: FileText,
@@ -124,7 +122,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
         ],
       });
       
-      // Comunicados
+      // 5. Comunicados
       items.push({
         name: "Comunicados",
         icon: Newspaper,
@@ -151,7 +149,28 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
         ],
       });
       
-      // Bienestar
+      // 6. Novedades
+      items.push({
+        name: "Novedades",
+        icon: FileText,
+        current: currentPath.includes("/administracion/novedades"),
+        subItems: [
+          {
+            name: "Incapacidades",
+            href: "/administracion/novedades/incapacidades",
+            icon: FaFileAlt,
+            current: currentPath === "/administracion/novedades/incapacidades"
+          },
+        ],
+      });
+      
+      // Primer separador
+      items.push({ 
+        name: "separator-1", 
+        type: "separator" 
+      });
+      
+      // 7. Bienestar
       items.push({
         name: "Bienestar",
         icon: FaHeart,
@@ -172,7 +191,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
         ],
       });
       
-      // Actividades
+      // 8. Actividades
       items.push({
         name: "Actividades",
         icon: FaRunning,
@@ -193,7 +212,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
         ],
       });
       
-      // SST (Seguridad y Salud en el Trabajo)
+      // 9. SST (Seguridad y Salud en el Trabajo)
       items.push({
         name: "SST",
         icon: FaHardHat,
@@ -214,7 +233,7 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
         ],
       });
       
-      // Normatividad
+      // 10. Normatividad
       items.push({
         name: "Normatividad",
         icon: FaBalanceScale,
@@ -235,23 +254,14 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
         ],
       });
       
-      // Novedades
-      items.push({
-        name: "Novedades",
-        icon: FileText,
-        current: currentPath.includes("/administracion/novedades"),
-        subItems: [
-          {
-            name: "Incapacidades",
-            href: "/administracion/novedades/incapacidades",
-            icon: FaFileAlt,
-            current: currentPath === "/administracion/novedades/incapacidades"
-          },
-        ],
+      // Segundo separador
+      items.push({ 
+        name: "separator-2", 
+        type: "separator" 
       });
     }
     
-    // Siempre incluir Mis datos
+    // 11. Mis datos - Siempre incluir al final
     items.push({ 
       name: "Mis datos", 
       href: "/administracion/perfil", 
@@ -328,7 +338,9 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
             <nav className="mt-5 px-2 space-y-1">
               {menuItems.map((item, index) => (
                 <div key={item.name}>
-                  {('subItems' in item && item.subItems) ? (
+                  {item.type === 'separator' ? (
+                    <Separator className="my-3" />
+                  ) : ('subItems' in item && item.subItems) ? (
                     <>
                       <button
                         onClick={() => toggleMenu(index)}
@@ -421,7 +433,9 @@ export function AdminSidebar({ userName = "Administrador" }: AdminSidebarProps) 
             <nav className="mt-8 flex-1 px-2 space-y-1">
               {menuItems.map((item, index) => (
                 <div key={item.name}>
-                  {('subItems' in item && item.subItems) ? (
+                  {item.type === 'separator' ? (
+                    <Separator className="my-3" />
+                  ) : ('subItems' in item && item.subItems) ? (
                     <>
                       <button
                         onClick={() => toggleMenu(index)}

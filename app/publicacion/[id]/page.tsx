@@ -158,7 +158,7 @@ export default function PublicacionDetalle() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-32 mb-6"></div>
             <div className="bg-white rounded-2xl shadow-lg p-8">
@@ -180,7 +180,7 @@ export default function PublicacionDetalle() {
   if (error || !publicacion) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Button
             onClick={() => router.back()}
             variant="outline"
@@ -201,7 +201,7 @@ export default function PublicacionDetalle() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Botón de volver */}
         <Button
           onClick={() => router.back()}
@@ -213,7 +213,7 @@ export default function PublicacionDetalle() {
         </Button>
 
         {/* Contenido principal */}
-        <article className="bg-white rounded-2xl shadow-lg overflow-hidden">
+        <article className="bg-white rounded-2xl shadow-lg overflow-hidden mx-auto">
           {/* Imagen principal */}
           {publicacion.imagen_principal && (
             <div className="w-full h-64 md:h-80 lg:h-96 overflow-hidden">

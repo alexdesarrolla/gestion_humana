@@ -327,14 +327,14 @@ export function renderContentBlocks(blocks: ContentBlock[]): string {
         if (block.content.includes('youtube.com/watch') || block.content.includes('youtu.be/')) {
           const videoId = block.content.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1]
           if (videoId) {
-            videoEmbed = `<iframe width="560" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen class="w-full max-w-2xl h-64 md:h-80"></iframe>`
+            videoEmbed = `<div class="relative w-full" style="aspect-ratio: 16/9;"><iframe src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen class="absolute inset-0 w-full h-full rounded-lg"></iframe></div>`
           }
         }
         // Convertir URLs de Vimeo a embed
         else if (block.content.includes('vimeo.com/')) {
           const videoId = block.content.match(/vimeo\.com\/(\d+)/)?.[1]
           if (videoId) {
-            videoEmbed = `<iframe src="https://player.vimeo.com/video/${videoId}" width="560" height="315" frameborder="0" allowfullscreen class="w-full max-w-2xl h-64 md:h-80"></iframe>`
+            videoEmbed = `<div class="relative w-full" style="aspect-ratio: 16/9;"><iframe src="https://player.vimeo.com/video/${videoId}" frameborder="0" allowfullscreen class="absolute inset-0 w-full h-full rounded-lg"></iframe></div>`
           }
         }
         
@@ -347,8 +347,8 @@ export function renderContentBlocks(blocks: ContentBlock[]): string {
       case 'embed':
         const embedTitle = block.title ? `<h3 class="text-lg font-semibold mb-2">${block.title}</h3>` : ''
         const embedDesc = block.description ? `<p class="text-sm text-gray-600 mb-2">${block.description}</p>` : ''
-        // Generar código embed automáticamente desde la URL
-        const embedCode = `<embed src="${block.content}" width="800" height="550" allowfullscreen>`
+        // Generar código embed automáticamente desde la URL con proporción 16:9 y border-radius
+        const embedCode = `<div class="relative w-full" style="aspect-ratio: 16/9;"><embed src="${block.content}" class="absolute inset-0 w-full h-full rounded-lg" allowfullscreen></div>`
         return `${embedTitle}${embedDesc}<div class="embed-container mb-4">${embedCode}</div>`
       
       default:

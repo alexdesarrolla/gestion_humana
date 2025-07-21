@@ -106,4 +106,97 @@
   .animate-scroll:hover {
     animation-play-state: paused;
   }
+  /* Contenedores de video y embed */
+  .video-container,
+  .embed-container {
+    width: 100% !important;
+    position: relative;
+    aspect-ratio: 16/9 !important;
+  }
+
+  .video-container iframe,
+  .video-container embed,
+  .embed-container iframe,
+  .embed-container embed {
+    width: 100% !important;
+    height: 100% !important;
+    aspect-ratio: 16/9 !important;
+    border-radius: 8px !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  /* Estilos específicos para iframes dentro de contenido HTML */
+  article iframe,
+  article embed,
+  [dangerouslySetInnerHTML] iframe,
+  [dangerouslySetInnerHTML] embed {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 16/9 !important;
+    border-radius: 8px !important;
+    max-width: 100% !important;
+    min-height: 200px !important;
+  }
+
+  /* Estilos ultra específicos para embeds con clases de Tailwind */
+  embed.absolute,
+  iframe.absolute,
+  embed[class*="absolute"],
+  iframe[class*="absolute"],
+  embed[class*="inset"],
+  iframe[class*="inset"] {
+    position: static !important;
+    inset: unset !important;
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 16/9 !important;
+    border-radius: 8px !important;
+    max-width: 100% !important;
+    min-height: 300px !important;
+  }
+
+  /* Forzar estilos en todos los embeds e iframes sin excepción */
+  embed,
+  iframe {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 16/9 !important;
+    border-radius: 8px !important;
+    max-width: 100% !important;
+    min-height: 250px !important;
+    position: static !important;
+    inset: unset !important;
+    top: unset !important;
+    left: unset !important;
+    right: unset !important;
+    bottom: unset !important;
+    overflow: auto !important;
+    scrollbar-width: thin !important;
+  }
+
+  /* Estilos específicos para webkit scrollbars en embeds */
+  embed::-webkit-scrollbar,
+  iframe::-webkit-scrollbar {
+    width: 8px !important;
+    height: 8px !important;
+  }
+
+  embed::-webkit-scrollbar-track,
+  iframe::-webkit-scrollbar-track {
+    background: #f1f1f1 !important;
+    border-radius: 4px !important;
+  }
+
+  embed::-webkit-scrollbar-thumb,
+  iframe::-webkit-scrollbar-thumb {
+    background: #c1c1c1 !important;
+    border-radius: 4px !important;
+  }
+
+  embed::-webkit-scrollbar-thumb:hover,
+  iframe::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8 !important;
+  }
 }

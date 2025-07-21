@@ -246,8 +246,6 @@ export default function DetallePublicacionSST() {
                   <Image
                     src={publicacion.imagen_principal}
                     alt={publicacion.titulo}
-                    width={800}
-                    height={400}
                     className="rounded-lg object-cover w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
                     onClick={() => openImageDialog(publicacion.imagen_principal)}
                   />

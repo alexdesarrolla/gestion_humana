@@ -129,7 +129,10 @@ export default function Home() {
         const birthdayUsersThisWeek = (users || []).filter((user) => {
           if (!user.fecha_nacimiento) return false
 
-          const birthDate = new Date(user.fecha_nacimiento as string)
+          // Crear la fecha correctamente para evitar problemas de zona horaria
+          const birthDateStr = user.fecha_nacimiento as string
+          const [year, month, day] = birthDateStr.split('-')
+          const birthDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
           const currentYear = today.getFullYear()
 
           // Crear fecha de cumpleaños para este año
@@ -1150,7 +1153,11 @@ export default function Home() {
                 ) : birthdayUsers.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {birthdayUsers.map((user, index) => {
-                      const birthDate = new Date(user.fecha_nacimiento)
+                      // Crear la fecha correctamente para evitar problemas de zona horaria
+                      const birthDateStr = user.fecha_nacimiento
+                      const [year, month, day] = birthDateStr.split('-')
+                      const birthDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+                      
                       const formattedDate = birthDate.toLocaleDateString("es-ES", {
                         weekday: "long",
                         day: "numeric",

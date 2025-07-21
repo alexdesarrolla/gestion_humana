@@ -4,7 +4,7 @@ import type React from "react"
 
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, UserCircle2, Lock, Eye, EyeOff, Menu, X } from "lucide-react"
 import { createSupabaseClient } from "@/lib/supabase"
@@ -41,13 +41,44 @@ export default function Home() {
   const [birthdayUsers, setBirthdayUsers] = useState<BirthdayUser[]>([])
   const [loadingBirthdays, setLoadingBirthdays] = useState(true)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  
+
   // Estados para las secciones de contenido
   const [bienestarPosts, setBienestarPosts] = useState<any[]>([])
   const [actividadesPosts, setActividadesPosts] = useState<any[]>([])
   const [sstPosts, setSstPosts] = useState<any[]>([])
   const [normatividadPosts, setNormatividadPosts] = useState<any[]>([])
   const [loadingSections, setLoadingSections] = useState(true)
+  const [randomSeed, setRandomSeed] = useState(Math.random())
+
+  // Memoizar la selección de publicación destacada y posts disponibles
+  const { featuredPost, availableFeaturedPosts } = useMemo(() => {
+    if (loadingSections) return { featuredPost: null, availableFeaturedPosts: [] };
+
+    // Combine all posts from different sections
+    const allPosts = [...bienestarPosts, ...actividadesPosts, ...sstPosts, ...normatividadPosts]
+      .filter(post => {
+        // Filter posts from last 8 days and check if featured
+        if (!post.destacado) return false;
+
+        const postDate = new Date(post.fecha_publicacion);
+        const today = new Date();
+        const eightDaysAgo = new Date(today);
+        eightDaysAgo.setDate(today.getDate() - 8);
+
+        // Normalize dates to compare only dates without time
+        postDate.setHours(0, 0, 0, 0);
+        eightDaysAgo.setHours(0, 0, 0, 0);
+        today.setHours(23, 59, 59, 999);
+
+        return postDate >= eightDaysAgo && postDate <= today;
+      });
+
+    // Get random post using the seed for consistent randomization during the same session
+    if (allPosts.length === 0) return { featuredPost: null, availableFeaturedPosts: [] };
+
+    const index = Math.floor((randomSeed * allPosts.length));
+    return { featuredPost: allPosts[index], availableFeaturedPosts: allPosts };
+  }, [bienestarPosts, actividadesPosts, sstPosts, normatividadPosts, loadingSections, randomSeed]);
 
   // Función para verificar si el input es una cédula o un correo electrónico
   const isCedula = (input: string): boolean => {
@@ -60,7 +91,7 @@ export default function Home() {
     const now = new Date()
     const diffInMs = now.getTime() - date.getTime()
     const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24))
-    
+
     if (diffInDays === 0) {
       return "Hoy"
     } else if (diffInDays === 1) {
@@ -174,7 +205,8 @@ export default function Home() {
           contenido,
           imagen_principal,
           fecha_publicacion,
-          tipo_seccion
+          tipo_seccion,
+          destacado
         `)
           .eq("estado", "publicado")
           .eq("tipo_seccion", "bienestar")
@@ -194,7 +226,8 @@ export default function Home() {
           contenido,
           imagen_principal,
           fecha_publicacion,
-          tipo_seccion
+          tipo_seccion,
+          destacado
         `)
           .eq("estado", "publicado")
           .eq("tipo_seccion", "actividades")
@@ -214,7 +247,8 @@ export default function Home() {
           contenido,
           imagen_principal,
           fecha_publicacion,
-          tipo_seccion
+          tipo_seccion,
+          destacado
         `)
           .eq("estado", "publicado")
           .eq("tipo_seccion", "sst")
@@ -234,7 +268,8 @@ export default function Home() {
           contenido,
           imagen_principal,
           fecha_publicacion,
-          tipo_seccion
+          tipo_seccion,
+          destacado
         `)
           .eq("estado", "publicado")
           .eq("tipo_seccion", "normatividad")
@@ -249,6 +284,8 @@ export default function Home() {
         console.error("Error loading section posts:", error)
       } finally {
         setLoadingSections(false)
+        // Regenerar seed para nueva selección aleatoria
+        setRandomSeed(Math.random())
       }
     }
 
@@ -591,8 +628,8 @@ export default function Home() {
                   { icon: "📅", text: "Cronograma de actividades y eventos" },
                   { icon: "🛡️", text: "Seguridad y salud en el trabajo" },
                 ].map((feature, index) => (
-                  <div 
-                    key={index} 
+                  <div
+                    key={index}
                     className="flex items-center gap-3 p-4 rounded-lg backdrop-blur-md bg-white/60 border border-gray-200/30 shadow-sm hover:shadow-md transition-all duration-200"
                   >
                     <span className="text-2xl">{feature.icon}</span>
@@ -792,32 +829,92 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Featured Message */}
-          <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-6 lg:p-12 mb-8 lg:mb-12 text-white relative overflow-hidden">
-            <div className="relative z-10">
-              <span className="inline-block bg-white/20 backdrop-blur-sm px-3 py-1 rounded-md text-sm font-semibold uppercase tracking-wide mb-4">
-                Destacado
-              </span>
-              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 leading-tight">
-                Nueva Política de Trabajo
-              </h3>
-              <p className="text-lg sm:text-xl mb-6 opacity-95 leading-relaxed">
-                Conoce los nuevos lineamientos para el trabajo que entrarán en vigencia el próximo mes. Incluye
-                horarios flexibles, días de oficina y herramientas digitales.
-              </p>
-              <div className="flex flex-wrap gap-4 mb-6 text-sm opacity-90">
-                <span>📅 Publicado: 15 de Enero, 2024</span>
-                <span>👤 Recursos Humanos</span>
-                <span>⏱️ Lectura: 5 min</span>
-              </div>
-              <a
-                href="#"
-                className="inline-block bg-white text-emerald-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-all duration-200 hover:-translate-y-1 shadow-lg hover:shadow-xl"
-              >
-                Leer más →
-              </a>
+          {/* Featured Random Post */}
+          {loadingSections ? (
+            <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-6 lg:p-12 mb-8 lg:mb-12 text-white relative overflow-hidden animate-pulse">
+              <div className="h-4 bg-white/20 w-24 rounded mb-4"></div>
+              <div className="h-8 bg-white/20 w-3/4 rounded mb-4"></div>
+              <div className="h-20 bg-white/20 w-full rounded mb-6"></div>
+              <div className="h-4 bg-white/20 w-48 rounded"></div>
             </div>
-          </div>
+          ) : featuredPost ? (
+            (() => {
+              // Get section color based on tipo_seccion
+              const sectionColors = {
+                bienestar: "from-emerald-500 to-green-600",
+                actividades: "from-amber-500 to-orange-600",
+                sst: "from-red-500 to-rose-600",
+                normatividad: "from-purple-500 to-indigo-600"
+              };
+
+              const gradientColor = sectionColors[featuredPost.tipo_seccion as keyof typeof sectionColors] || "from-blue-500 to-purple-600";
+
+              return (
+                <div className={`bg-gradient-to-r ${gradientColor} rounded-2xl p-6 lg:p-8 mb-8 lg:mb-12 text-white relative overflow-hidden`}>
+                  <div className="relative z-10 flex gap-6 max-w-6xl mx-auto">
+                    {/* Left column - Image */}
+                    <div className="w-2/5">
+                      {featuredPost.imagen_principal ? (
+                        <img
+                          src={featuredPost.imagen_principal}
+                          alt={featuredPost.titulo}
+                          className="w-full h-[300px] object-cover rounded-lg shadow-lg"
+                        />
+                      ) : (
+                        <div className="w-full h-[300px] bg-white/20 rounded-lg flex items-center justify-center shadow-lg">
+                          <span className="text-6xl">📝</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right column - Content */}
+                    <div className="w-3/5 flex flex-col justify-center">
+                      <span className="inline-block bg-white/20 backdrop-blur-sm px-3 py-1 rounded-md text-sm font-semibold uppercase tracking-wide mb-4 w-fit">
+                        Destacado • {featuredPost.tipo_seccion}
+                      </span>
+
+                      <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 leading-tight">
+                        {featuredPost.titulo}
+                      </h3>
+
+                      <p className="text-lg mb-6 opacity-95 leading-relaxed">
+                        {featuredPost.contenido.replace(/<[^>]*>/g, '').substring(0, 150)}...
+                      </p>
+
+                      <div className="flex items-center gap-4 mb-6 text-sm opacity-90">
+                        <span>📅 {new Date(featuredPost.fecha_publicacion).toLocaleDateString('es-ES', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}</span>
+                      </div>
+
+                      <a
+                        href={`/publicacion/${featuredPost.id}`}
+                        className="inline-block bg-white text-emerald-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-all duration-200 hover:-translate-y-1 shadow-lg hover:shadow-xl w-fit"
+                      >
+                        Leer más →
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()
+          ) : (
+            <div className="bg-gradient-to-r from-gray-400 to-gray-600 rounded-2xl p-6 lg:p-12 mb-8 lg:mb-12 text-white relative overflow-hidden">
+              <div className="relative z-10 text-center">
+                <span className="inline-block bg-white/20 backdrop-blur-sm px-3 py-1 rounded-md text-sm font-semibold uppercase tracking-wide mb-4">
+                  Sin publicaciones destacadas
+                </span>
+                <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 leading-tight">
+                  ¡Mantente atento!
+                </h3>
+                <p className="text-lg sm:text-xl mb-6 opacity-95 leading-relaxed">
+                  Pronto tendremos nuevas publicaciones destacadas para ti.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Cards Row 1 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 mb-8">
@@ -850,42 +947,42 @@ export default function Home() {
                   ))
                 ) : bienestarPosts.length > 0 ? (
                   bienestarPosts.map((post, index) => (
-                     <article key={index} className="flex gap-6 pb-6 border-b border-gray-100 last:border-b-0 last:pb-0">
-                       <div className="flex-shrink-0 w-[30%] h-24 rounded-lg overflow-hidden">
-                         {post.imagen_principal ? (
-                           <img 
-                             src={post.imagen_principal} 
-                             alt={post.titulo}
-                             className="w-full h-full object-cover"
-                           />
-                         ) : (
-                           <div className="w-full h-full bg-emerald-100 flex items-center justify-center">
-                             <span className="text-emerald-600 text-3xl">📝</span>
-                           </div>
-                         )}
-                       </div>
-                       <div className="flex-1 min-w-0">
-                         <h4 className="font-semibold text-gray-900 mb-2 text-lg line-clamp-1">{post.titulo}</h4>
-                         <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                           {post.contenido.replace(/<[^>]*>/g, '').substring(0, 120)}...
-                         </p>
-                         <div className="flex items-center justify-between">
-                           <span className="text-xs text-gray-500">{formatTimeAgo(post.fecha_publicacion)}</span>
-                           <button 
-                             onClick={() => window.location.href = `/publicacion/${post.id}`}
-                             className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
-                           >
-                             Ver →
-                           </button>
-                         </div>
-                       </div>
-                     </article>
-                   ))
-                 ) : (
-                   <div className="text-center py-8 text-gray-500">
-                     <p>No hay publicaciones de bienestar disponibles</p>
-                   </div>
-                 )}
+                    <article key={index} className="flex gap-6 pb-6 border-b border-gray-100 last:border-b-0 last:pb-0">
+                      <div className="flex-shrink-0 w-[30%] h-24 rounded-lg overflow-hidden">
+                        {post.imagen_principal ? (
+                          <img
+                            src={post.imagen_principal}
+                            alt={post.titulo}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-emerald-100 flex items-center justify-center">
+                            <span className="text-emerald-600 text-3xl">📝</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-gray-900 mb-2 text-lg line-clamp-1">{post.titulo}</h4>
+                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                          {post.contenido.replace(/<[^>]*>/g, '').substring(0, 120)}...
+                        </p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">{formatTimeAgo(post.fecha_publicacion)}</span>
+                          <button
+                            onClick={() => window.location.href = `/publicacion/${post.id}`}
+                            className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
+                          >
+                            Ver →
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>No hay publicaciones de bienestar disponibles</p>
+                  </div>
+                )}
               </div>
               <div className="border-t border-gray-200">
                 <a
@@ -926,42 +1023,42 @@ export default function Home() {
                   ))
                 ) : actividadesPosts.length > 0 ? (
                   actividadesPosts.map((post, index) => (
-                     <article key={index} className="flex gap-6 pb-6 border-b border-gray-100 last:border-b-0 last:pb-0">
-                       <div className="flex-shrink-0 w-[30%] h-24 rounded-lg overflow-hidden">
-                         {post.imagen_principal ? (
-                           <img 
-                             src={post.imagen_principal} 
-                             alt={post.titulo}
-                             className="w-full h-full object-cover"
-                           />
-                         ) : (
-                           <div className="w-full h-full bg-amber-100 flex items-center justify-center">
-                             <span className="text-amber-600 text-3xl">🎯</span>
-                           </div>
-                         )}
-                       </div>
-                       <div className="flex-1 min-w-0">
-                         <h4 className="font-semibold text-gray-900 mb-2 text-lg line-clamp-1">{post.titulo}</h4>
-                         <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                           {post.contenido.replace(/<[^>]*>/g, '').substring(0, 120)}...
-                         </p>
-                         <div className="flex items-center justify-between">
-                           <span className="text-xs text-gray-500">{formatTimeAgo(post.fecha_publicacion)}</span>
-                           <button 
-                             onClick={() => window.location.href = `/publicacion/${post.id}`}
-                             className="text-xs text-amber-600 hover:text-amber-700 font-medium"
-                           >
-                             Ver →
-                           </button>
-                         </div>
-                       </div>
-                     </article>
-                   ))
-                 ) : (
-                   <div className="text-center py-8 text-gray-500">
-                     <p>No hay actividades disponibles</p>
-                   </div>
-                 )}
+                    <article key={index} className="flex gap-6 pb-6 border-b border-gray-100 last:border-b-0 last:pb-0">
+                      <div className="flex-shrink-0 w-[30%] h-24 rounded-lg overflow-hidden">
+                        {post.imagen_principal ? (
+                          <img
+                            src={post.imagen_principal}
+                            alt={post.titulo}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-amber-100 flex items-center justify-center">
+                            <span className="text-amber-600 text-3xl">🎯</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-gray-900 mb-2 text-lg line-clamp-1">{post.titulo}</h4>
+                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                          {post.contenido.replace(/<[^>]*>/g, '').substring(0, 120)}...
+                        </p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">{formatTimeAgo(post.fecha_publicacion)}</span>
+                          <button
+                            onClick={() => window.location.href = `/publicacion/${post.id}`}
+                            className="text-xs text-amber-600 hover:text-amber-700 font-medium"
+                          >
+                            Ver →
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>No hay actividades disponibles</p>
+                  </div>
+                )}
               </div>
               <div className="border-t border-gray-200">
                 <a
@@ -1005,42 +1102,42 @@ export default function Home() {
                   ))
                 ) : sstPosts.length > 0 ? (
                   sstPosts.map((post, index) => (
-                     <article key={index} className="flex gap-6 pb-6 border-b border-gray-100 last:border-b-0 last:pb-0">
-                       <div className="flex-shrink-0 w-[30%] h-24 rounded-lg overflow-hidden">
-                         {post.imagen_principal ? (
-                           <img 
-                             src={post.imagen_principal} 
-                             alt={post.titulo}
-                             className="w-full h-full object-cover"
-                           />
-                         ) : (
-                           <div className="w-full h-full bg-red-100 flex items-center justify-center">
-                             <span className="text-red-600 text-3xl">🛡️</span>
-                           </div>
-                         )}
-                       </div>
-                       <div className="flex-1 min-w-0">
-                         <h4 className="font-semibold text-gray-900 mb-2 text-lg line-clamp-1">{post.titulo}</h4>
-                         <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                           {post.contenido.replace(/<[^>]*>/g, '').substring(0, 120)}...
-                         </p>
-                         <div className="flex items-center justify-between">
-                           <span className="text-xs text-gray-500">{formatTimeAgo(post.fecha_publicacion)}</span>
-                           <button 
-                             onClick={() => window.location.href = `/publicacion/${post.id}`}
-                             className="text-xs text-red-600 hover:text-red-700 font-medium"
-                           >
-                             Ver →
-                           </button>
-                         </div>
-                       </div>
-                     </article>
-                   ))
-                 ) : (
-                   <div className="text-center py-8 text-gray-500">
-                     <p>No hay recursos de SST disponibles</p>
-                   </div>
-                 )}
+                    <article key={index} className="flex gap-6 pb-6 border-b border-gray-100 last:border-b-0 last:pb-0">
+                      <div className="flex-shrink-0 w-[30%] h-24 rounded-lg overflow-hidden">
+                        {post.imagen_principal ? (
+                          <img
+                            src={post.imagen_principal}
+                            alt={post.titulo}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-red-100 flex items-center justify-center">
+                            <span className="text-red-600 text-3xl">🛡️</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-gray-900 mb-2 text-lg line-clamp-1">{post.titulo}</h4>
+                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                          {post.contenido.replace(/<[^>]*>/g, '').substring(0, 120)}...
+                        </p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">{formatTimeAgo(post.fecha_publicacion)}</span>
+                          <button
+                            onClick={() => window.location.href = `/publicacion/${post.id}`}
+                            className="text-xs text-red-600 hover:text-red-700 font-medium"
+                          >
+                            Ver →
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>No hay recursos de SST disponibles</p>
+                  </div>
+                )}
               </div>
               <div className="border-t border-gray-200">
                 <a
@@ -1081,42 +1178,42 @@ export default function Home() {
                   ))
                 ) : normatividadPosts.length > 0 ? (
                   normatividadPosts.map((post, index) => (
-                     <article key={index} className="flex gap-6 pb-6 border-b border-gray-100 last:border-b-0 last:pb-0">
-                       <div className="flex-shrink-0 w-[30%] h-24 rounded-lg overflow-hidden">
-                         {post.imagen_principal ? (
-                           <img 
-                             src={post.imagen_principal} 
-                             alt={post.titulo}
-                             className="w-full h-full object-cover"
-                           />
-                         ) : (
-                           <div className="w-full h-full bg-purple-100 flex items-center justify-center">
-                             <span className="text-purple-600 text-3xl">📋</span>
-                           </div>
-                         )}
-                       </div>
-                       <div className="flex-1 min-w-0">
-                         <h4 className="font-semibold text-gray-900 mb-2 text-lg line-clamp-1">{post.titulo}</h4>
-                         <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                           {post.contenido.replace(/<[^>]*>/g, '').substring(0, 120)}...
-                         </p>
-                         <div className="flex items-center justify-between">
-                           <span className="text-xs text-gray-500">{formatTimeAgo(post.fecha_publicacion)}</span>
-                           <button 
-                             onClick={() => window.location.href = `/publicacion/${post.id}`}
-                             className="text-xs text-purple-600 hover:text-purple-700 font-medium"
-                           >
-                             Ver →
-                           </button>
-                         </div>
-                       </div>
-                     </article>
-                   ))
-                 ) : (
-                   <div className="text-center py-8 text-gray-500">
-                     <p>No hay normativas disponibles</p>
-                   </div>
-                 )}
+                    <article key={index} className="flex gap-6 pb-6 border-b border-gray-100 last:border-b-0 last:pb-0">
+                      <div className="flex-shrink-0 w-[30%] h-24 rounded-lg overflow-hidden">
+                        {post.imagen_principal ? (
+                          <img
+                            src={post.imagen_principal}
+                            alt={post.titulo}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-purple-100 flex items-center justify-center">
+                            <span className="text-purple-600 text-3xl">📋</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-gray-900 mb-2 text-lg line-clamp-1">{post.titulo}</h4>
+                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                          {post.contenido.replace(/<[^>]*>/g, '').substring(0, 120)}...
+                        </p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">{formatTimeAgo(post.fecha_publicacion)}</span>
+                          <button
+                            onClick={() => window.location.href = `/publicacion/${post.id}`}
+                            className="text-xs text-purple-600 hover:text-purple-700 font-medium"
+                          >
+                            Ver →
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>No hay normativas disponibles</p>
+                  </div>
+                )}
               </div>
               <div className="border-t border-gray-200">
                 <a
@@ -1157,7 +1254,7 @@ export default function Home() {
                       const birthDateStr = user.fecha_nacimiento
                       const [year, month, day] = birthDateStr.split('-')
                       const birthDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
-                      
+
                       const formattedDate = birthDate.toLocaleDateString("es-ES", {
                         weekday: "long",
                         day: "numeric",
@@ -1245,7 +1342,7 @@ export default function Home() {
               <div className="flex space-x-8 lg:space-x-12 flex-shrink-0">
                 {[
                   'empresa-bdatam.webp',
-                  'empresa-bestdream.webp', 
+                  'empresa-bestdream.webp',
                   'empresa-cbb.webp',
                   'empresa-daytona.webp',
                   'empresa-hka.webp',
@@ -1268,7 +1365,7 @@ export default function Home() {
               <div className="flex space-x-8 lg:space-x-12 flex-shrink-0">
                 {[
                   'empresa-bdatam.webp',
-                  'empresa-bestdream.webp', 
+                  'empresa-bestdream.webp',
                   'empresa-cbb.webp',
                   'empresa-daytona.webp',
                   'empresa-hka.webp',

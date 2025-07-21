@@ -29,7 +29,7 @@ export function ImageUpload({
   folder = "images",
   label = "Imagen",
   accept = "image/*",
-  maxSize = 10,
+  maxSize = 1,
   className = "",
   showPreview = true,
 }: ImageUploadProps) {
@@ -212,7 +212,7 @@ export function ImageGalleryUpload({
   bucket = "bienestar",
   folder = "gallery",
   maxImages = 10,
-  maxSize = 10,
+  maxSize = 1,
 }: ImageGalleryUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);

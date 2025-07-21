@@ -300,7 +300,7 @@ export default function PublicacionDetalle() {
                   <img
                     src={selectedImage}
                     alt="Imagen ampliada"
-                    className="w-full h-full object-contain rounded-lg"
+                    className="w-full max-h-[90vh] object-contain rounded-lg"
                   />
                   <button
                     className="absolute top-4 right-4 text-white hover:text-gray-300"

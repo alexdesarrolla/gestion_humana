@@ -131,8 +131,8 @@ export default function NuevoComunicado() {
       setError("Tipo de archivo no permitido.");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Máximo 5 MB.");
+    if (file.size > 1 * 1024 * 1024) {
+      setError("Máximo 1 MB.");
       return;
     }
     try {

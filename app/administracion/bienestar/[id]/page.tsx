@@ -326,7 +326,7 @@ export default function DetallePublicacionBienestarPage() {
             <img
               src={selectedImage || "/placeholder.svg"}
               alt="Imagen ampliada"
-              className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
+              className="w-full h-auto max-h-[90vh] object-contain rounded-lg"
             />
           </DialogContent>
         </Dialog>

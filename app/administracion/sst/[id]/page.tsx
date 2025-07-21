@@ -352,7 +352,7 @@ export default function DetallePublicacionSST() {
                   alt="Imagen ampliada"
                   width={1000}
                   height={600}
-                  className="rounded-lg object-contain w-full h-auto max-h-[70vh]"
+                  className="rounded-lg object-contain w-full h-auto max-h-[90vh]"
                 />
               )}
             </div>

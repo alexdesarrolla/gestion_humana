@@ -126,7 +126,7 @@ export default function DetallePublicacionBienestarPage() {
       }
 
       if (fetchError) {
-        console.error("Error al cargar publicación:", fetchError)
+        console.error("Error al cargar publicación de bienestar:", fetchError)
         setError(`No se pudo cargar la publicación: ${fetchError.message}`)
         setPublicacion(null)
       } else if (!data) {
@@ -286,8 +286,8 @@ export default function DetallePublicacionBienestarPage() {
           {/* Contenido */}
           <div className="prose max-w-none">
             <div
-              className="text-gray-700 leading-relaxed whitespace-pre-wrap"
-              dangerouslySetInnerHTML={{ __html: publicacion.contenido.replace(/\n/g, "<br>") }}
+              className="text-gray-700 leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: publicacion.contenido }}
             />
           </div>
 

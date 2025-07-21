@@ -17,6 +17,7 @@ import {
   Star,
 } from "lucide-react";
 import Image from "next/image";
+import { ContentBlock, renderContentBlocks } from '@/components/ui/multimedia-content-editor';
 
 interface Publicacion {
   id: string;
@@ -66,21 +67,44 @@ export default function DetallePublicacionNormatividad() {
         return;
       }
 
-      // Cargar datos de la publicación
+      // Cargar datos básicos de la publicación
       const { data: publicacionData, error: publicacionError } = await supabase
         .from("publicaciones_bienestar")
-        .select("*")
+        .select(`
+          id, titulo, contenido, imagen_principal, galeria_imagenes,
+          fecha_publicacion, autor, vistas, destacado, estado
+        `)
         .eq("id", publicacionId)
         .eq("tipo_seccion", "normatividad")
         .single();
 
       if (publicacionError || !publicacionData) {
+        console.error('Error al cargar publicación de normatividad:', publicacionError);
         setError("No se pudo cargar la publicación.");
         setLoading(false);
         return;
       }
 
-      setPublicacion(publicacionData as any);
+      // Intentar obtener contenido_bloques por separado para evitar errores si la columna no existe
+      let contenidoBloques = null;
+      try {
+        const { data: contenidoData } = await supabase
+          .from('publicaciones_bienestar')
+          .select('contenido_bloques')
+          .eq('id', publicacionId)
+          .single();
+        contenidoBloques = contenidoData?.contenido_bloques;
+      } catch (contenidoError) {
+        console.log('Campo contenido_bloques no disponible para normatividad:', contenidoError);
+      }
+
+      // Combinar los datos
+      const publicacionCompleta = {
+        ...publicacionData,
+        contenido_bloques: contenidoBloques
+      };
+
+      setPublicacion(publicacionCompleta as any);
 
       // Incrementar contador de vistas
       await supabase
@@ -239,9 +263,11 @@ export default function DetallePublicacionNormatividad() {
 
             {/* Contenido */}
             <div className="prose max-w-none">
-              <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
-                {publicacion.contenido}
-              </div>
+              {(publicacion as any).contenido_bloques && (publicacion as any).contenido_bloques.length > 0 ? (
+                <div dangerouslySetInnerHTML={{ __html: renderContentBlocks((publicacion as any).contenido_bloques) }} />
+              ) : (
+                <div dangerouslySetInnerHTML={{ __html: publicacion.contenido }} />
+              )}
             </div>
 
             {/* Galería de Imágenes */}

@@ -15,10 +15,12 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { ArrowLeft, Shield, Star } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { ImageUpload, ImageGalleryUpload } from "@/components/ui/image-upload"
+import { MultimediaContentEditor, ContentBlock, renderContentBlocks } from "@/components/ui/multimedia-content-editor"
 
 interface FormData {
   titulo: string
   contenido: string
+  contenido_bloques: ContentBlock[]
   imagen_principal: string
   galeria_imagenes: string[]
   destacado: boolean
@@ -29,6 +31,7 @@ interface Publicacion {
   id: string
   titulo: string
   contenido: string
+  contenido_bloques?: ContentBlock[]
   imagen_principal: string | null
   galeria_imagenes: string[]
   destacado: boolean
@@ -52,6 +55,7 @@ export default function EditarSSTPage() {
   const [formData, setFormData] = useState<FormData>({
     titulo: "",
     contenido: "",
+    contenido_bloques: [],
     imagen_principal: "",
     galeria_imagenes: [],
     destacado: false,
@@ -102,6 +106,7 @@ export default function EditarSSTPage() {
       setFormData({
         titulo: (pub.titulo as string) || "",
         contenido: (pub.contenido as string) || "",
+        contenido_bloques: (pub.contenido_bloques as ContentBlock[]) || [],
         imagen_principal: (pub.imagen_principal as string) || "",
         galeria_imagenes: (pub.galeria_imagenes as string[]) || [],
         destacado: (pub.destacado as boolean) || false,
@@ -124,7 +129,12 @@ export default function EditarSSTPage() {
   const handleSubmit = async (e: React.FormEvent, nuevoEstado?: string) => {
     e.preventDefault()
     if (!formData.titulo.trim()) return setError("El título es obligatorio")
-    if (!formData.contenido.trim()) return setError("El contenido es obligatorio")
+    
+    // Validar que hay al menos un bloque de contenido con contenido
+    const hasContent = formData.contenido_bloques.some(block => 
+      block.content.trim() !== '' || (block.type === 'text' && block.title?.trim())
+    )
+    if (!hasContent) return setError("Debe agregar al menos un bloque de contenido")
 
     try {
       setSaving(true)
@@ -134,16 +144,33 @@ export default function EditarSSTPage() {
 
       const estadoFinal = nuevoEstado || formData.estado
 
+      // Renderizar el contenido de los bloques a HTML
+      const contenidoRenderizado = renderContentBlocks(formData.contenido_bloques)
+      
+      // Preparar datos para actualizar
+      const updateData = {
+        titulo: formData.titulo,
+        contenido: contenidoRenderizado,
+        imagen_principal: formData.imagen_principal || null,
+        galeria_imagenes: formData.galeria_imagenes.length > 0 ? formData.galeria_imagenes : [],
+        destacado: formData.destacado,
+        estado: estadoFinal,
+      }
+      
+      // Intentar incluir contenido_bloques si la columna existe
+      try {
+        const dataWithBlocks = {
+          ...updateData,
+          contenido_bloques: formData.contenido_bloques
+        }
+        Object.assign(updateData, dataWithBlocks)
+      } catch (e) {
+        console.log('Columna contenido_bloques no disponible, usando solo contenido renderizado')
+      }
+
       const { error: updateError } = await supabase
         .from("publicaciones_bienestar")
-        .update({
-          titulo: formData.titulo,
-          contenido: formData.contenido,
-          imagen_principal: formData.imagen_principal || null,
-          galeria_imagenes: formData.galeria_imagenes.length > 0 ? formData.galeria_imagenes : [],
-          destacado: formData.destacado,
-          estado: estadoFinal,
-        })
+        .update(updateData)
         .eq("id", publicacionId)
 
       if (updateError) throw updateError
@@ -257,15 +284,16 @@ export default function EditarSSTPage() {
                 />
               </div>
 
-              {/* Contenido */}
+              {/* Contenido Multimedia */}
               <div className="space-y-2">
-                <Label htmlFor="contenido">Contenido *</Label>
-                <Textarea
-                  id="contenido"
-                  value={formData.contenido}
-                  onChange={(e) => handleInputChange("contenido", e.target.value)}
-                  placeholder="Escriba el contenido de la publicación de SST..."
-                  className="min-h-[200px] w-full"
+                <Label>Contenido *</Label>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Cree contenido dinámico agregando texto, enlaces, videos y código embebido. 
+                  Puede agregar múltiples bloques y reordenarlos según necesite.
+                </p>
+                <MultimediaContentEditor
+                  value={formData.contenido_bloques}
+                  onChange={(blocks) => handleInputChange("contenido_bloques", blocks)}
                 />
               </div>
 

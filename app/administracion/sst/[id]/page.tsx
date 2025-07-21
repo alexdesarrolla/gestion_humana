@@ -23,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ContentBlock, renderContentBlocks } from '@/components/ui/multimedia-content-editor';
 
 export default function DetallePublicacionSST() {
   const router = useRouter();
@@ -60,28 +61,49 @@ export default function DetallePublicacionSST() {
         return;
       }
 
-      // Cargar datos de la publicación con información de la categoría
+      // Cargar datos básicos de la publicación con información de la categoría
       const { data: publicacionData, error: publicacionError } = await supabase
-        .from("publicaciones_bienestar")
+        .from("publicaciones_sst")
         .select(`
-          *,
-          categoria:categorias_bienestar(nombre)
+          id, titulo, contenido, imagen_principal, galeria_imagenes, 
+          fecha_publicacion, autor, vistas, destacado, estado, 
+          created_at, updated_at, tipo_seccion,
+          categoria:categorias_sst(nombre)
         `)
         .eq("id", publicacionId)
-        .eq("tipo_seccion", "sst")
         .single();
 
       if (publicacionError || !publicacionData) {
+        console.error('Error al cargar publicación SST:', publicacionError);
         setError("No se pudo cargar la publicación.");
         setLoading(false);
         return;
       }
 
-      setPublicacion(publicacionData);
+      // Intentar obtener contenido_bloques por separado para evitar errores si la columna no existe
+      let contenidoBloques = null;
+      try {
+        const { data: contenidoData } = await supabase
+          .from('publicaciones_sst')
+          .select('contenido_bloques')
+          .eq('id', publicacionId)
+          .single();
+        contenidoBloques = contenidoData?.contenido_bloques;
+      } catch (contenidoError) {
+        console.log('Campo contenido_bloques no disponible para SST:', contenidoError);
+      }
+
+      // Combinar los datos
+      const publicacionCompleta = {
+        ...publicacionData,
+        contenido_bloques: contenidoBloques
+      };
+
+      setPublicacion(publicacionCompleta);
 
       // Incrementar el contador de visualizaciones
       await supabase
-        .from("publicaciones_bienestar")
+        .from("publicaciones_sst")
         .update({ vistas: ((publicacionData.vistas as number) || 0) + 1 })
         .eq("id", publicacionId);
 
@@ -237,9 +259,11 @@ export default function DetallePublicacionSST() {
             <div className="space-y-2">
               <h3 className="text-lg font-semibold">Contenido</h3>
               <div className="prose max-w-none">
-                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {publicacion.contenido}
-                </p>
+                {publicacion.contenido_bloques && publicacion.contenido_bloques.length > 0 ? (
+                  <div dangerouslySetInnerHTML={{ __html: renderContentBlocks(publicacion.contenido_bloques) }} />
+                ) : (
+                  <div dangerouslySetInnerHTML={{ __html: publicacion.contenido }} />
+                )}
               </div>
             </div>
 

@@ -13,10 +13,12 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ArrowLeft, Shield, Star } from "lucide-react"
 import { ImageUpload, ImageGalleryUpload } from "@/components/ui/image-upload"
+import { MultimediaContentEditor, ContentBlock, renderContentBlocks } from "@/components/ui/multimedia-content-editor"
 
 interface FormData {
   titulo: string
   contenido: string
+  contenido_bloques: ContentBlock[]
   imagen_principal: string
   galeria_imagenes: string[]
   destacado: boolean
@@ -32,6 +34,7 @@ export default function NuevaPublicacionSST() {
   const [formData, setFormData] = useState<FormData>({
     titulo: "",
     contenido: "",
+    contenido_bloques: [],
     imagen_principal: "",
     galeria_imagenes: [],
     destacado: false,
@@ -76,7 +79,12 @@ export default function NuevaPublicacionSST() {
   const handleSubmit = async (e: React.FormEvent, publicar = false) => {
     e.preventDefault()
     if (!formData.titulo.trim()) return setError("El título es obligatorio")
-    if (!formData.contenido.trim()) return setError("El contenido es obligatorio")
+    
+    // Validar que hay al menos un bloque de contenido con contenido
+    const hasContent = formData.contenido_bloques.some(block => 
+      block.content.trim() !== '' || (block.type === 'text' && block.title?.trim())
+    )
+    if (!hasContent) return setError("Debe agregar al menos un bloque de contenido")
 
     try {
       setSaving(true)
@@ -106,18 +114,35 @@ export default function NuevaPublicacionSST() {
         return
       }
 
-      const { data: insertData, error: insertError } = await supabase
+      // Renderizar el contenido de los bloques a HTML
+      const contenidoRenderizado = renderContentBlocks(formData.contenido_bloques)
+      
+      // Preparar datos para insertar
+      const insertData = {
+        titulo: formData.titulo,
+        contenido: contenidoRenderizado,
+        imagen_principal: formData.imagen_principal || null,
+        galeria_imagenes: formData.galeria_imagenes.length > 0 ? formData.galeria_imagenes : [],
+        autor_id: session.user.id,
+        estado: publicar ? "publicado" : "borrador",
+        destacado: formData.destacado,
+        tipo_seccion: "sst",
+      }
+      
+      // Intentar incluir contenido_bloques si la columna existe
+      try {
+        const dataWithBlocks = {
+          ...insertData,
+          contenido_bloques: formData.contenido_bloques
+        }
+        Object.assign(insertData, dataWithBlocks)
+      } catch (e) {
+        console.log('Columna contenido_bloques no disponible, usando solo contenido renderizado')
+      }
+      
+      const { data: insertResult, error: insertError } = await supabase
         .from("publicaciones_bienestar")
-        .insert({
-          titulo: formData.titulo,
-          contenido: formData.contenido,
-          imagen_principal: formData.imagen_principal || null,
-          galeria_imagenes: formData.galeria_imagenes.length > 0 ? formData.galeria_imagenes : [],
-          autor_id: session.user.id,
-          estado: publicar ? "publicado" : "borrador",
-          destacado: formData.destacado,
-          tipo_seccion: "sst",
-        })
+        .insert(insertData)
         .select("id")
 
       if (insertError) {
@@ -126,7 +151,7 @@ export default function NuevaPublicacionSST() {
         return
       }
 
-      if (!insertData?.length) {
+      if (!insertResult?.length) {
         setError("Error: No se pudo crear la publicación SST.")
         return
       }
@@ -204,15 +229,16 @@ export default function NuevaPublicacionSST() {
               />
             </div>
 
-            {/* Contenido */}
+            {/* Contenido Multimedia */}
             <div className="space-y-2">
-              <Label htmlFor="contenido">Contenido *</Label>
-              <Textarea
-                id="contenido"
-                value={formData.contenido}
-                onChange={(e) => handleInputChange("contenido", e.target.value)}
-                placeholder="Escriba el contenido de la publicación..."
-                className="min-h-[200px] w-full"
+              <Label>Contenido *</Label>
+              <p className="text-sm text-muted-foreground mb-3">
+                Cree contenido dinámico agregando texto, enlaces, videos y código embebido. 
+                Puede agregar múltiples bloques y reordenarlos según necesite.
+              </p>
+              <MultimediaContentEditor
+                value={formData.contenido_bloques}
+                onChange={(blocks) => handleInputChange("contenido_bloques", blocks)}
               />
             </div>
 

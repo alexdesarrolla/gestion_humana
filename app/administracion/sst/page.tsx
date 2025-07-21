@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Search, Plus, Edit, Trash2, Eye, ChevronDown, ChevronUp, Shield, Star } from "lucide-react"
+import { Search, Plus, Edit, Trash2, ChevronDown, ChevronUp, Shield, Star } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -312,7 +312,6 @@ export default function SST() {
                         <div className="flex justify-end gap-2">
                           <Skeleton className="h-8 w-8 rounded" />
                           <Skeleton className="h-8 w-8 rounded" />
-                          <Skeleton className="h-8 w-8 rounded" />
                         </div>
                       </TableCell>
                     </TableRow>
@@ -348,15 +347,6 @@ export default function SST() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => router.push(`/administracion/sst/${p.id}`)}
-                            title="Ver publicación"
-                            className="h-8 w-8"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"

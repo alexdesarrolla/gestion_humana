@@ -5,11 +5,13 @@ import { useParams, useRouter } from 'next/navigation'
 import { createSupabaseClient } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Calendar, Eye, User } from 'lucide-react'
+import { ContentBlock, renderContentBlocks } from '@/components/ui/multimedia-content-editor'
 
 interface Publicacion {
   id: number
   titulo: string
   contenido: string
+  contenido_bloques?: ContentBlock[]
   imagen_principal?: string
   fecha_publicacion: string
   vistas: number
@@ -84,16 +86,40 @@ export default function PublicacionDetalle() {
         // Obtener la publicación
         const { data: publicacionData, error: publicacionError } = await supabase
           .from('publicaciones_bienestar')
-          .select('*')
+          .select('id, titulo, contenido, imagen_principal, fecha_publicacion, vistas, tipo_seccion, estado, galeria_imagenes, autor_id')
           .eq('id', params.id as string)
           .eq('estado', 'publicado')
           .single()
 
+        // Intentar obtener contenido_bloques por separado para evitar errores si la columna no existe
+        let contenidoBloques = null
+        try {
+          const { data: contenidoData } = await supabase
+            .from('publicaciones_bienestar')
+            .select('contenido_bloques')
+            .eq('id', params.id as string)
+            .single()
+          contenidoBloques = contenidoData?.contenido_bloques
+        } catch (contenidoError) {
+          console.log('Campo contenido_bloques no disponible:', contenidoError)
+        }
+
         if (publicacionError) {
+          console.error('Error al obtener publicación:', publicacionError)
+          throw new Error(`Error al cargar la publicación: ${publicacionError.message}`)
+        }
+
+        if (!publicacionData) {
           throw new Error('Publicación no encontrada')
         }
 
-        setPublicacion(publicacionData as unknown as Publicacion)
+        // Combinar los datos de la publicación con contenido_bloques
+        const publicacionCompleta = {
+          ...publicacionData,
+          contenido_bloques: contenidoBloques
+        } as Publicacion
+
+        setPublicacion(publicacionCompleta)
 
         // Incrementar las vistas
         await supabase
@@ -231,10 +257,13 @@ export default function PublicacionDetalle() {
             </h1>
 
             {/* Contenido */}
-            <div 
-              className="prose prose-lg max-w-none text-gray-700 leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: publicacion.contenido }}
-            />
+            <div className="prose prose-lg max-w-none text-gray-700 leading-relaxed">
+              {publicacion.contenido_bloques && publicacion.contenido_bloques.length > 0 ? (
+                <div dangerouslySetInnerHTML={{ __html: renderContentBlocks(publicacion.contenido_bloques) }} />
+              ) : (
+                <div dangerouslySetInnerHTML={{ __html: publicacion.contenido }} />
+              )}
+            </div>
 
             {/* Image Gallery */}
             {publicacion.galeria_imagenes && publicacion.galeria_imagenes.length > 0 && (

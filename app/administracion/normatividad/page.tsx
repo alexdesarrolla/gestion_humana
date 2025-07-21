@@ -192,7 +192,8 @@ export default function Normatividad() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
+    <div className="py-6 flex min-h-screen">
+      <div className="w-full mx-auto flex-1">
       <Card className="shadow-md">
         <CardHeader className="bg-primary/5 pb-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -431,6 +432,7 @@ export default function Normatividad() {
           {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>}
         </CardContent>
       </Card>
+      </div>
     </div>
   )
 }

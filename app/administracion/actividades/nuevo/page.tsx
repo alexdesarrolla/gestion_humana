@@ -168,7 +168,8 @@ export default function NuevaActividad() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="py-6 flex min-h-screen">
+      <div className="w-full mx-auto flex-1">
       <Card className="shadow-md">
         <CardHeader className="bg-primary/5 pb-6">
           <div className="flex items-center gap-4">
@@ -263,6 +264,7 @@ export default function NuevaActividad() {
           </form>
         </CardContent>
       </Card>
+      </div>
     </div>
   )
 }

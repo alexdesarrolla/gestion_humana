@@ -126,13 +126,10 @@ export default function EditarPublicacionBienestar() {
     setError(null);
   };
 
-
-
   const handleSubmit = async (e: React.FormEvent, nuevoEstado?: string) => {
     e.preventDefault();
     if (!formData.titulo.trim()) return setError("El título es obligatorio");
     if (!formData.contenido.trim()) return setError("El contenido es obligatorio");
-
 
     try {
       setSaving(true);
@@ -149,10 +146,8 @@ export default function EditarPublicacionBienestar() {
           contenido: formData.contenido,
           imagen_principal: formData.imagen_principal || null,
           galeria_imagenes: formData.galeria_imagenes.length > 0 ? formData.galeria_imagenes : [],
-          categoria_id: null,
           destacado: formData.destacado,
           estado: estadoFinal,
-          tipo_seccion: "bienestar",
         })
         .eq("id", publicacionId);
         
@@ -177,7 +172,8 @@ export default function EditarPublicacionBienestar() {
       
     } catch (error: any) {
       console.error("Error al actualizar:", error);
-      setError("Error al actualizar la publicación. Por favor, intente nuevamente.");
+      const errorMessage = error?.message || error?.details || "Error desconocido al actualizar la publicación";
+      setError(`Error al actualizar la publicación: ${errorMessage}. Por favor, intente nuevamente.`);
     } finally {
       setSaving(false);
     }
@@ -264,8 +260,6 @@ export default function EditarPublicacionBienestar() {
                   className="w-full"
                 />
               </div>
-
-
 
               {/* Imagen Principal */}
               <div className="space-y-2">

@@ -1,62 +1,74 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
-import { createSupabaseClient } from "@/lib/supabase";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Shield, Upload, X } from "lucide-react";
-import Image from "next/image";
-import { ImageUpload } from "@/components/ui/image-upload";
+import type React from "react"
 
-export default function EditarPublicacionSST() {
-  const router = useRouter();
-  const params = useParams();
-  const publicacionId = params.id as string;
+import { useState, useEffect } from "react"
+import { useRouter, useParams } from "next/navigation"
+import { createSupabaseClient } from "@/lib/supabase"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
+import { ArrowLeft, Shield, Star } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { ImageUpload, ImageGalleryUpload } from "@/components/ui/image-upload"
 
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+interface FormData {
+  titulo: string
+  contenido: string
+  imagen_principal: string
+  galeria_imagenes: string[]
+  destacado: boolean
+  estado: string
+}
 
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+interface Publicacion {
+  id: string
+  titulo: string
+  contenido: string
+  imagen_principal: string | null
+  galeria_imagenes: string[]
+  destacado: boolean
+  estado: string
+  autor_id: string
+  created_at: string
+  updated_at: string
+}
 
-  const [formData, setFormData] = useState({
+export default function EditarSSTPage() {
+  const router = useRouter()
+  const params = useParams()
+  const publicacionId = params.id as string
+
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [publicacion, setPublicacion] = useState<Publicacion | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+
+  const [formData, setFormData] = useState<FormData>({
     titulo: "",
     contenido: "",
-    imagen_principal: null as File | null,
-    imagen_principal_url: "",
-    galeria_imagenes: [] as File[],
-    galeria_imagenes_urls: [] as string[],
+    imagen_principal: "",
+    galeria_imagenes: [],
     destacado: false,
     estado: "borrador",
-  });
-
-  const [imagenPrincipalPreview, setImagenPrincipalPreview] = useState<
-    string | null
-  >(null);
-  const [galeriaPreview, setGaleriaPreview] = useState<string[]>([]);
+  })
 
   useEffect(() => {
     const checkAuthAndLoadData = async () => {
-      const supabase = createSupabaseClient();
+      const supabase = createSupabaseClient()
       const {
         data: { session },
         error,
-      } = await supabase.auth.getSession();
+      } = await supabase.auth.getSession()
 
       if (error || !session) {
-        router.push("/");
-        return;
+        router.push("/")
+        return
       }
 
       // Verificar rol
@@ -64,214 +76,102 @@ export default function EditarPublicacionSST() {
         .from("usuario_nomina")
         .select("rol")
         .eq("auth_user_id", session.user.id)
-        .single();
+        .single()
 
       if (userError || userData?.rol !== "administrador") {
-        router.push("/perfil");
-        return;
+        router.push("/perfil")
+        return
       }
 
-
-
-      // Cargar datos de la publicación
-      const { data: publicacionData, error: publicacionError } = await supabase
+      // Cargar publicación
+      const publicacionResult = await supabase
         .from("publicaciones_bienestar")
         .select("*")
         .eq("id", publicacionId)
         .eq("tipo_seccion", "sst")
-        .single();
+        .single()
 
-      if (publicacionError || !publicacionData) {
-        setError("No se pudo cargar la publicación.");
-        setLoading(false);
-        return;
+      if (publicacionResult.error) {
+        setError("Publicación de SST no encontrada")
+        setTimeout(() => router.push("/administracion/sst"), 2000)
+        return
       }
 
-      // Llenar el formulario con los datos existentes
+      const pub = publicacionResult.data as any
+      setPublicacion(pub)
       setFormData({
-        titulo: (publicacionData.titulo as string) || "",
-        contenido: (publicacionData.contenido as string) || "",
-        imagen_principal: null,
-        imagen_principal_url: (publicacionData.imagen_principal as string) || "",
-        galeria_imagenes: [],
-        galeria_imagenes_urls: (publicacionData.galeria_imagenes as string[]) || [],
-        destacado: (publicacionData.destacado as boolean) || false,
-        estado: (publicacionData.estado as string) || "borrador",
-      });
+        titulo: (pub.titulo as string) || "",
+        contenido: (pub.contenido as string) || "",
+        imagen_principal: (pub.imagen_principal as string) || "",
+        galeria_imagenes: (pub.galeria_imagenes as string[]) || [],
+        destacado: (pub.destacado as boolean) || false,
+        estado: (pub.estado as string) || "borrador",
+      })
 
-      // Configurar previews de imágenes existentes
-      if (publicacionData.imagen_principal) {
-        setImagenPrincipalPreview(publicacionData.imagen_principal as string);
-      }
-      if (publicacionData.galeria_imagenes) {
-        setGaleriaPreview(publicacionData.galeria_imagenes as string[]);
-      }
-
-      setLoading(false);
-    };
+      setLoading(false)
+    }
 
     if (publicacionId) {
-      checkAuthAndLoadData();
+      checkAuthAndLoadData()
     }
-  }, [publicacionId]);
+  }, [publicacionId])
 
-  const handleImagenPrincipalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setFormData({ ...formData, imagen_principal: file });
-      const reader = new FileReader();
-      reader.onload = () => setImagenPrincipalPreview(reader.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
+  const handleInputChange = (field: keyof FormData, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+    setError(null)
+  }
 
-  const handleGaleriaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length > 0) {
-      setFormData({
-        ...formData,
-        galeria_imagenes: [...formData.galeria_imagenes, ...files],
-      });
-
-      files.forEach((file) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          setGaleriaPreview((prev) => [...prev, reader.result as string]);
-        };
-        reader.readAsDataURL(file);
-      });
-    }
-  };
-
-  const removeImagenPrincipal = () => {
-    setFormData({ ...formData, imagen_principal: null, imagen_principal_url: "" });
-    setImagenPrincipalPreview(null);
-  };
-
-  const removeGaleriaImage = (index: number) => {
-    const isExistingImage = index < formData.galeria_imagenes_urls.length;
-    
-    if (isExistingImage) {
-      // Remover imagen existente
-      const newUrls = formData.galeria_imagenes_urls.filter((_, i) => i !== index);
-      setFormData({ ...formData, galeria_imagenes_urls: newUrls });
-    } else {
-      // Remover imagen nueva
-      const newIndex = index - formData.galeria_imagenes_urls.length;
-      const newGaleria = formData.galeria_imagenes.filter((_, i) => i !== newIndex);
-      setFormData({ ...formData, galeria_imagenes: newGaleria });
-    }
-    
-    const newPreview = galeriaPreview.filter((_, i) => i !== index);
-    setGaleriaPreview(newPreview);
-  };
-
-  const uploadImage = async (file: File, folder: string) => {
-    const supabase = createSupabaseClient();
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
-    const filePath = `${folder}/${fileName}`;
-
-    const { data, error } = await supabase.storage
-      .from("bienestar")
-      .upload(filePath, file);
-
-    if (error) {
-      throw error;
-    }
-
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("bienestar").getPublicUrl(filePath);
-
-    return publicUrl;
-  };
-
-  const handleSubmit = async (isDraft: boolean = false) => {
-    if (!formData.titulo.trim()) {
-      setError("El título es requerido.");
-      return;
-    }
-
-    if (!formData.contenido.trim()) {
-      setError("El contenido es requerido.");
-      return;
-    }
-
-
-
-    setSaving(true);
-    setError(null);
+  const handleSubmit = async (e: React.FormEvent, nuevoEstado?: string) => {
+    e.preventDefault()
+    if (!formData.titulo.trim()) return setError("El título es obligatorio")
+    if (!formData.contenido.trim()) return setError("El contenido es obligatorio")
 
     try {
-      const supabase = createSupabaseClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      setSaving(true)
+      setError(null)
 
-      if (!session) {
-        setError("Sesión expirada. Por favor, inicie sesión nuevamente.");
-        return;
-      }
+      const supabase = createSupabaseClient()
 
-      let imagenPrincipalUrl = formData.imagen_principal_url;
-      let galeriaUrls = [...formData.galeria_imagenes_urls];
+      const estadoFinal = nuevoEstado || formData.estado
 
-      // Subir nueva imagen principal si existe
-      if (formData.imagen_principal) {
-        imagenPrincipalUrl = await uploadImage(
-          formData.imagen_principal,
-          "sst/principales"
-        );
-      }
-
-      // Subir nuevas imágenes de galería
-      if (formData.galeria_imagenes.length > 0) {
-        const uploadPromises = formData.galeria_imagenes.map((file) =>
-          uploadImage(file, "sst/galeria")
-        );
-        const newUrls = await Promise.all(uploadPromises);
-        galeriaUrls = [...galeriaUrls, ...newUrls];
-      }
-
-      // Actualizar la publicación
-      const publicacionData = {
-        titulo: formData.titulo.trim(),
-        contenido: formData.contenido.trim(),
-        categoria_id: null,
-        imagen_principal: imagenPrincipalUrl || null,
-        galeria_imagenes: galeriaUrls.length > 0 ? galeriaUrls : null,
-        destacado: formData.destacado,
-        estado: isDraft ? "borrador" : formData.estado,
-        updated_at: new Date().toISOString(),
-        tipo_seccion: "sst",
-      };
-
-      const { data, error } = await supabase
+      const { error: updateError } = await supabase
         .from("publicaciones_bienestar")
-        .update(publicacionData)
+        .update({
+          titulo: formData.titulo,
+          contenido: formData.contenido,
+          imagen_principal: formData.imagen_principal || null,
+          galeria_imagenes: formData.galeria_imagenes.length > 0 ? formData.galeria_imagenes : [],
+          destacado: formData.destacado,
+          estado: estadoFinal,
+        })
         .eq("id", publicacionId)
-        .select()
-        .single();
 
-      if (error) {
-        console.error("Error al actualizar publicación SST:", error);
-        setError(`Error al actualizar la publicación: ${error.message}`);
-      } else {
-        setSuccess(
-          `Publicación ${isDraft ? "guardada como borrador" : "actualizada"} correctamente.`
-        );
-        setTimeout(() => {
-          router.push("/administracion/sst");
-        }, 2000);
+      if (updateError) throw updateError
+
+      let mensaje = "¡Publicación de SST actualizada exitosamente!"
+      if (nuevoEstado === "publicado" && formData.estado !== "publicado") {
+        mensaje = "¡Publicación de SST actualizada y publicada exitosamente!"
+      } else if (nuevoEstado === "borrador" && formData.estado !== "borrador") {
+        mensaje = "¡Publicación de SST guardada como borrador exitosamente!"
       }
-    } catch (err) {
-      console.error("Error inesperado al actualizar publicación SST:", err);
-      setError(`Error al actualizar la publicación. Por favor, intente nuevamente. ${err instanceof Error ? err.message : ''}`);
+
+      setSuccess(mensaje)
+
+      // Actualizar el estado local
+      setFormData((prev) => ({ ...prev, estado: estadoFinal }))
+
+      // Redirigir después de un breve delay
+      setTimeout(() => {
+        router.push("/administracion/sst")
+      }, 2000)
+    } catch (error: any) {
+      console.error("Error al actualizar:", error)
+      const errorMessage = error?.message || error?.details || "Error desconocido al actualizar la publicación de SST"
+      setError(`Error al actualizar la publicación de SST: ${errorMessage}. Por favor, intente nuevamente.`)
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   if (loading) {
     return (
@@ -279,22 +179,30 @@ export default function EditarPublicacionSST() {
         <div className="w-full mx-auto flex-1">
           <Card className="shadow-md">
             <CardHeader>
-              <div className="animate-pulse">
-                <div className="h-8 bg-gray-200 rounded w-1/3 mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-              </div>
+              <div className="h-8 bg-gray-200 rounded animate-pulse"></div>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4 animate-pulse">
-                <div className="h-10 bg-gray-200 rounded"></div>
-                <div className="h-32 bg-gray-200 rounded"></div>
-                <div className="h-10 bg-gray-200 rounded"></div>
-              </div>
+            <CardContent className="space-y-4">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="h-10 bg-gray-200 rounded animate-pulse"></div>
+              ))}
             </CardContent>
           </Card>
         </div>
       </div>
-    );
+    )
+  }
+
+  if (!publicacion) {
+    return (
+      <div className="py-6 flex min-h-screen items-center justify-center">
+        <Card className="shadow-md max-w-md w-full">
+          <CardContent className="p-6 text-center">
+            <p className="text-red-600 mb-4">Publicación de SST no encontrada</p>
+            <Button onClick={() => router.push("/administracion/sst")}>Volver a SST</Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -303,162 +211,71 @@ export default function EditarPublicacionSST() {
         <Card className="shadow-md">
           <CardHeader className="bg-primary/5 pb-6">
             <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                onClick={() => router.push("/administracion/sst")}
-                className="flex items-center gap-2"
-              >
+              <Button variant="ghost" size="icon" onClick={() => router.back()} className="shrink-0">
                 <ArrowLeft className="h-4 w-4" />
-                Volver
               </Button>
-              <CardTitle className="text-2xl font-bold flex items-center gap-2">
-                <Shield className="h-6 w-6 text-green-500" />
-                Editar Publicación de SST
-              </CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6 space-y-6">
-            <form className="space-y-6">
-              {/* Título */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Título *
-                </label>
-                <Input
-                  value={formData.titulo}
-                  onChange={(e) =>
-                    setFormData({ ...formData, titulo: e.target.value })
-                  }
-                  placeholder="Título de la publicación"
-                  disabled={saving}
-                />
-              </div>
-
-
-
-              {/* Imagen Principal */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Imagen Principal
-                </label>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() =>
-                        document.getElementById("imagen-principal")?.click()
-                      }
-                      disabled={saving}
-                      className="flex items-center gap-2"
-                    >
-                      <Upload className="h-4 w-4" />
-                      {imagenPrincipalPreview ? "Cambiar imagen" : "Seleccionar imagen"}
-                    </Button>
-                    <input
-                      id="imagen-principal"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImagenPrincipalChange}
-                      className="hidden"
-                      disabled={saving}
-                    />
-                  </div>
-                  {imagenPrincipalPreview && (
-                    <div className="relative inline-block">
-                      <Image
-                        src={imagenPrincipalPreview}
-                        alt="Vista previa"
-                        width={200}
-                        height={150}
-                        className="rounded-lg object-cover"
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        className="absolute -top-2 -right-2 h-6 w-6"
-                        onClick={removeImagenPrincipal}
-                        disabled={saving}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
+              <div className="flex-1">
+                <CardTitle className="text-2xl font-bold flex items-center gap-2">
+                  <Shield className="h-6 w-6 text-green-500" />
+                  Editar Publicación de SST
+                </CardTitle>
+                <div className="flex items-center gap-2 mt-2">
+                  <Badge variant={formData.estado === "publicado" ? "default" : "secondary"}>
+                    {formData.estado === "publicado" ? "Publicado" : "Borrador"}
+                  </Badge>
+                  {formData.destacado && (
+                    <Badge variant="outline" className="text-yellow-600">
+                      <Star className="h-3 w-3 mr-1" />
+                      Destacado
+                    </Badge>
                   )}
                 </div>
               </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-6">
+            <form onSubmit={(e) => handleSubmit(e)} className="space-y-6">
+              {/* Título */}
+              <div className="space-y-2">
+                <Label htmlFor="titulo">Título *</Label>
+                <Input
+                  id="titulo"
+                  value={formData.titulo}
+                  onChange={(e) => handleInputChange("titulo", e.target.value)}
+                  placeholder="Ingrese el título de la publicación de SST"
+                  className="w-full"
+                />
+              </div>
+
+              {/* Imagen Principal */}
+              <div className="space-y-2">
+                <Label>Imagen Principal</Label>
+                <ImageUpload
+                  value={formData.imagen_principal}
+                  onChange={(url) => handleInputChange("imagen_principal", url)}
+                />
+              </div>
 
               {/* Contenido */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Contenido *
-                </label>
+              <div className="space-y-2">
+                <Label htmlFor="contenido">Contenido *</Label>
                 <Textarea
+                  id="contenido"
                   value={formData.contenido}
-                  onChange={(e) =>
-                    setFormData({ ...formData, contenido: e.target.value })
-                  }
-                  placeholder="Contenido de la publicación"
-                  disabled={saving}
-                  rows={10}
+                  onChange={(e) => handleInputChange("contenido", e.target.value)}
+                  placeholder="Escriba el contenido de la publicación de SST..."
+                  className="min-h-[200px] w-full"
                 />
               </div>
 
               {/* Galería de Imágenes */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Galería de Imágenes
-                </label>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() =>
-                        document.getElementById("galeria-imagenes")?.click()
-                      }
-                      disabled={saving}
-                      className="flex items-center gap-2"
-                    >
-                      <Upload className="h-4 w-4" />
-                      Agregar más imágenes
-                    </Button>
-                    <input
-                      id="galeria-imagenes"
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleGaleriaChange}
-                      className="hidden"
-                      disabled={saving}
-                    />
-                  </div>
-                  {galeriaPreview.length > 0 && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {galeriaPreview.map((preview, index) => (
-                        <div key={index} className="relative">
-                          <Image
-                            src={preview}
-                            alt={`Galería ${index + 1}`}
-                            width={150}
-                            height={100}
-                            className="rounded-lg object-cover w-full h-24"
-                          />
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="icon"
-                            className="absolute -top-2 -right-2 h-6 w-6"
-                            onClick={() => removeGaleriaImage(index)}
-                            disabled={saving}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+              <div className="space-y-2">
+                <Label>Galería de Imágenes</Label>
+                <ImageGalleryUpload
+                  images={formData.galeria_imagenes}
+                  onChange={(urls) => handleInputChange("galeria_imagenes", urls)}
+                />
               </div>
 
               {/* Destacado */}
@@ -466,62 +283,68 @@ export default function EditarPublicacionSST() {
                 <Checkbox
                   id="destacado"
                   checked={formData.destacado}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, destacado: checked as boolean })
-                  }
-                  disabled={saving}
+                  onCheckedChange={(checked) => handleInputChange("destacado", checked)}
                 />
-                <label
-                  htmlFor="destacado"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Marcar como destacado
-                </label>
+                <Label htmlFor="destacado" className="flex items-center gap-2">
+                  <Star className="h-4 w-4 text-yellow-500" />
+                  Marcar como publicación destacada
+                </Label>
               </div>
 
-              {/* Estado actual */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <p className="text-sm text-gray-600">
-                  Estado actual: <span className="font-medium">{formData.estado === "borrador" ? "Borrador" : "Publicado"}</span>
-                </p>
+              {/* Estado */}
+              <div className="space-y-2">
+                <Label htmlFor="estado">Estado</Label>
+                <Select value={formData.estado} onValueChange={(value) => handleInputChange("estado", value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="borrador">Borrador</SelectItem>
+                    <SelectItem value="publicado">Publicado</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Mensajes de error y éxito */}
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-                  {error}
-                </div>
-              )}
+              {/* Mensajes */}
+              {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>}
+
               {success && (
-                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
-                  {success}
-                </div>
+                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">{success}</div>
               )}
 
               {/* Botones */}
-              <div className="flex gap-4 pt-6">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => handleSubmit(true)}
-                  disabled={saving}
-                  className="flex-1"
-                >
-                  {saving ? "Guardando..." : "Guardar como borrador"}
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                <Button type="submit" disabled={saving} className="btn-custom flex-1">
+                  {saving ? "Guardando..." : "Guardar cambios"}
                 </Button>
-                <Button
-                  type="button"
-                  onClick={() => handleSubmit(false)}
-                  disabled={saving}
-                  className="flex-1 btn-custom"
-                >
-                  {saving ? "Actualizando..." : "Actualizar y publicar"}
-                </Button>
+
+                {formData.estado === "borrador" && (
+                  <Button
+                    type="button"
+                    onClick={(e) => handleSubmit(e, "publicado")}
+                    disabled={saving}
+                    className="bg-green-600 hover:bg-green-700 text-white flex-1"
+                  >
+                    {saving ? "Publicando..." : "Publicar ahora"}
+                  </Button>
+                )}
+
+                {formData.estado === "publicado" && (
+                  <Button
+                    type="button"
+                    onClick={(e) => handleSubmit(e, "borrador")}
+                    disabled={saving}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    {saving ? "Guardando..." : "Mover a borrador"}
+                  </Button>
+                )}
               </div>
             </form>
           </CardContent>
         </Card>
       </div>
     </div>
-  );
+  )
 }

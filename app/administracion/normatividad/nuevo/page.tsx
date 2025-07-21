@@ -1,56 +1,53 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { createSupabaseClient } from "@/lib/supabase";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Scale, Upload, X } from "lucide-react";
-import Image from "next/image";
-import { ImageUpload } from "@/components/ui/image-upload";
+import type React from "react"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { createSupabaseClient } from "@/lib/supabase"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
+import { ArrowLeft, Scale, Star } from "lucide-react"
+import { ImageUpload, ImageGalleryUpload } from "@/components/ui/image-upload"
+
+interface FormData {
+  titulo: string
+  contenido: string
+  imagen_principal: string
+  galeria_imagenes: string[]
+  destacado: boolean
+}
 
 export default function NuevaPublicacionNormatividad() {
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
 
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     titulo: "",
     contenido: "",
-    imagen_principal: null as File | null,
-    galeria_imagenes: [] as File[],
+    imagen_principal: "",
+    galeria_imagenes: [],
     destacado: false,
-  });
-
-  const [imagenPrincipalPreview, setImagenPrincipalPreview] = useState<
-    string | null
-  >(null);
-  const [galeriaPreview, setGaleriaPreview] = useState<string[]>([]);
+  })
 
   useEffect(() => {
     const checkAuth = async () => {
-      const supabase = createSupabaseClient();
+      const supabase = createSupabaseClient()
       const {
         data: { session },
         error,
-      } = await supabase.auth.getSession();
+      } = await supabase.auth.getSession()
 
       if (error || !session) {
-        router.push("/");
-        return;
+        router.push("/")
+        return
       }
 
       // Verificar rol
@@ -58,414 +55,212 @@ export default function NuevaPublicacionNormatividad() {
         .from("usuario_nomina")
         .select("rol")
         .eq("auth_user_id", session.user.id)
-        .single();
+        .single()
 
       if (userError || userData?.rol !== "administrador") {
-        router.push("/perfil");
-        return;
+        router.push("/perfil")
+        return
       }
 
-
-
-      setLoading(false);
-    };
-
-    checkAuth();
-  }, []);
-
-  const handleImagenPrincipalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setFormData({ ...formData, imagen_principal: file });
-      const reader = new FileReader();
-      reader.onload = () => setImagenPrincipalPreview(reader.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleGaleriaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length > 0) {
-      setFormData({
-        ...formData,
-        galeria_imagenes: [...formData.galeria_imagenes, ...files],
-      });
-
-      files.forEach((file) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          setGaleriaPreview((prev) => [...prev, reader.result as string]);
-        };
-        reader.readAsDataURL(file);
-      });
-    }
-  };
-
-  const removeImagenPrincipal = () => {
-    setFormData({ ...formData, imagen_principal: null });
-    setImagenPrincipalPreview(null);
-  };
-
-  const removeGaleriaImage = (index: number) => {
-    const newGaleria = formData.galeria_imagenes.filter((_, i) => i !== index);
-    const newPreview = galeriaPreview.filter((_, i) => i !== index);
-    setFormData({ ...formData, galeria_imagenes: newGaleria });
-    setGaleriaPreview(newPreview);
-  };
-
-  const uploadImage = async (file: File, folder: string) => {
-    const supabase = createSupabaseClient();
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
-    const filePath = `${folder}/${fileName}`;
-
-    const { data, error } = await supabase.storage
-      .from("bienestar")
-      .upload(filePath, file);
-
-    if (error) {
-      throw error;
+      setLoading(false)
     }
 
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("bienestar").getPublicUrl(filePath);
+    checkAuth()
+  }, [])
 
-    return publicUrl;
-  };
+  const handleInputChange = (field: keyof FormData, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+    setError(null)
+  }
 
-  const handleSubmit = async (isDraft: boolean = false) => {
-    if (!formData.titulo.trim()) {
-      setError("El título es requerido.");
-      return;
-    }
-
-    if (!formData.contenido.trim()) {
-      setError("El contenido es requerido.");
-      return;
-    }
-
-
-
-    setSaving(true);
-    setError(null);
+  const handleSubmit = async (e: React.FormEvent, publicar = false) => {
+    e.preventDefault()
+    if (!formData.titulo.trim()) return setError("El título es obligatorio")
+    if (!formData.contenido.trim()) return setError("El contenido es obligatorio")
 
     try {
-      const supabase = createSupabaseClient();
+      setSaving(true)
+      setError(null)
+
+      const supabase = createSupabaseClient()
       const {
         data: { session },
-      } = await supabase.auth.getSession();
+      } = await supabase.auth.getSession()
+      if (!session) throw new Error("Sesión no encontrada")
 
-      if (!session) {
-        setError("Sesión expirada. Por favor, inicie sesión nuevamente.");
-        return;
-      }
-
-      // Obtener datos del usuario
-      const { data: userData } = await supabase
+      // Verificar que el usuario existe en usuario_nomina y es administrador
+      const { data: userData, error: userError } = await supabase
         .from("usuario_nomina")
-        .select("nombre_completo")
+        .select("auth_user_id, rol")
         .eq("auth_user_id", session.user.id)
-        .single();
+        .single()
 
-      let imagenPrincipalUrl = null;
-      let galeriaUrls: string[] = [];
-
-      // Subir imagen principal
-      if (formData.imagen_principal) {
-        imagenPrincipalUrl = await uploadImage(
-          formData.imagen_principal,
-          "normatividad/principales"
-        );
+      if (userError || !userData) {
+        console.error("Error al verificar usuario:", userError)
+        setError("Error: Usuario no encontrado en el sistema. Contacte al administrador.")
+        return
       }
 
-      // Subir galería de imágenes
-      if (formData.galeria_imagenes.length > 0) {
-        const uploadPromises = formData.galeria_imagenes.map((file) =>
-          uploadImage(file, "normatividad/galeria")
-        );
-        galeriaUrls = await Promise.all(uploadPromises);
+      if (userData.rol !== "administrador") {
+        setError("Error: No tiene permisos para crear publicaciones de normatividad.")
+        return
       }
 
-      // Crear la publicación
-      const publicacionData = {
-        titulo: formData.titulo.trim(),
-        contenido: formData.contenido.trim(),
-        imagen_principal: imagenPrincipalUrl,
-        galeria_imagenes: galeriaUrls.length > 0 ? galeriaUrls : null,
-        destacado: formData.destacado,
-        estado: isDraft ? "borrador" : "publicado",
-        autor_id: session.user.id,
-        tipo_seccion: "normatividad",
-      };
-
-      const { data, error } = await supabase
+      const { data: insertData, error: insertError } = await supabase
         .from("publicaciones_bienestar")
-        .insert([publicacionData])
-        .select()
-        .single();
+        .insert({
+          titulo: formData.titulo,
+          contenido: formData.contenido,
+          imagen_principal: formData.imagen_principal || null,
+          galeria_imagenes: formData.galeria_imagenes.length > 0 ? formData.galeria_imagenes : [],
+          autor_id: session.user.id,
+          estado: publicar ? "publicado" : "borrador",
+          destacado: formData.destacado,
+          tipo_seccion: "normatividad",
+        })
+        .select("id")
 
-      if (error) {
-        console.error('Error al guardar la publicación:', error);
-        setError(`Error al guardar la publicación: ${error.message}`);
-      } else {
-        setSuccess(
-          `Publicación ${isDraft ? "guardada como borrador" : "publicada"} correctamente.`
-        );
-        setTimeout(() => {
-          router.push("/administracion/normatividad");
-        }, 2000);
+      if (insertError) {
+        console.error("Error al insertar publicación de normatividad:", insertError)
+        setError(`Error al guardar la publicación de normatividad: ${insertError.message || 'Error desconocido'}`)
+        return
       }
-    } catch (err) {
-      console.error('Error inesperado:', err);
-      setError(`Error al guardar la publicación: ${err instanceof Error ? err.message : 'Error desconocido'}`);
+
+      if (!insertData?.length) {
+        setError("Error: No se pudo crear la publicación de normatividad.")
+        return
+      }
+
+      const mensaje = publicar
+        ? "¡Publicación de normatividad creada y publicada exitosamente!"
+        : "¡Publicación de normatividad guardada como borrador exitosamente!"
+
+      setSuccess(mensaje)
+
+      setTimeout(() => {
+        router.push("/administracion/normatividad")
+      }, 2000)
+    } catch (error: any) {
+      console.error("Error al guardar:", error)
+      setError(`Error al guardar la publicación de normatividad: ${error.message || 'Error desconocido'}`)
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   if (loading) {
     return (
-      <div className="py-6 flex min-h-screen">
-        <div className="w-full mx-auto flex-1">
-          <Card className="shadow-md">
-            <CardHeader>
-              <div className="animate-pulse">
-                <div className="h-8 bg-gray-200 rounded w-1/3 mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4 animate-pulse">
-                <div className="h-10 bg-gray-200 rounded"></div>
-                <div className="h-32 bg-gray-200 rounded"></div>
-                <div className="h-10 bg-gray-200 rounded"></div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="py-6 flex min-h-screen">
-      <div className="w-full mx-auto flex-1">
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
         <Card className="shadow-md">
-          <CardHeader className="bg-primary/5 pb-6">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                onClick={() => router.push("/administracion/normatividad")}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Volver
-              </Button>
-              <CardTitle className="text-2xl font-bold flex items-center gap-2">
-                <Scale className="h-6 w-6 text-blue-500" />
-                Nueva Publicación de Normatividad
-              </CardTitle>
-            </div>
+          <CardHeader>
+            <div className="h-8 bg-gray-200 rounded animate-pulse"></div>
           </CardHeader>
-          <CardContent className="p-6 space-y-6">
-            <form className="space-y-6">
-              {/* Título */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Título *
-                </label>
-                <Input
-                  value={formData.titulo}
-                  onChange={(e) =>
-                    setFormData({ ...formData, titulo: e.target.value })
-                  }
-                  placeholder="Título de la publicación"
-                  disabled={saving}
-                />
-              </div>
-
-
-
-              {/* Imagen Principal */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Imagen Principal
-                </label>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() =>
-                        document.getElementById("imagen-principal")?.click()
-                      }
-                      disabled={saving}
-                      className="flex items-center gap-2"
-                    >
-                      <Upload className="h-4 w-4" />
-                      Seleccionar imagen
-                    </Button>
-                    <input
-                      id="imagen-principal"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImagenPrincipalChange}
-                      className="hidden"
-                      disabled={saving}
-                    />
-                  </div>
-                  {imagenPrincipalPreview && (
-                    <div className="relative inline-block">
-                      <Image
-                        src={imagenPrincipalPreview}
-                        alt="Vista previa"
-                        width={200}
-                        height={150}
-                        className="rounded-lg object-cover"
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        className="absolute -top-2 -right-2 h-6 w-6"
-                        onClick={removeImagenPrincipal}
-                        disabled={saving}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Contenido */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Contenido *
-                </label>
-                <Textarea
-                  value={formData.contenido}
-                  onChange={(e) =>
-                    setFormData({ ...formData, contenido: e.target.value })
-                  }
-                  placeholder="Contenido de la publicación"
-                  disabled={saving}
-                  rows={10}
-                />
-              </div>
-
-              {/* Galería de Imágenes */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Galería de Imágenes
-                </label>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() =>
-                        document.getElementById("galeria-imagenes")?.click()
-                      }
-                      disabled={saving}
-                      className="flex items-center gap-2"
-                    >
-                      <Upload className="h-4 w-4" />
-                      Agregar imágenes
-                    </Button>
-                    <input
-                      id="galeria-imagenes"
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleGaleriaChange}
-                      className="hidden"
-                      disabled={saving}
-                    />
-                  </div>
-                  {galeriaPreview.length > 0 && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {galeriaPreview.map((preview, index) => (
-                        <div key={index} className="relative">
-                          <Image
-                            src={preview}
-                            alt={`Galería ${index + 1}`}
-                            width={150}
-                            height={100}
-                            className="rounded-lg object-cover w-full h-24"
-                          />
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="icon"
-                            className="absolute -top-2 -right-2 h-6 w-6"
-                            onClick={() => removeGaleriaImage(index)}
-                            disabled={saving}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Destacado */}
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="destacado"
-                  checked={formData.destacado}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, destacado: checked as boolean })
-                  }
-                  disabled={saving}
-                />
-                <label
-                  htmlFor="destacado"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Marcar como destacado
-                </label>
-              </div>
-
-              {/* Mensajes de error y éxito */}
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-                  {error}
-                </div>
-              )}
-              {success && (
-                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
-                  {success}
-                </div>
-              )}
-
-              {/* Botones */}
-              <div className="flex gap-4 pt-6">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => handleSubmit(true)}
-                  disabled={saving}
-                  className="flex-1"
-                >
-                  {saving ? "Guardando..." : "Guardar como borrador"}
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => handleSubmit(false)}
-                  disabled={saving}
-                  className="flex-1 btn-custom"
-                >
-                  {saving ? "Publicando..." : "Publicar"}
-                </Button>
-              </div>
-            </form>
+          <CardContent className="space-y-4">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="h-10 bg-gray-200 rounded animate-pulse"></div>
+            ))}
           </CardContent>
         </Card>
       </div>
+    )
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <Card className="shadow-md">
+        <CardHeader className="bg-primary/5 pb-6">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => router.back()} className="shrink-0">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <CardTitle className="text-2xl font-bold flex items-center gap-2">
+              <Scale className="h-6 w-6 text-blue-500" />
+              Nueva Publicación de Normatividad
+            </CardTitle>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-6">
+          <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
+            {/* Título */}
+            <div className="space-y-2">
+              <Label htmlFor="titulo">Título *</Label>
+              <Input
+                id="titulo"
+                value={formData.titulo}
+                onChange={(e) => handleInputChange("titulo", e.target.value)}
+                placeholder="Ingrese el título de la publicación"
+                className="w-full"
+              />
+            </div>
+
+            {/* Imagen Principal */}
+            <div className="space-y-2">
+              <Label>Imagen Principal</Label>
+              <ImageUpload
+                value={formData.imagen_principal}
+                onChange={(url) => handleInputChange("imagen_principal", url)}
+              />
+            </div>
+
+            {/* Contenido */}
+            <div className="space-y-2">
+              <Label htmlFor="contenido">Contenido *</Label>
+              <Textarea
+                id="contenido"
+                value={formData.contenido}
+                onChange={(e) => handleInputChange("contenido", e.target.value)}
+                placeholder="Escriba el contenido de la publicación..."
+                className="min-h-[200px] w-full"
+              />
+            </div>
+
+            {/* Galería de Imágenes */}
+            <div className="space-y-2">
+              <Label>Galería de Imágenes</Label>
+              <ImageGalleryUpload
+                images={formData.galeria_imagenes}
+                onChange={(urls) => handleInputChange("galeria_imagenes", urls)}
+              />
+            </div>
+
+            {/* Destacado */}
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="destacado"
+                checked={formData.destacado}
+                onCheckedChange={(checked) => handleInputChange("destacado", checked)}
+              />
+              <Label htmlFor="destacado" className="flex items-center gap-2">
+                <Star className="h-4 w-4 text-yellow-500" />
+                Marcar como publicación destacada
+              </Label>
+            </div>
+
+            {/* Mensajes */}
+            {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>}
+
+            {success && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">{success}</div>
+            )}
+
+            {/* Botones */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-4">
+              <Button type="submit" disabled={saving} className="btn-custom flex-1">
+                {saving ? "Guardando..." : "Guardar como borrador"}
+              </Button>
+              <Button
+                type="button"
+                onClick={(e) => handleSubmit(e, true)}
+                disabled={saving}
+                className="bg-green-600 hover:bg-green-700 text-white flex-1"
+              >
+                {saving ? "Publicando..." : "Publicar ahora"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </div>
-  );
+  )
 }

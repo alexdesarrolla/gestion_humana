@@ -18,30 +18,30 @@ Se ha creado un sistema completo de triggers de base de datos que automáticamen
 
 ### 2. Verificar la Implementación
 Después de ejecutar el script, deberías ver mensajes como:
-```
+\`\`\`
 ✅ Sistema de notificaciones automáticas configurado exitosamente
 📧 Los triggers crearán notificaciones automáticamente para:
    - Solicitudes de certificación laboral
    - Solicitudes de vacaciones
    - Solicitudes de permisos
    - Solicitudes de incapacidades
-```
+\`\`\`
 
 ### 3. Probar el Sistema
 Para probar que funciona correctamente:
 
 1. **Obtener un UUID de usuario de prueba:**
-   ```sql
+   \`\`\`sql
    SELECT auth_user_id, colaborador 
    FROM usuario_nomina 
    WHERE rol != 'administrador' 
    LIMIT 1;
-   ```
+   \`\`\`
 
 2. **Ejecutar la función de prueba:**
-   ```sql
+   \`\`\`sql
    SELECT * FROM probar_notificaciones_manual('UUID_DEL_USUARIO_AQUI');
-   ```
+   \`\`\`
    
    Si devuelve un número mayor a 0, significa que las notificaciones se están creando correctamente.
 

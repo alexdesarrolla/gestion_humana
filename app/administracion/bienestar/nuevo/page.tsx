@@ -70,8 +70,6 @@ export default function NuevaPublicacionBienestar() {
         return;
       }
 
-
-
       setLoading(false);
     };
 
@@ -83,13 +81,10 @@ export default function NuevaPublicacionBienestar() {
     setError(null);
   };
 
-
-
   const handleSubmit = async (e: React.FormEvent, publicar = false) => {
     e.preventDefault();
     if (!formData.titulo.trim()) return setError("El título es obligatorio");
     if (!formData.contenido.trim()) return setError("El contenido es obligatorio");
-
 
     try {
       setSaving(true);
@@ -99,6 +94,21 @@ export default function NuevaPublicacionBienestar() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Sesión no encontrada");
 
+      // Verificar que el usuario existe en usuario_nomina
+      const { data: userData, error: userError } = await supabase
+        .from("usuario_nomina")
+        .select("auth_user_id, rol")
+        .eq("auth_user_id", session.user.id)
+        .single();
+
+      if (userError || !userData) {
+        throw new Error("Usuario no encontrado en el sistema. Contacte al administrador.");
+      }
+
+      if (userData.rol !== "administrador") {
+        throw new Error("No tiene permisos para crear publicaciones.");
+      }
+
       // Insertar publicación
       const { data: insertData, error: insertError } = await supabase
         .from("publicaciones_bienestar")
@@ -107,7 +117,6 @@ export default function NuevaPublicacionBienestar() {
           contenido: formData.contenido,
           imagen_principal: formData.imagen_principal || null,
           galeria_imagenes: formData.galeria_imagenes.length > 0 ? formData.galeria_imagenes : [],
-          categoria_id: null,
           autor_id: session.user.id,
           estado: publicar ? "publicado" : "borrador",
           destacado: formData.destacado,
@@ -130,7 +139,19 @@ export default function NuevaPublicacionBienestar() {
       
     } catch (error: any) {
       console.error("Error al guardar:", error);
-      setError("Error al guardar la publicación. Por favor, intente nuevamente.");
+      
+      // Mostrar error más específico
+      let errorMessage = "Error al guardar la publicación. Por favor, intente nuevamente.";
+      
+      if (error?.message) {
+        errorMessage = `Error: ${error.message}`;
+      } else if (error?.details) {
+        errorMessage = `Error: ${error.details}`;
+      } else if (error?.hint) {
+        errorMessage = `Error: ${error.hint}`;
+      }
+      
+      setError(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -189,8 +210,6 @@ export default function NuevaPublicacionBienestar() {
                   className="w-full"
                 />
               </div>
-
-
 
               {/* Imagen Principal */}
               <div className="space-y-2">

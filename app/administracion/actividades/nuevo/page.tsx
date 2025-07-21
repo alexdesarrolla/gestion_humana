@@ -1,51 +1,54 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { createSupabaseClient } from "@/lib/supabase";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ArrowLeft, Calendar, Upload, X } from "lucide-react";
-import { ImageUpload } from "@/components/ui/image-upload";
+import type React from "react"
 
-export default function NuevaPublicacionBienestar() {
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { createSupabaseClient } from "@/lib/supabase"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
+import { ArrowLeft, Calendar, Star } from "lucide-react"
+import { ImageUpload, ImageGalleryUpload } from "@/components/ui/image-upload"
 
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string>("");
+interface FormData {
+  titulo: string
+  contenido: string
+  imagen_principal: string
+  galeria_imagenes: string[]
+  destacado: boolean
+}
 
-  const [formData, setFormData] = useState({
+export default function NuevaActividad() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string>("")
+
+  const [formData, setFormData] = useState<FormData>({
     titulo: "",
     contenido: "",
-    imagen_principal: "" as string,
-    galeria_imagenes: [] as string[],
+    imagen_principal: "",
+    galeria_imagenes: [],
     destacado: false,
-  });
+  })
 
   useEffect(() => {
     const checkAuth = async () => {
-      const supabase = createSupabaseClient();
+      const supabase = createSupabaseClient()
       const {
         data: { session },
         error,
-      } = await supabase.auth.getSession();
+      } = await supabase.auth.getSession()
 
       if (error || !session) {
-        router.push("/");
-        return;
+        router.push("/")
+        return
       }
 
       // Verificar rol
@@ -53,300 +56,213 @@ export default function NuevaPublicacionBienestar() {
         .from("usuario_nomina")
         .select("rol")
         .eq("auth_user_id", session.user.id)
-        .single();
+        .single()
 
       if (userError || userData?.rol !== "administrador") {
-        router.push("/perfil");
-        return;
+        router.push("/perfil")
+        return
       }
 
-      setUserId(session.user.id);
-
-
-
-      setLoading(false);
-    };
-
-    checkAuth();
-  }, []);
-
-  const handleImageUpload = (url: string, isMain: boolean = false) => {
-    if (isMain) {
-      setFormData({ ...formData, imagen_principal: url });
-    } else {
-      setFormData({
-        ...formData,
-        galeria_imagenes: [...formData.galeria_imagenes, url],
-      });
-    }
-  };
-
-  const removeGalleryImage = (index: number) => {
-    const newGallery = formData.galeria_imagenes.filter((_, i) => i !== index);
-    setFormData({ ...formData, galeria_imagenes: newGallery });
-  };
-
-  const handleSubmit = async (isDraft: boolean = false) => {
-    if (!formData.titulo.trim()) {
-      setError("El título es requerido.");
-      return;
-    }
-    if (!formData.contenido.trim()) {
-      setError("El contenido es requerido.");
-      return;
+      setUserId(session.user.id)
+      setLoading(false)
     }
 
+    checkAuth()
+  }, [])
 
-    setSaving(true);
-    setError(null);
+  const handleInputChange = (field: keyof FormData, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+    setError(null)
+  }
+
+  const handleSubmit = async (e: React.FormEvent, publicar = false) => {
+    e.preventDefault()
+    if (!formData.titulo.trim()) return setError("El título es obligatorio")
+    if (!formData.contenido.trim()) return setError("El contenido es obligatorio")
 
     try {
-      const supabase = createSupabaseClient();
+      setSaving(true)
+      setError(null)
 
-      const publicacionData = {
-        titulo: formData.titulo.trim(),
-        contenido: formData.contenido.trim(),
-        categoria_id: null,
-        imagen_principal: formData.imagen_principal || null,
-        galeria_imagenes: formData.galeria_imagenes.length > 0 ? formData.galeria_imagenes : null,
-        destacado: formData.destacado,
-        estado: isDraft ? "borrador" : "publicado",
-        fecha_publicacion: new Date().toISOString(),
-        autor_id: userId,
-        vistas: 0,
-        tipo_seccion: "actividades",
-      };
+      const supabase = createSupabaseClient()
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (!session) throw new Error("Sesión no encontrada")
 
-      const { data, error } = await supabase
-        .from("publicaciones_bienestar")
-        .insert([publicacionData])
-        .select()
-        .single();
+      // Verificar que el usuario existe en usuario_nomina y es administrador
+      const { data: userData, error: userError } = await supabase
+        .from("usuario_nomina")
+        .select("auth_user_id, rol")
+        .eq("auth_user_id", session.user.id)
+        .single()
 
-      if (error) {
-        setError("Error al guardar la actividad. Por favor, intente nuevamente.");
-      } else {
-        setSuccess(
-          `Actividad ${isDraft ? "guardada como borrador" : "publicada"} correctamente.`
-        );
-        setTimeout(() => {
-          router.push("/administracion/actividades");
-        }, 2000);
+      if (userError || !userData) {
+        console.error("Error al verificar usuario:", userError)
+        setError("Error: Usuario no encontrado en el sistema. Contacte al administrador.")
+        return
       }
-    } catch {
-      setError("Error al guardar la actividad. Por favor, intente nuevamente.");
+
+      if (userData.rol !== "administrador") {
+        setError("Error: No tiene permisos para crear actividades.")
+        return
+      }
+
+      const { data: insertData, error: insertError } = await supabase
+        .from("publicaciones_bienestar")
+        .insert({
+          titulo: formData.titulo,
+          contenido: formData.contenido,
+          imagen_principal: formData.imagen_principal || null,
+          galeria_imagenes: formData.galeria_imagenes.length > 0 ? formData.galeria_imagenes : [],
+          autor_id: session.user.id,
+          estado: publicar ? "publicado" : "borrador",
+          destacado: formData.destacado,
+          tipo_seccion: "actividades",
+        })
+        .select("id")
+
+      if (insertError) {
+        console.error("Error al insertar actividad:", insertError)
+        setError(`Error al guardar la actividad: ${insertError.message || 'Error desconocido'}`)
+        return
+      }
+
+      if (!insertData?.length) {
+        setError("Error: No se pudo crear la actividad.")
+        return
+      }
+
+      const mensaje = publicar
+        ? "¡Actividad creada y publicada exitosamente!"
+        : "¡Actividad guardada como borrador exitosamente!"
+
+      setSuccess(mensaje)
+
+      setTimeout(() => {
+        router.push("/administracion/actividades")
+      }, 2000)
+    } catch (error: any) {
+      console.error("Error al guardar:", error)
+      setError(`Error al guardar la actividad: ${error.message || 'Error desconocido'}`)
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   if (loading) {
     return (
-      <div className="py-6 flex min-h-screen">
-        <div className="w-full mx-auto flex-1">
-          <Card className="shadow-md">
-            <CardHeader>
-              <div className="animate-pulse">
-                <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6 animate-pulse">
-                <div className="h-10 bg-gray-200 rounded"></div>
-                <div className="h-32 bg-gray-200 rounded"></div>
-                <div className="h-10 bg-gray-200 rounded"></div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="py-6 flex min-h-screen">
-      <div className="w-full mx-auto flex-1">
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
         <Card className="shadow-md">
-          <CardHeader className="bg-primary/5 pb-6">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                onClick={() => router.push("/administracion/actividades")}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Volver
-              </Button>
-              <CardTitle className="text-2xl font-bold flex items-center gap-2">
-                <Calendar className="h-6 w-6 text-blue-500" />
-                Nueva Actividad
-              </CardTitle>
-            </div>
+          <CardHeader>
+            <div className="h-8 bg-gray-200 rounded animate-pulse"></div>
           </CardHeader>
-          <CardContent className="p-6">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSubmit(false);
-              }}
-              className="space-y-6"
-            >
-              {/* Título */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Título *
-                </label>
-                <Input
-                  value={formData.titulo}
-                  onChange={(e) =>
-                    setFormData({ ...formData, titulo: e.target.value })
-                  }
-                  placeholder="Título de la actividad"
-                  disabled={saving}
-                  required
-                />
-              </div>
-
-
-
-              {/* Imagen principal */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Imagen principal
-                </label>
-                <ImageUpload
-                  bucket="bienestar"
-                  onChange={(url) => handleImageUpload(url, true)}
-                  value={formData.imagen_principal}
-                />
-                {formData.imagen_principal && (
-                  <div className="mt-2 relative inline-block">
-                    <img
-                      src={formData.imagen_principal}
-                      alt="Imagen principal"
-                      className="w-32 h-32 object-cover rounded border"
-                    />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="icon"
-                      className="absolute -top-2 -right-2 h-6 w-6"
-                      onClick={() =>
-                        setFormData({ ...formData, imagen_principal: "" })
-                      }
-                      disabled={saving}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              {/* Contenido */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Contenido *
-                </label>
-                <Textarea
-                  value={formData.contenido}
-                  onChange={(e) =>
-                    setFormData({ ...formData, contenido: e.target.value })
-                  }
-                  placeholder="Contenido de la actividad"
-                  disabled={saving}
-                  rows={8}
-                  required
-                />
-              </div>
-
-              {/* Galería de imágenes */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Galería de imágenes
-                </label>
-                <ImageUpload
-                  bucket="bienestar"
-                  onChange={(url) => handleImageUpload(url, false)}
-                />
-                {formData.galeria_imagenes.length > 0 && (
-                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {formData.galeria_imagenes.map((url, index) => (
-                      <div key={index} className="relative">
-                        <img
-                          src={url}
-                          alt={`Imagen ${index + 1}`}
-                          className="w-full h-24 object-cover rounded border"
-                        />
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="absolute -top-2 -right-2 h-6 w-6"
-                          onClick={() => removeGalleryImage(index)}
-                          disabled={saving}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Destacado */}
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="destacado"
-                  checked={formData.destacado}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, destacado: !!checked })
-                  }
-                  disabled={saving}
-                />
-                <label
-                  htmlFor="destacado"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Marcar como destacado
-                </label>
-              </div>
-
-              {/* Mensajes de error y éxito */}
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-                  {error}
-                </div>
-              )}
-              {success && (
-                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
-                  {success}
-                </div>
-              )}
-
-              {/* Botones */}
-              <div className="flex flex-col sm:flex-row gap-4 pt-6">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => handleSubmit(true)}
-                  disabled={saving}
-                  className="flex-1"
-                >
-                  {saving ? "Guardando..." : "Guardar como borrador"}
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={saving}
-                  className="flex-1 btn-custom"
-                >
-                  {saving ? "Publicando..." : "Publicar actividad"}
-                </Button>
-              </div>
-            </form>
+          <CardContent className="space-y-4">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="h-10 bg-gray-200 rounded animate-pulse"></div>
+            ))}
           </CardContent>
         </Card>
       </div>
+    )
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <Card className="shadow-md">
+        <CardHeader className="bg-primary/5 pb-6">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => router.back()} className="shrink-0">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <CardTitle className="text-2xl font-bold flex items-center gap-2">
+              <Calendar className="h-6 w-6 text-blue-500" />
+              Nueva Actividad
+            </CardTitle>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-6">
+          <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
+            {/* Título */}
+            <div className="space-y-2">
+              <Label htmlFor="titulo">Título *</Label>
+              <Input
+                id="titulo"
+                value={formData.titulo}
+                onChange={(e) => handleInputChange("titulo", e.target.value)}
+                placeholder="Ingrese el título de la actividad"
+                className="w-full"
+              />
+            </div>
+
+            {/* Imagen Principal */}
+            <div className="space-y-2">
+              <Label>Imagen Principal</Label>
+              <ImageUpload
+                value={formData.imagen_principal}
+                onChange={(url) => handleInputChange("imagen_principal", url)}
+              />
+            </div>
+
+            {/* Contenido */}
+            <div className="space-y-2">
+              <Label htmlFor="contenido">Contenido *</Label>
+              <Textarea
+                id="contenido"
+                value={formData.contenido}
+                onChange={(e) => handleInputChange("contenido", e.target.value)}
+                placeholder="Escriba el contenido de la actividad..."
+                className="min-h-[200px] w-full"
+              />
+            </div>
+
+            {/* Galería de Imágenes */}
+            <div className="space-y-2">
+              <Label>Galería de Imágenes</Label>
+              <ImageGalleryUpload
+                images={formData.galeria_imagenes}
+                onChange={(urls) => handleInputChange("galeria_imagenes", urls)}
+              />
+            </div>
+
+            {/* Destacado */}
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="destacado"
+                checked={formData.destacado}
+                onCheckedChange={(checked) => handleInputChange("destacado", checked)}
+              />
+              <Label htmlFor="destacado" className="flex items-center gap-2">
+                <Star className="h-4 w-4 text-yellow-500" />
+                Marcar como actividad destacada
+              </Label>
+            </div>
+
+            {/* Mensajes */}
+            {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>}
+
+            {success && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">{success}</div>
+            )}
+
+            {/* Botones */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-4">
+              <Button type="submit" disabled={saving} className="btn-custom flex-1">
+                {saving ? "Guardando..." : "Guardar como borrador"}
+              </Button>
+              <Button
+                type="button"
+                onClick={(e) => handleSubmit(e, true)}
+                disabled={saving}
+                className="bg-green-600 hover:bg-green-700 text-white flex-1"
+              >
+                {saving ? "Publicando..." : "Publicar ahora"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </div>
-  );
+  )
 }

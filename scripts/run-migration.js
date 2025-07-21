@@ -1,4 +1,4 @@
-require('dotenv').config({ path: '.env.local' });
+require('dotenv').config({ path: '../.env.local' });
 const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 
@@ -11,7 +11,7 @@ async function runMigration() {
     );
 
     console.log('Reading migration file...');
-    const sql = fs.readFileSync('./sql/migrations/030_add_tipo_seccion_to_publicaciones.sql', 'utf8');
+    const sql = fs.readFileSync('../sql/migrations/030_add_tipo_seccion_to_publicaciones.sql', 'utf8');
     
     console.log('Executing migration...');
     

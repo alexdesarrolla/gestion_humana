@@ -1,54 +1,74 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
-import { createSupabaseClient } from "@/lib/supabase";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ArrowLeft, Calendar, X } from "lucide-react";
-import { ImageUpload } from "@/components/ui/image-upload";
+import type React from "react"
 
-export default function EditarPublicacionBienestar() {
-  const router = useRouter();
-  const params = useParams();
-  const publicacionId = params.id as string;
-  
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string>("");
+import { useState, useEffect } from "react"
+import { useRouter, useParams } from "next/navigation"
+import { createSupabaseClient } from "@/lib/supabase"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
+import { ArrowLeft, Calendar, Star } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { ImageUpload, ImageGalleryUpload } from "@/components/ui/image-upload"
 
-  const [formData, setFormData] = useState({
+interface FormData {
+  titulo: string
+  contenido: string
+  imagen_principal: string
+  galeria_imagenes: string[]
+  destacado: boolean
+  estado: string
+}
+
+interface Publicacion {
+  id: string
+  titulo: string
+  contenido: string
+  imagen_principal: string | null
+  galeria_imagenes: string[]
+  destacado: boolean
+  estado: string
+  autor_id: string
+  created_at: string
+  updated_at: string
+}
+
+export default function EditarActividadPage() {
+  const router = useRouter()
+  const params = useParams()
+  const publicacionId = params.id as string
+
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [publicacion, setPublicacion] = useState<Publicacion | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+
+  const [formData, setFormData] = useState<FormData>({
     titulo: "",
     contenido: "",
     imagen_principal: "",
-    galeria_imagenes: [] as string[],
+    galeria_imagenes: [],
     destacado: false,
     estado: "borrador",
-  });
+  })
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const supabase = createSupabaseClient();
+    const checkAuthAndLoadData = async () => {
+      const supabase = createSupabaseClient()
       const {
         data: { session },
         error,
-      } = await supabase.auth.getSession();
+      } = await supabase.auth.getSession()
 
       if (error || !session) {
-        router.push("/");
-        return;
+        router.push("/")
+        return
       }
 
       // Verificar rol
@@ -56,111 +76,102 @@ export default function EditarPublicacionBienestar() {
         .from("usuario_nomina")
         .select("rol")
         .eq("auth_user_id", session.user.id)
-        .single();
+        .single()
 
       if (userError || userData?.rol !== "administrador") {
-        router.push("/perfil");
-        return;
+        router.push("/perfil")
+        return
       }
 
-      setUserId(session.user.id);
-
       // Cargar publicación
-      const { data: publicacionData, error: publicacionError } = await supabase
+      const publicacionResult = await supabase
         .from("publicaciones_bienestar")
         .select("*")
         .eq("id", publicacionId)
-        .single();
+        .eq("tipo_seccion", "actividades")
+        .single()
 
-      if (!publicacionError && publicacionData) {
-        const pub = publicacionData as any;
-
-        setFormData({
-          titulo: (pub.titulo as string) || "",
-          contenido: (pub.contenido as string) || "",
-          imagen_principal: (pub.imagen_principal as string) || "",
-          galeria_imagenes: (pub.galeria_imagenes as string[]) || [],
-          destacado: (pub.destacado as boolean) || false,
-          estado: (pub.estado as string) || "borrador",
-        });
-      } else {
-        setError("No se pudo cargar la actividad.");
+      if (publicacionResult.error) {
+        setError("Actividad no encontrada")
+        setTimeout(() => router.push("/administracion/actividades"), 2000)
+        return
       }
 
-      setLoading(false);
-    };
+      const pub = publicacionResult.data as any
+      setPublicacion(pub)
+      setFormData({
+        titulo: (pub.titulo as string) || "",
+        contenido: (pub.contenido as string) || "",
+        imagen_principal: (pub.imagen_principal as string) || "",
+        galeria_imagenes: (pub.galeria_imagenes as string[]) || [],
+        destacado: (pub.destacado as boolean) || false,
+        estado: (pub.estado as string) || "borrador",
+      })
+
+      setLoading(false)
+    }
 
     if (publicacionId) {
-      checkAuth();
+      checkAuthAndLoadData()
     }
-  }, [publicacionId]);
+  }, [publicacionId])
 
-  const handleImageUpload = (url: string, isMain: boolean = false) => {
-    if (isMain) {
-      setFormData({ ...formData, imagen_principal: url });
-    } else {
-      setFormData({
-        ...formData,
-        galeria_imagenes: [...formData.galeria_imagenes, url],
-      });
-    }
-  };
+  const handleInputChange = (field: keyof FormData, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+    setError(null)
+  }
 
-  const removeGalleryImage = (index: number) => {
-    const newGallery = formData.galeria_imagenes.filter((_, i) => i !== index);
-    setFormData({ ...formData, galeria_imagenes: newGallery });
-  };
-
-  const handleSubmit = async (isDraft: boolean = false) => {
-    if (!formData.titulo.trim()) {
-      setError("El título es requerido.");
-      return;
-    }
-    if (!formData.contenido.trim()) {
-      setError("El contenido es requerido.");
-      return;
-    }
-
-
-    setSaving(true);
-    setError(null);
+  const handleSubmit = async (e: React.FormEvent, nuevoEstado?: string) => {
+    e.preventDefault()
+    if (!formData.titulo.trim()) return setError("El título es obligatorio")
+    if (!formData.contenido.trim()) return setError("El contenido es obligatorio")
 
     try {
-      const supabase = createSupabaseClient();
+      setSaving(true)
+      setError(null)
 
-      const updateData = {
-        titulo: formData.titulo.trim(),
-        contenido: formData.contenido.trim(),
-        categoria_id: null,
-        imagen_principal: formData.imagen_principal || null,
-        galeria_imagenes: formData.galeria_imagenes.length > 0 ? formData.galeria_imagenes : null,
-        destacado: formData.destacado,
-        estado: isDraft ? "borrador" : "publicado",
-        updated_at: new Date().toISOString(),
-        tipo_seccion: "actividades",
-      };
+      const supabase = createSupabaseClient()
 
-      const { error } = await supabase
+      const estadoFinal = nuevoEstado || formData.estado
+
+      const { error: updateError } = await supabase
         .from("publicaciones_bienestar")
-        .update(updateData)
-        .eq("id", publicacionId);
+        .update({
+          titulo: formData.titulo,
+          contenido: formData.contenido,
+          imagen_principal: formData.imagen_principal || null,
+          galeria_imagenes: formData.galeria_imagenes.length > 0 ? formData.galeria_imagenes : [],
+          destacado: formData.destacado,
+          estado: estadoFinal,
+        })
+        .eq("id", publicacionId)
 
-      if (error) {
-        setError("Error al actualizar la actividad. Por favor, intente nuevamente.");
-      } else {
-        setSuccess(
-          `Actividad ${isDraft ? "guardada como borrador" : "publicada"} correctamente.`
-        );
-        setTimeout(() => {
-          router.push("/administracion/actividades");
-        }, 2000);
+      if (updateError) throw updateError
+
+      let mensaje = "¡Actividad actualizada exitosamente!"
+      if (nuevoEstado === "publicado" && formData.estado !== "publicado") {
+        mensaje = "¡Actividad actualizada y publicada exitosamente!"
+      } else if (nuevoEstado === "borrador" && formData.estado !== "borrador") {
+        mensaje = "¡Actividad guardada como borrador exitosamente!"
       }
-    } catch {
-      setError("Error al actualizar la actividad. Por favor, intente nuevamente.");
+
+      setSuccess(mensaje)
+
+      // Actualizar el estado local
+      setFormData((prev) => ({ ...prev, estado: estadoFinal }))
+
+      // Redirigir después de un breve delay
+      setTimeout(() => {
+        router.push("/administracion/actividades")
+      }, 2000)
+    } catch (error: any) {
+      console.error("Error al actualizar:", error)
+      const errorMessage = error?.message || error?.details || "Error desconocido al actualizar la actividad"
+      setError(`Error al actualizar la actividad: ${errorMessage}. Por favor, intente nuevamente.`)
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   if (loading) {
     return (
@@ -168,22 +179,30 @@ export default function EditarPublicacionBienestar() {
         <div className="w-full mx-auto flex-1">
           <Card className="shadow-md">
             <CardHeader>
-              <div className="animate-pulse">
-                <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-              </div>
+              <div className="h-8 bg-gray-200 rounded animate-pulse"></div>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-6 animate-pulse">
-                <div className="h-10 bg-gray-200 rounded"></div>
-                <div className="h-32 bg-gray-200 rounded"></div>
-                <div className="h-10 bg-gray-200 rounded"></div>
-              </div>
+            <CardContent className="space-y-4">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="h-10 bg-gray-200 rounded animate-pulse"></div>
+              ))}
             </CardContent>
           </Card>
         </div>
       </div>
-    );
+    )
+  }
+
+  if (!publicacion) {
+    return (
+      <div className="py-6 flex min-h-screen items-center justify-center">
+        <Card className="shadow-md max-w-md w-full">
+          <CardContent className="p-6 text-center">
+            <p className="text-red-600 mb-4">Actividad no encontrada</p>
+            <Button onClick={() => router.push("/administracion/actividades")}>Volver a Actividades</Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -192,207 +211,140 @@ export default function EditarPublicacionBienestar() {
         <Card className="shadow-md">
           <CardHeader className="bg-primary/5 pb-6">
             <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                onClick={() => router.push("/administracion/actividades")}
-                className="flex items-center gap-2"
-              >
+              <Button variant="ghost" size="icon" onClick={() => router.back()} className="shrink-0">
                 <ArrowLeft className="h-4 w-4" />
-                Volver
               </Button>
-              <CardTitle className="text-2xl font-bold flex items-center gap-2">
-                <Calendar className="h-6 w-6 text-blue-500" />
-                Editar Actividad
-              </CardTitle>
+              <div className="flex-1">
+                <CardTitle className="text-2xl font-bold flex items-center gap-2">
+                  <Calendar className="h-6 w-6 text-blue-500" />
+                  Editar Actividad
+                </CardTitle>
+                <div className="flex items-center gap-2 mt-2">
+                  <Badge variant={formData.estado === "publicado" ? "default" : "secondary"}>
+                    {formData.estado === "publicado" ? "Publicado" : "Borrador"}
+                  </Badge>
+                  {formData.destacado && (
+                    <Badge variant="outline" className="text-yellow-600">
+                      <Star className="h-3 w-3 mr-1" />
+                      Destacado
+                    </Badge>
+                  )}
+                </div>
+              </div>
             </div>
           </CardHeader>
+
           <CardContent className="p-6">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSubmit(false);
-              }}
-              className="space-y-6"
-            >
+            <form onSubmit={(e) => handleSubmit(e)} className="space-y-6">
               {/* Título */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Título *
-                </label>
+              <div className="space-y-2">
+                <Label htmlFor="titulo">Título *</Label>
                 <Input
+                  id="titulo"
                   value={formData.titulo}
-                  onChange={(e) =>
-                    setFormData({ ...formData, titulo: e.target.value })
-                  }
-                  placeholder="Título de la actividad"
-                  disabled={saving}
-                  required
+                  onChange={(e) => handleInputChange("titulo", e.target.value)}
+                  placeholder="Ingrese el título de la actividad"
+                  className="w-full"
                 />
               </div>
 
-
-
-              {/* Imagen principal */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Imagen principal
-                </label>
+              {/* Imagen Principal */}
+              <div className="space-y-2">
+                <Label>Imagen Principal</Label>
                 <ImageUpload
-                  bucket="bienestar"
-                  onChange={(url) => handleImageUpload(url, true)}
                   value={formData.imagen_principal}
+                  onChange={(url) => handleInputChange("imagen_principal", url)}
                 />
-                {formData.imagen_principal && (
-                  <div className="mt-2 relative inline-block">
-                    <img
-                      src={formData.imagen_principal}
-                      alt="Imagen principal"
-                      className="w-32 h-32 object-cover rounded border"
-                    />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="icon"
-                      className="absolute -top-2 -right-2 h-6 w-6"
-                      onClick={() =>
-                        setFormData({ ...formData, imagen_principal: "" })
-                      }
-                      disabled={saving}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                )}
               </div>
 
               {/* Contenido */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Contenido *
-                </label>
+              <div className="space-y-2">
+                <Label htmlFor="contenido">Contenido *</Label>
                 <Textarea
+                  id="contenido"
                   value={formData.contenido}
-                  onChange={(e) =>
-                    setFormData({ ...formData, contenido: e.target.value })
-                  }
-                  placeholder="Contenido de la actividad"
-                  disabled={saving}
-                  rows={8}
-                  required
+                  onChange={(e) => handleInputChange("contenido", e.target.value)}
+                  placeholder="Escriba el contenido de la actividad..."
+                  className="min-h-[200px] w-full"
                 />
               </div>
 
-              {/* Galería de imágenes */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Galería de imágenes
-                </label>
-                <ImageUpload
-                  bucket="bienestar"
-                  onChange={(url) => handleImageUpload(url, false)}
+              {/* Galería de Imágenes */}
+              <div className="space-y-2">
+                <Label>Galería de Imágenes</Label>
+                <ImageGalleryUpload
+                  images={formData.galeria_imagenes}
+                  onChange={(urls) => handleInputChange("galeria_imagenes", urls)}
                 />
-                {formData.galeria_imagenes.length > 0 && (
-                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {formData.galeria_imagenes.map((url, index) => (
-                      <div key={index} className="relative">
-                        <img
-                          src={url}
-                          alt={`Imagen ${index + 1}`}
-                          className="w-full h-24 object-cover rounded border"
-                        />
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="absolute -top-2 -right-2 h-6 w-6"
-                          onClick={() => removeGalleryImage(index)}
-                          disabled={saving}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
 
-              {/* Estado y Destacado */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Estado
-                  </label>
-                  <Select
-                    value={formData.estado}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, estado: value })
-                    }
-                    disabled={saving}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="borrador">Borrador</SelectItem>
-                      <SelectItem value="publicado">Publicado</SelectItem>
-                      <SelectItem value="archivado">Archivado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex items-center space-x-2 mt-6">
-                  <Checkbox
-                    id="destacado"
-                    checked={formData.destacado}
-                    onCheckedChange={(checked) =>
-                      setFormData({ ...formData, destacado: !!checked })
-                    }
-                    disabled={saving}
-                  />
-                  <label
-                    htmlFor="destacado"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    Marcar como destacado
-                  </label>
-                </div>
+              {/* Destacado */}
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="destacado"
+                  checked={formData.destacado}
+                  onCheckedChange={(checked) => handleInputChange("destacado", checked)}
+                />
+                <Label htmlFor="destacado" className="flex items-center gap-2">
+                  <Star className="h-4 w-4 text-yellow-500" />
+                  Marcar como actividad destacada
+                </Label>
               </div>
 
-              {/* Mensajes de error y éxito */}
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-                  {error}
-                </div>
-              )}
+              {/* Estado */}
+              <div className="space-y-2">
+                <Label htmlFor="estado">Estado</Label>
+                <Select value={formData.estado} onValueChange={(value) => handleInputChange("estado", value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="borrador">Borrador</SelectItem>
+                    <SelectItem value="publicado">Publicado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Mensajes */}
+              {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>}
+
               {success && (
-                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
-                  {success}
-                </div>
+                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">{success}</div>
               )}
 
               {/* Botones */}
-              <div className="flex flex-col sm:flex-row gap-4 pt-6">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => handleSubmit(true)}
-                  disabled={saving}
-                  className="flex-1"
-                >
-                  {saving ? "Guardando..." : "Guardar como borrador"}
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                <Button type="submit" disabled={saving} className="btn-custom flex-1">
+                  {saving ? "Guardando..." : "Guardar cambios"}
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={saving}
-                  className="flex-1 btn-custom"
-                >
-                  {saving ? "Actualizando..." : "Actualizar actividad"}
-                </Button>
+
+                {formData.estado === "borrador" && (
+                  <Button
+                    type="button"
+                    onClick={(e) => handleSubmit(e, "publicado")}
+                    disabled={saving}
+                    className="bg-green-600 hover:bg-green-700 text-white flex-1"
+                  >
+                    {saving ? "Publicando..." : "Publicar ahora"}
+                  </Button>
+                )}
+
+                {formData.estado === "publicado" && (
+                  <Button
+                    type="button"
+                    onClick={(e) => handleSubmit(e, "borrador")}
+                    disabled={saving}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    {saving ? "Guardando..." : "Mover a borrador"}
+                  </Button>
+                )}
               </div>
             </form>
           </CardContent>
         </Card>
       </div>
     </div>
-  );
+  )
 }

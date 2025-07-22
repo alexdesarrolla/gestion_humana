@@ -600,13 +600,13 @@ const importUsersFromData = async (usuariosData: any[]) => {
     ])
     
     // Create maps for quick conversion
-    const empresasMap = new Map(empresasRef.data?.map(e => [e.nombre.toLowerCase(), e.id]) || [])
-    const cargosMap = new Map(cargosRef.data?.map(c => [c.nombre.toLowerCase(), c.id]) || [])
-    const sedesMap = new Map(sedesRef.data?.map(s => [s.nombre.toLowerCase(), s.id]) || [])
-    const epsMap = new Map(epsRef.data?.map(e => [e.nombre.toLowerCase(), e.id]) || [])
-    const afpMap = new Map(afpRef.data?.map(a => [a.nombre.toLowerCase(), a.id]) || [])
-    const cesantiasMap = new Map(cesantiasRef.data?.map(c => [c.nombre.toLowerCase(), c.id]) || [])
-    const cajasMap = new Map(cajasRef.data?.map(c => [c.nombre.toLowerCase(), c.id]) || [])
+    const empresasMap = new Map(empresasRef.data?.map((e: { nombre: string; id: string | number }) => [e.nombre.toLowerCase(), e.id]) || [])
+    const cargosMap = new Map(cargosRef.data?.map((c: { nombre: string, id: string | number }) => [c.nombre.toLowerCase(), c.id]) || [])
+    const sedesMap = new Map(sedesRef.data?.map((s: { nombre: string, id: string }) => [s.nombre.toLowerCase(), s.id]) || [])
+    const epsMap = new Map(epsRef.data?.map((e: { nombre: string, id: string }) => [e.nombre.toLowerCase(), e.id]) || [])
+    const afpMap = new Map(afpRef.data?.map((a: { id: unknown; nombre: unknown }) => [String(a.nombre).toLowerCase(), a.id]) || [])
+    const cesantiasMap = new Map(cesantiasRef.data?.map(c => [(c as {nombre: string}).nombre.toLowerCase(), (c as {id: string}).id]) || [])
+    const cajasMap = new Map(cajasRef.data?.map(c => [(c as {nombre: string}).nombre.toLowerCase(), (c as {id: string}).id]) || [])
     
     let usuariosCreados = 0
     let usuariosActualizados = 0
@@ -624,29 +624,154 @@ const importUsersFromData = async (usuariosData: any[]) => {
         setImportProgress(progress)
         setImportStatus(`Procesando usuario ${i + 1} de ${totalUsuarios}...`)
         
-        // Map Excel fields to database structure
-        const usuarioData = {
-          id: userData['ID'] || null,
-          colaborador: userData['Nombre'] || '',
-          correo_electronico: userData['Correo'] || '',
-          telefono: userData['Teléfono'] || '',
-          cedula: userData['Cédula'] || '',
-          genero: userData['Género'] === 'Masculino' ? 'M' : userData['Género'] === 'Femenino' ? 'F' : userData['Género'],
-          fecha_ingreso: userData['Fecha Ingreso'] || null,
-          fecha_nacimiento: userData['Fecha Nacimiento'] || null,
-          edad: userData['Edad'] || null,
-          rh: userData['RH'] || '',
-          direccion_residencia: userData['Dirección'] || '',
-          estado: userData['Estado'] || 'activo',
-          rol: userData['Rol'] || 'usuario',
-          tipo_de_contrato: userData['Tipo de Contrato'] || '',
-          empresa_id: userData['Empresa'] ? empresasMap.get(userData['Empresa'].toLowerCase()) || null : null,
-          cargo_id: userData['Cargo'] ? cargosMap.get(userData['Cargo'].toLowerCase()) || null : null,
-          sede_id: userData['Sede'] ? sedesMap.get(userData['Sede'].toLowerCase()) || null : null,
-          eps_id: userData['EPS'] ? epsMap.get(userData['EPS'].toLowerCase()) || null : null,
-          afp_id: userData['AFP'] ? afpMap.get(userData['AFP'].toLowerCase()) || null : null,
-          cesantias_id: userData['Cesantías'] ? cesantiasMap.get(userData['Cesantías'].toLowerCase()) || null : null,
-          caja_de_compensacion_id: userData['Caja Compensación'] ? cajasMap.get(userData['Caja Compensación'].toLowerCase()) || null : null
+        // Helper function to check if a value is empty or null
+        const isEmpty = (value: any) => {
+          return value === null || value === undefined || value === '' || 
+                 (typeof value === 'string' && value.trim() === '')
+        }
+        
+        // Helper function to get safe value or null
+        const getSafeValue = (value: any, defaultValue: any = null) => {
+          return isEmpty(value) ? defaultValue : value
+        }
+        
+        // Helper function to convert Excel date to ISO format
+        const convertExcelDate = (excelDate: any) => {
+          if (isEmpty(excelDate)) return null
+          
+          try {
+            let date: Date
+            
+            // If it's already a Date object
+            if (excelDate instanceof Date) {
+              date = excelDate
+            }
+            // If it's a number (Excel serial date)
+            else if (typeof excelDate === 'number') {
+              // Excel dates are days since 1900-01-01 (with leap year bug)
+              const excelEpoch = new Date(1900, 0, 1)
+              date = new Date(excelEpoch.getTime() + (excelDate - 2) * 24 * 60 * 60 * 1000)
+            }
+            // If it's a string, try to parse it
+            else if (typeof excelDate === 'string') {
+              const dateStr = excelDate.toString().trim()
+              
+              // Try different date formats
+              if (dateStr.includes('/')) {
+                // Format: DD/MM/YYYY or MM/DD/YYYY
+                const parts = dateStr.split('/')
+                if (parts.length === 3) {
+                  // Assume DD/MM/YYYY format (common in Latin America)
+                  const day = parseInt(parts[0])
+                  const month = parseInt(parts[1]) - 1 // Month is 0-indexed
+                  const year = parseInt(parts[2])
+                  date = new Date(year, month, day)
+                } else {
+                  date = new Date(dateStr)
+                }
+              } else if (dateStr.includes('-')) {
+                // Format: YYYY-MM-DD or DD-MM-YYYY
+                date = new Date(dateStr)
+              } else {
+                date = new Date(dateStr)
+              }
+            }
+            else {
+              return null
+            }
+            
+            // Validate the date
+            if (isNaN(date.getTime())) {
+              console.warn('Invalid date:', excelDate)
+              return null
+            }
+            
+            // Convert to ISO format (YYYY-MM-DD)
+            return date.toISOString().split('T')[0]
+          } catch (error) {
+            console.warn('Error converting date:', excelDate, error)
+            return null
+          }
+        }
+        
+        // Map Excel fields to database structure, omitting empty fields
+        const usuarioData: any = {}
+        
+        // Only add fields that have values
+        if (!isEmpty(userData['ID'])) usuarioData.id = userData['ID']
+        if (!isEmpty(userData['Nombre'])) usuarioData.colaborador = userData['Nombre'].toString().trim()
+        if (!isEmpty(userData['Correo'])) usuarioData.correo_electronico = userData['Correo'].toString().trim()
+        if (!isEmpty(userData['Teléfono'])) usuarioData.telefono = userData['Teléfono'].toString().trim()
+        if (!isEmpty(userData['Cédula'])) usuarioData.cedula = userData['Cédula'].toString().trim()
+        
+        // Handle gender mapping
+        if (!isEmpty(userData['Género'])) {
+          const genero = userData['Género'].toString().trim()
+          if (genero === 'Masculino') usuarioData.genero = 'M'
+          else if (genero === 'Femenino') usuarioData.genero = 'F'
+          else usuarioData.genero = genero
+        }
+        
+        // Handle dates with proper conversion
+        const fechaIngreso = convertExcelDate(userData['Fecha Ingreso'])
+        if (fechaIngreso) usuarioData.fecha_ingreso = fechaIngreso
+        
+        const fechaNacimiento = convertExcelDate(userData['Fecha Nacimiento'])
+        if (fechaNacimiento) usuarioData.fecha_nacimiento = fechaNacimiento
+        
+        const fechaRetiro = convertExcelDate(userData['Fecha Retiro'])
+        if (fechaRetiro) usuarioData.fecha_retiro = fechaRetiro
+        
+        // Handle numeric fields
+        if (!isEmpty(userData['Edad'])) {
+          const edad = parseInt(userData['Edad'])
+          if (!isNaN(edad)) usuarioData.edad = edad
+        }
+        
+        // Handle text fields
+        if (!isEmpty(userData['RH'])) usuarioData.rh = userData['RH'].toString().trim()
+        if (!isEmpty(userData['Dirección'])) usuarioData.direccion_residencia = userData['Dirección'].toString().trim()
+        if (!isEmpty(userData['Tipo de Contrato'])) usuarioData.tipo_de_contrato = userData['Tipo de Contrato'].toString().trim()
+        if (!isEmpty(userData['Motivo Retiro'])) usuarioData.motivo_retiro = userData['Motivo Retiro'].toString().trim()
+        
+        // Set default values for required fields
+        usuarioData.estado = getSafeValue(userData['Estado'], 'activo')
+        usuarioData.rol = getSafeValue(userData['Rol'], 'usuario')
+        
+        // Handle foreign key mappings - only if the field has a value
+        if (!isEmpty(userData['Empresa'])) {
+          const empresaId = empresasMap.get(userData['Empresa'].toString().toLowerCase())
+          if (empresaId) usuarioData.empresa_id = empresaId
+        }
+        
+        if (!isEmpty(userData['Cargo'])) {
+          const cargoId = cargosMap.get(userData['Cargo'].toString().toLowerCase())
+          if (cargoId) usuarioData.cargo_id = cargoId
+        }
+        
+        if (!isEmpty(userData['Sede'])) {
+          const sedeId = sedesMap.get(userData['Sede'].toString().toLowerCase())
+          if (sedeId) usuarioData.sede_id = sedeId
+        }
+        
+        if (!isEmpty(userData['EPS'])) {
+          const epsId = epsMap.get(userData['EPS'].toString().toLowerCase())
+          if (epsId) usuarioData.eps_id = epsId
+        }
+        
+        if (!isEmpty(userData['AFP'])) {
+          const afpId = afpMap.get(userData['AFP'].toString().toLowerCase())
+          if (afpId) usuarioData.afp_id = afpId
+        }
+        
+        if (!isEmpty(userData['Cesantías'])) {
+          const cesantiasId = cesantiasMap.get(userData['Cesantías'].toString().toLowerCase())
+          if (cesantiasId) usuarioData.cesantias_id = cesantiasId
+        }
+        
+        if (!isEmpty(userData['Caja Compensación'])) {
+          const cajaId = cajasMap.get(userData['Caja Compensación'].toString().toLowerCase())
+          if (cajaId) usuarioData.caja_de_compensacion_id = cajaId
         }
         
         let existingUser = null
@@ -669,34 +794,39 @@ const importUsersFromData = async (usuariosData: any[]) => {
         }
         
         if (existingUser) {
-          // Update existing user
-          const updateData = {
-            colaborador: usuarioData.colaborador,
-            correo_electronico: usuarioData.correo_electronico,
-            telefono: usuarioData.telefono,
-            cedula: usuarioData.cedula,
-            genero: usuarioData.genero,
-            fecha_ingreso: usuarioData.fecha_ingreso,
-            fecha_nacimiento: usuarioData.fecha_nacimiento,
-            edad: usuarioData.edad,
-            rh: usuarioData.rh,
-            direccion_residencia: usuarioData.direccion_residencia,
-            estado: usuarioData.estado,
-            rol: usuarioData.rol,
-            tipo_de_contrato: usuarioData.tipo_de_contrato,
-            empresa_id: usuarioData.empresa_id,
-            cargo_id: usuarioData.cargo_id,
-            sede_id: usuarioData.sede_id,
-            eps_id: usuarioData.eps_id,
-            afp_id: usuarioData.afp_id,
-            cesantias_id: usuarioData.cesantias_id,
-            caja_de_compensacion_id: usuarioData.caja_de_compensacion_id
-          }
+          // Update existing user - only update fields that have values
+          const updateData: any = {}
+          
+          // Only include fields that have values in the update
+          if (usuarioData.colaborador !== undefined) updateData.colaborador = usuarioData.colaborador
+          if (usuarioData.correo_electronico !== undefined) updateData.correo_electronico = usuarioData.correo_electronico
+          if (usuarioData.telefono !== undefined) updateData.telefono = usuarioData.telefono
+          if (usuarioData.cedula !== undefined) updateData.cedula = usuarioData.cedula
+          if (usuarioData.genero !== undefined) updateData.genero = usuarioData.genero
+          if (usuarioData.fecha_ingreso !== undefined) updateData.fecha_ingreso = usuarioData.fecha_ingreso
+          if (usuarioData.fecha_nacimiento !== undefined) updateData.fecha_nacimiento = usuarioData.fecha_nacimiento
+          if (usuarioData.edad !== undefined) updateData.edad = usuarioData.edad
+          if (usuarioData.rh !== undefined) updateData.rh = usuarioData.rh
+          if (usuarioData.direccion_residencia !== undefined) updateData.direccion_residencia = usuarioData.direccion_residencia
+          if (usuarioData.tipo_de_contrato !== undefined) updateData.tipo_de_contrato = usuarioData.tipo_de_contrato
+          if (usuarioData.empresa_id !== undefined) updateData.empresa_id = usuarioData.empresa_id
+          if (usuarioData.cargo_id !== undefined) updateData.cargo_id = usuarioData.cargo_id
+          if (usuarioData.sede_id !== undefined) updateData.sede_id = usuarioData.sede_id
+          if (usuarioData.eps_id !== undefined) updateData.eps_id = usuarioData.eps_id
+          if (usuarioData.afp_id !== undefined) updateData.afp_id = usuarioData.afp_id
+          if (usuarioData.cesantias_id !== undefined) updateData.cesantias_id = usuarioData.cesantias_id
+          if (usuarioData.caja_de_compensacion_id !== undefined) updateData.caja_de_compensacion_id = usuarioData.caja_de_compensacion_id
+          if (usuarioData.motivo_retiro !== undefined) updateData.motivo_retiro = usuarioData.motivo_retiro
+          if (usuarioData.fecha_retiro !== undefined) updateData.fecha_retiro = usuarioData.fecha_retiro
+          
+          // Always update estado and rol as they have default values
+          updateData.estado = usuarioData.estado
+          updateData.rol = usuarioData.rol
           
           const { error } = await supabase
             .from('usuario_nomina')
             .update(updateData)
-            .eq('id', existingUser.id)
+            .eq('id', (existingUser as { id: string | number }).id)
           
           if (error) {
             console.error('Error actualizando usuario:', error)
@@ -807,6 +937,8 @@ const handleExportUsers = async () => {
       'Cesantías': user.cesantias?.nombre || '',
       'Caja Compensación': user.caja_de_compensacion?.nombre || '',
       'Dirección': user.direccion_residencia,
+      'Motivo Retiro': user.motivo_retiro || '',
+      'Fecha Retiro': user.fecha_retiro || '',
       'Estado': user.estado,
       'Rol': user.rol
     })
@@ -887,6 +1019,7 @@ const fetchUsers = async () => {
           id, auth_user_id, colaborador, correo_electronico, telefono, rol, estado, genero, cedula,
           fecha_ingreso, empresa_id, cargo_id, sede_id, fecha_nacimiento, edad, rh, tipo_de_contrato,
           eps_id, afp_id, cesantias_id, caja_de_compensacion_id, direccion_residencia, avatar_path,
+          motivo_retiro, fecha_retiro,
           empresas:empresa_id(id, nombre),
           sedes:sede_id(id, nombre),
           eps:eps_id(id, nombre),

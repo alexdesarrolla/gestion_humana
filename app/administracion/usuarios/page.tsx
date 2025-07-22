@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ChevronDown, ChevronUp, Search, X, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Loader2, Plus, Edit } from "lucide-react"
+import { ChevronDown, ChevronUp, Search, X, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Loader2, Plus, Edit, Download, Upload } from "lucide-react"
 import { ProfileCard } from "@/components/ui/profile-card"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
@@ -499,6 +499,97 @@ export default function Usuarios() {
     setAddUserSuccess(false)
   }
 
+  const handleImportUsers = () => {
+    // Crear input file temporal
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.xlsx,.xls'
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (file) {
+        // Aquí se implementaría la lógica de importación
+        console.log('Archivo seleccionado:', file.name)
+        // TODO: Implementar importación desde Excel
+        alert('Funcionalidad de importación en desarrollo')
+      }
+    }
+    input.click()
+  }
+
+const handleExportUsers = async () => {
+  try {
+    // Importar xlsx dinámicamente
+    const XLSX = await import('xlsx')
+    
+    // Separar usuarios activos e inactivos
+    const usuariosActivos = users.filter(user => user.estado === 'activo')
+    const usuariosInactivos = users.filter(user => user.estado === 'inactivo')
+    
+    // Calculate age from birth date
+    const calculateAge = (birthDate: string) => {
+      if (!birthDate) return ''
+      const today = new Date()
+      const birth = new Date(birthDate)
+      let age = today.getFullYear() - birth.getFullYear()
+      const monthDiff = today.getMonth() - birth.getMonth()
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--
+      }
+      return age.toString()
+    }
+    
+    // Función para formatear datos de usuario
+    const formatUserData = (user: any) => ({
+      'ID': user.id,
+      'Nombre': user.colaborador,
+      'Correo': user.correo_electronico,
+      'Teléfono': user.telefono,
+      'Cédula': user.cedula,
+      'Género': user.genero === 'M' ? 'Masculino' : user.genero === 'F' ? 'Femenino' : user.genero,
+      'Fecha Ingreso': user.fecha_ingreso,
+      'Fecha Nacimiento': user.fecha_nacimiento,
+      'Edad': calculateAge(user.fecha_nacimiento),
+      'RH': user.rh,
+      'Empresa': user.empresas?.nombre || '',
+      'Cargo': user.cargos?.nombre || '',
+      'Sede': user.sedes?.nombre || '',
+      'EPS': user.eps?.nombre || '',
+      'AFP': user.afp?.nombre || '',
+      'Cesantías': user.cesantias?.nombre || '',
+      'Caja Compensación': user.caja_de_compensacion?.nombre || '',
+      'Dirección': user.direccion_residencia,
+      'Estado': user.estado,
+      'Rol': user.rol
+    })
+    
+    // Formatear datos
+    const datosActivos = usuariosActivos.map(formatUserData)
+    const datosInactivos = usuariosInactivos.map(formatUserData)
+    
+    // Crear libro de trabajo
+    const workbook = XLSX.utils.book_new()
+    
+    // Crear hojas
+    const worksheetActivos = XLSX.utils.json_to_sheet(datosActivos)
+    const worksheetInactivos = XLSX.utils.json_to_sheet(datosInactivos)
+    
+    // Agregar hojas al libro
+    XLSX.utils.book_append_sheet(workbook, worksheetActivos, 'Usuarios Activos')
+    XLSX.utils.book_append_sheet(workbook, worksheetInactivos, 'Usuarios Inactivos')
+    
+    // Generar nombre de archivo con fecha
+    const fecha = new Date().toISOString().split('T')[0]
+    const nombreArchivo = `usuarios_${fecha}.xlsx`
+    
+    // Descargar archivo
+    XLSX.writeFile(workbook, nombreArchivo)
+    
+  } catch (error) {
+    console.error('Error al exportar usuarios:', error)
+    alert('Error al exportar usuarios. Por favor, intente nuevamente.')
+  }
+}
+
   const handleEditUser = (user: any) => {
     console.log('Usuario seleccionado:', user);
     console.log('Género del usuario:', user.genero);
@@ -965,10 +1056,20 @@ export default function Usuarios() {
                     <h1 className="text-2xl font-bold tracking-tight">Listado de Usuarios</h1>
                     <p className="text-muted-foreground">Gestiona los usuarios del sistema.</p>
                   </div>
-                  <Button onClick={handleAddUser} className="flex items-center gap-2 btn-custom">
-                    <Plus className="h-4 w-4" />
-                    Añadir Usuario
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button onClick={handleImportUsers} variant="outline" className="flex items-center gap-2">
+                      <Upload className="h-4 w-4" />
+                      Importar
+                    </Button>
+                    <Button onClick={handleExportUsers} variant="outline" className="flex items-center gap-2">
+                      <Download className="h-4 w-4" />
+                      Exportar
+                    </Button>
+                    <Button onClick={handleAddUser} className="flex items-center gap-2 btn-custom">
+                      <Plus className="h-4 w-4" />
+                      Añadir Usuario
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Filtros */}

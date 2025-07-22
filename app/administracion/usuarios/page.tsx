@@ -14,6 +14,7 @@ import { ChevronDown, ChevronUp, Search, X, Eye, ArrowUpDown, ChevronLeft, Chevr
 import { ProfileCard } from "@/components/ui/profile-card"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -58,6 +59,7 @@ export default function Usuarios() {
     fecha_nacimiento: '',
     edad: '',
     rh: '',
+    tipo_de_contrato: '',
     eps_id: '',
     afp_id: '',
     cesantias_id: '',
@@ -76,6 +78,12 @@ export default function Usuarios() {
   const [editUserError, setEditUserError] = useState('')
   const [editUserSuccess, setEditUserSuccess] = useState(false)
   const [editUserLoading, setEditUserLoading] = useState(false)
+  
+  // Estados para importación
+  const [importProgress, setImportProgress] = useState(0)
+  const [importStatus, setImportStatus] = useState('')
+  const [isImporting, setIsImporting] = useState(false)
+  const [importResults, setImportResults] = useState({ created: 0, updated: 0, errors: 0 })
   
   // Estados para permisos
   const [userPermissions, setUserPermissions] = useState<any[]>([])
@@ -162,8 +170,8 @@ export default function Usuarios() {
             .from("usuario_nomina")
             .select(`
               id, auth_user_id, colaborador, correo_electronico, telefono, rol, estado, genero, cedula,
-              fecha_ingreso, empresa_id, cargo_id, sede_id, fecha_nacimiento, edad, rh, eps_id, afp_id,
-              cesantias_id, caja_de_compensacion_id, direccion_residencia, avatar_path,
+              fecha_ingreso, empresa_id, cargo_id, sede_id, fecha_nacimiento, edad, rh, tipo_de_contrato,
+              eps_id, afp_id, cesantias_id, caja_de_compensacion_id, direccion_residencia, avatar_path,
               empresas:empresa_id(id, nombre),
               sedes:sede_id(id, nombre),
               eps:eps_id(id, nombre),
@@ -515,8 +523,6 @@ export default function Usuarios() {
 
 const processExcelFile = async (file: File) => {
   try {
-    setLoading(true)
-    
     // Import xlsx dynamically
     const XLSX = await import('xlsx')
     
@@ -526,8 +532,12 @@ const processExcelFile = async (file: File) => {
     
     // Check for sheets containing 'activos' or 'inactivos' in their names
     const sheetNames = workbook.SheetNames
-    const activosSheet = sheetNames.find(name => name.toLowerCase().includes('activos'))
-    const inactivosSheet = sheetNames.find(name => name.toLowerCase().includes('inactivos'))
+    const activosSheet = sheetNames.find(name => 
+      name.toLowerCase().includes('activos') || name.toLowerCase().includes('activo')
+    )
+    const inactivosSheet = sheetNames.find(name => 
+      name.toLowerCase().includes('inactivos') || name.toLowerCase().includes('inactivo')
+    )
     
     let todosLosUsuarios: any[] = []
 
@@ -543,15 +553,19 @@ const processExcelFile = async (file: File) => {
       todosLosUsuarios = [...todosLosUsuarios, ...usuariosInactivos]
     }
 
+    // If no specific sheets found, use the first sheet
     if (!activosSheet && !inactivosSheet) {
-      alert('El archivo debe contener al menos una hoja con "Activos" o "Inactivos" en su nombre')
-      setLoading(false)
-      return
+      if (sheetNames.length > 0) {
+        const firstSheet = XLSX.utils.sheet_to_json(workbook.Sheets[sheetNames[0]])
+        todosLosUsuarios = [...todosLosUsuarios, ...firstSheet]
+      } else {
+        alert('El archivo no contiene hojas válidas')
+        return
+      }
     }
     
     if (todosLosUsuarios.length === 0) {
       alert('No se encontraron usuarios en el archivo')
-      setLoading(false)
       return
     }
     
@@ -561,16 +575,20 @@ const processExcelFile = async (file: File) => {
   } catch (error) {
     console.error('Error al procesar archivo Excel:', error)
     alert('Error al procesar el archivo Excel. Verifique el formato.')
-  } finally {
-    setLoading(false)
   }
 }
 
 const importUsersFromData = async (usuariosData: any[]) => {
   try {
+    setIsImporting(true)
+    setImportProgress(0)
+    setImportStatus('Preparando importación...')
+    setImportResults({ created: 0, updated: 0, errors: 0 })
+    
     const supabase = createSupabaseClient()
     
     // Get reference data to map names to IDs
+    setImportStatus('Cargando datos de referencia...')
     const [empresasRef, cargosRef, sedesRef, epsRef, afpRef, cesantiasRef, cajasRef] = await Promise.all([
       supabase.from('empresas').select('id, nombre'),
       supabase.from('cargos').select('id, nombre'),
@@ -593,9 +611,19 @@ const importUsersFromData = async (usuariosData: any[]) => {
     let usuariosCreados = 0
     let usuariosActualizados = 0
     let errores = 0
+    const totalUsuarios = usuariosData.length
     
-    for (const userData of usuariosData) {
+    setImportStatus(`Procesando ${totalUsuarios} usuarios...`)
+    
+    for (let i = 0; i < usuariosData.length; i++) {
+      const userData = usuariosData[i]
+      
       try {
+        // Update progress
+        const progress = Math.round(((i + 1) / totalUsuarios) * 100)
+        setImportProgress(progress)
+        setImportStatus(`Procesando usuario ${i + 1} de ${totalUsuarios}...`)
+        
         // Map Excel fields to database structure
         const usuarioData = {
           id: userData['ID'] || null,
@@ -611,6 +639,7 @@ const importUsersFromData = async (usuariosData: any[]) => {
           direccion_residencia: userData['Dirección'] || '',
           estado: userData['Estado'] || 'activo',
           rol: userData['Rol'] || 'usuario',
+          tipo_de_contrato: userData['Tipo de Contrato'] || '',
           empresa_id: userData['Empresa'] ? empresasMap.get(userData['Empresa'].toLowerCase()) || null : null,
           cargo_id: userData['Cargo'] ? cargosMap.get(userData['Cargo'].toLowerCase()) || null : null,
           sede_id: userData['Sede'] ? sedesMap.get(userData['Sede'].toLowerCase()) || null : null,
@@ -620,66 +649,71 @@ const importUsersFromData = async (usuariosData: any[]) => {
           caja_de_compensacion_id: userData['Caja Compensación'] ? cajasMap.get(userData['Caja Compensación'].toLowerCase()) || null : null
         }
         
-        // Check if user exists by ID
+        let existingUser = null
+        
+        // Check if user exists by ID or Cedula
         if (usuarioData.id) {
-          const { data: existingUser } = await supabase
+          const { data } = await supabase
             .from('usuario_nomina')
             .select('id')
             .eq('id', usuarioData.id)
             .single()
-          
-          if (existingUser) {
-            // Update existing user
-            const { error } = await supabase
-              .from('usuario_nomina')
-              .update({
-                colaborador: usuarioData.colaborador,
-                correo_electronico: usuarioData.correo_electronico,
-                telefono: usuarioData.telefono,
-                cedula: usuarioData.cedula,
-                genero: usuarioData.genero,
-                fecha_ingreso: usuarioData.fecha_ingreso,
-                fecha_nacimiento: usuarioData.fecha_nacimiento,
-                edad: usuarioData.edad,
-                rh: usuarioData.rh,
-                direccion_residencia: usuarioData.direccion_residencia,
-                estado: usuarioData.estado,
-                rol: usuarioData.rol,
-                empresa_id: usuarioData.empresa_id,
-                cargo_id: usuarioData.cargo_id,
-                sede_id: usuarioData.sede_id,
-                eps_id: usuarioData.eps_id,
-                afp_id: usuarioData.afp_id,
-                cesantias_id: usuarioData.cesantias_id,
-                caja_de_compensacion_id: usuarioData.caja_de_compensacion_id
-              })
-              .eq('id', usuarioData.id)
-            
-            if (error) {
-              console.error('Error actualizando usuario:', error)
-              errores++
-            } else {
-              usuariosActualizados++
-            }
-          } else {
-            // Create new user with specific ID
-            const { error } = await supabase
-              .from('usuario_nomina')
-              .insert([usuarioData])
-            
-            if (error) {
-              console.error('Error creando usuario:', error)
-              errores++
-            } else {
-              usuariosCreados++
-            }
+          existingUser = data
+        } else if (usuarioData.cedula) {
+          const { data } = await supabase
+            .from('usuario_nomina')
+            .select('id')
+            .eq('cedula', usuarioData.cedula)
+            .single()
+          existingUser = data
+        }
+        
+        if (existingUser) {
+          // Update existing user
+          const updateData = {
+            colaborador: usuarioData.colaborador,
+            correo_electronico: usuarioData.correo_electronico,
+            telefono: usuarioData.telefono,
+            cedula: usuarioData.cedula,
+            genero: usuarioData.genero,
+            fecha_ingreso: usuarioData.fecha_ingreso,
+            fecha_nacimiento: usuarioData.fecha_nacimiento,
+            edad: usuarioData.edad,
+            rh: usuarioData.rh,
+            direccion_residencia: usuarioData.direccion_residencia,
+            estado: usuarioData.estado,
+            rol: usuarioData.rol,
+            tipo_de_contrato: usuarioData.tipo_de_contrato,
+            empresa_id: usuarioData.empresa_id,
+            cargo_id: usuarioData.cargo_id,
+            sede_id: usuarioData.sede_id,
+            eps_id: usuarioData.eps_id,
+            afp_id: usuarioData.afp_id,
+            cesantias_id: usuarioData.cesantias_id,
+            caja_de_compensacion_id: usuarioData.caja_de_compensacion_id
           }
-        } else {
-          // Create new user without ID (will be auto-generated)
-          const { id, ...userDataWithoutId } = usuarioData
+          
           const { error } = await supabase
             .from('usuario_nomina')
-            .insert([userDataWithoutId])
+            .update(updateData)
+            .eq('id', existingUser.id)
+          
+          if (error) {
+            console.error('Error actualizando usuario:', error)
+            errores++
+          } else {
+            usuariosActualizados++
+          }
+        } else {
+          // Create new user
+          const insertData = usuarioData.id ? usuarioData : (() => {
+            const { id, ...userDataWithoutId } = usuarioData
+            return userDataWithoutId
+          })()
+          
+          const { error } = await supabase
+            .from('usuario_nomina')
+            .insert([insertData])
           
           if (error) {
             console.error('Error creando usuario:', error)
@@ -689,22 +723,44 @@ const importUsersFromData = async (usuariosData: any[]) => {
           }
         }
         
+        // Update results in real time
+        setImportResults({ created: usuariosCreados, updated: usuariosActualizados, errors: errores })
+        
+        // Small delay to show progress
+        await new Promise(resolve => setTimeout(resolve, 10))
+        
       } catch (error) {
         console.error('Error procesando usuario:', error)
         errores++
+        setImportResults({ created: usuariosCreados, updated: usuariosActualizados, errors: errores })
       }
     }
     
-    // Show summary
-    const mensaje = `Importación completada:\n- Usuarios creados: ${usuariosCreados}\n- Usuarios actualizados: ${usuariosActualizados}\n- Errores: ${errores}`
-    alert(mensaje)
+    setImportProgress(100)
+    setImportStatus('Importación completada')
     
-    // Reload users list
-    await fetchUsers()
+    // Show summary
+    setTimeout(() => {
+      const mensaje = `Importación completada:\n- Usuarios creados: ${usuariosCreados}\n- Usuarios actualizados: ${usuariosActualizados}\n- Errores: ${errores}`
+      alert(mensaje)
+      
+      // Reset import state
+      setIsImporting(false)
+      setImportProgress(0)
+      setImportStatus('')
+      setImportResults({ created: 0, updated: 0, errors: 0 })
+      
+      // Reload users list
+      fetchUsers()
+    }, 1000)
     
   } catch (error) {
     console.error('Error en importación:', error)
     alert('Error durante la importación. Verifique el formato del archivo.')
+    setIsImporting(false)
+    setImportProgress(0)
+    setImportStatus('')
+    setImportResults({ created: 0, updated: 0, errors: 0 })
   }
 }
 
@@ -742,6 +798,7 @@ const handleExportUsers = async () => {
       'Fecha Nacimiento': user.fecha_nacimiento,
       'Edad': calculateAge(user.fecha_nacimiento),
       'RH': user.rh,
+      'Tipo de Contrato': user.tipo_de_contrato || '',
       'Empresa': user.empresas?.nombre || '',
       'Cargo': user.cargos?.nombre || '',
       'Sede': user.sedes?.nombre || '',
@@ -802,6 +859,7 @@ const handleEditUser = (user: any) => {
     fecha_nacimiento: user.fecha_nacimiento || '',
     edad: user.edad ? user.edad.toString() : '',
     rh: user.rh || '',
+    tipo_de_contrato: user.tipo_de_contrato || '',
     eps_id: user.eps_id ? user.eps_id.toString() : '',
     afp_id: user.afp_id ? user.afp_id.toString() : '',
     cesantias_id: user.cesantias_id ? user.cesantias_id.toString() : '',
@@ -827,8 +885,8 @@ const fetchUsers = async () => {
         .from("usuario_nomina")
         .select(`
           id, auth_user_id, colaborador, correo_electronico, telefono, rol, estado, genero, cedula,
-          fecha_ingreso, empresa_id, cargo_id, sede_id, fecha_nacimiento, edad, rh, eps_id, afp_id,
-          cesantias_id, caja_de_compensacion_id, direccion_residencia, avatar_path,
+          fecha_ingreso, empresa_id, cargo_id, sede_id, fecha_nacimiento, edad, rh, tipo_de_contrato,
+          eps_id, afp_id, cesantias_id, caja_de_compensacion_id, direccion_residencia, avatar_path,
           empresas:empresa_id(id, nombre),
           sedes:sede_id(id, nombre),
           eps:eps_id(id, nombre),
@@ -958,6 +1016,7 @@ const handleAddUserSubmit = async (e: React.FormEvent) => {
           fecha_nacimiento: newUserData.fecha_nacimiento || null,
           edad: newUserData.edad ? parseInt(newUserData.edad) : null,
           rh: newUserData.rh || null,
+          tipo_de_contrato: newUserData.tipo_de_contrato || null,
           eps_id: newUserData.eps_id ? parseInt(newUserData.eps_id) : null,
           afp_id: newUserData.afp_id ? parseInt(newUserData.afp_id) : null,
           cesantias_id: newUserData.cesantias_id ? parseInt(newUserData.cesantias_id) : null,
@@ -984,6 +1043,7 @@ const handleAddUserSubmit = async (e: React.FormEvent) => {
       fecha_nacimiento: '',
       edad: '',
       rh: '',
+      tipo_de_contrato: '',
       eps_id: '',
       afp_id: '',
       cesantias_id: '',
@@ -1024,6 +1084,7 @@ const handleAddUserSubmit = async (e: React.FormEvent) => {
         fecha_nacimiento: editUserData.fecha_nacimiento || null,
         edad: editUserData.edad ? parseInt(editUserData.edad) : null,
         rh: editUserData.rh || null,
+        tipo_de_contrato: editUserData.tipo_de_contrato || null,
         eps_id: editUserData.eps_id ? parseInt(editUserData.eps_id) : null,
         afp_id: editUserData.afp_id ? parseInt(editUserData.afp_id) : null,
         cesantias_id: editUserData.cesantias_id ? parseInt(editUserData.cesantias_id) : null,
@@ -1376,6 +1437,29 @@ const handleAddUserSubmit = async (e: React.FormEvent) => {
                     )}
                   </CardContent>
                 </Card>
+
+                {/* Progreso de importación */}
+                {isImporting && (
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-lg font-medium">Importando usuarios</h3>
+                          <span className="text-sm text-muted-foreground">{importProgress}%</span>
+                        </div>
+                        <Progress value={importProgress} className="w-full" />
+                        <div className="text-sm text-muted-foreground">{importStatus}</div>
+                        {(importResults.created > 0 || importResults.updated > 0 || importResults.errors > 0) && (
+                          <div className="flex gap-4 text-sm">
+                            <span className="text-green-600">Creados: {importResults.created}</span>
+                            <span className="text-blue-600">Actualizados: {importResults.updated}</span>
+                            <span className="text-red-600">Errores: {importResults.errors}</span>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 <div className="rounded-md border bg-white">
                   {loading || searchLoading ? (
@@ -1815,6 +1899,23 @@ const handleAddUserSubmit = async (e: React.FormEvent) => {
                   </div>
 
                   <div>
+                    <Label htmlFor="tipo_de_contrato">Tipo de Contrato</Label>
+                    <Select value={newUserData.tipo_de_contrato} onValueChange={(value) => setNewUserData({ ...newUserData, tipo_de_contrato: value })}>
+                      <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                        <SelectValue placeholder="Seleccionar tipo de contrato" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Indefinido">Indefinido</SelectItem>
+                        <SelectItem value="Fijo">Fijo</SelectItem>
+                        <SelectItem value="Obra o Labor">Obra o Labor</SelectItem>
+                        <SelectItem value="Prestación de Servicios">Prestación de Servicios</SelectItem>
+                        <SelectItem value="Aprendizaje">Aprendizaje</SelectItem>
+                        <SelectItem value="Temporal">Temporal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
                     <Label htmlFor="eps">EPS</Label>
                     <Select value={newUserData.eps_id} onValueChange={(value) => setNewUserData({ ...newUserData, eps_id: value })}>
                       <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
@@ -2168,6 +2269,23 @@ const handleAddUserSubmit = async (e: React.FormEvent) => {
                           <SelectItem value="B-">B-</SelectItem>
                           <SelectItem value="AB+">AB+</SelectItem>
                           <SelectItem value="AB-">AB-</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="edit-tipo_de_contrato">Tipo de Contrato</Label>
+                      <Select value={editUserData.tipo_de_contrato} onValueChange={(value) => setEditUserData({ ...editUserData, tipo_de_contrato: value })}>
+                        <SelectTrigger className="mt-1 border-2 focus:border-blue-500 transition-colors">
+                          <SelectValue placeholder="Seleccionar tipo de contrato" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Indefinido">Indefinido</SelectItem>
+                          <SelectItem value="Fijo">Fijo</SelectItem>
+                          <SelectItem value="Obra o Labor">Obra o Labor</SelectItem>
+                          <SelectItem value="Prestación de Servicios">Prestación de Servicios</SelectItem>
+                          <SelectItem value="Aprendizaje">Aprendizaje</SelectItem>
+                          <SelectItem value="Temporal">Temporal</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

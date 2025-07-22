@@ -507,21 +507,213 @@ export default function Usuarios() {
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0]
       if (file) {
-        // Aquí se implementaría la lógica de importación
-        console.log('Archivo seleccionado:', file.name)
-        // TODO: Implementar importación desde Excel
-        alert('Funcionalidad de importación en desarrollo')
+        await processExcelFile(file)
       }
     }
     input.click()
   }
 
-const handleExportUsers = async () => {
+const processExcelFile = async (file: File) => {
   try {
-    // Importar xlsx dinámicamente
+    setLoading(true)
+    
+    // Import xlsx dynamically
     const XLSX = await import('xlsx')
     
-    // Separar usuarios activos e inactivos
+    // Read file
+    const arrayBuffer = await file.arrayBuffer()
+    const workbook = XLSX.read(arrayBuffer, { type: 'array' })
+    
+    // Check for sheets containing 'activos' or 'inactivos' in their names
+    const sheetNames = workbook.SheetNames
+    const activosSheet = sheetNames.find(name => name.toLowerCase().includes('activos'))
+    const inactivosSheet = sheetNames.find(name => name.toLowerCase().includes('inactivos'))
+    
+    let todosLosUsuarios: any[] = []
+
+    // Process active users sheet if exists
+    if (activosSheet) {
+      const usuariosActivos = XLSX.utils.sheet_to_json(workbook.Sheets[activosSheet])
+      todosLosUsuarios = [...todosLosUsuarios, ...usuariosActivos]
+    }
+
+    // Process inactive users sheet if exists 
+    if (inactivosSheet) {
+      const usuariosInactivos = XLSX.utils.sheet_to_json(workbook.Sheets[inactivosSheet])
+      todosLosUsuarios = [...todosLosUsuarios, ...usuariosInactivos]
+    }
+
+    if (!activosSheet && !inactivosSheet) {
+      alert('El archivo debe contener al menos una hoja con "Activos" o "Inactivos" en su nombre')
+      setLoading(false)
+      return
+    }
+    
+    if (todosLosUsuarios.length === 0) {
+      alert('No se encontraron usuarios en el archivo')
+      setLoading(false)
+      return
+    }
+    
+    // Process users
+    await importUsersFromData(todosLosUsuarios)
+    
+  } catch (error) {
+    console.error('Error al procesar archivo Excel:', error)
+    alert('Error al procesar el archivo Excel. Verifique el formato.')
+  } finally {
+    setLoading(false)
+  }
+}
+
+const importUsersFromData = async (usuariosData: any[]) => {
+  try {
+    const supabase = createSupabaseClient()
+    
+    // Get reference data to map names to IDs
+    const [empresasRef, cargosRef, sedesRef, epsRef, afpRef, cesantiasRef, cajasRef] = await Promise.all([
+      supabase.from('empresas').select('id, nombre'),
+      supabase.from('cargos').select('id, nombre'),
+      supabase.from('sedes').select('id, nombre'),
+      supabase.from('eps').select('id, nombre'),
+      supabase.from('afp').select('id, nombre'),
+      supabase.from('cesantias').select('id, nombre'),
+      supabase.from('caja_de_compensacion').select('id, nombre')
+    ])
+    
+    // Create maps for quick conversion
+    const empresasMap = new Map(empresasRef.data?.map(e => [e.nombre.toLowerCase(), e.id]) || [])
+    const cargosMap = new Map(cargosRef.data?.map(c => [c.nombre.toLowerCase(), c.id]) || [])
+    const sedesMap = new Map(sedesRef.data?.map(s => [s.nombre.toLowerCase(), s.id]) || [])
+    const epsMap = new Map(epsRef.data?.map(e => [e.nombre.toLowerCase(), e.id]) || [])
+    const afpMap = new Map(afpRef.data?.map(a => [a.nombre.toLowerCase(), a.id]) || [])
+    const cesantiasMap = new Map(cesantiasRef.data?.map(c => [c.nombre.toLowerCase(), c.id]) || [])
+    const cajasMap = new Map(cajasRef.data?.map(c => [c.nombre.toLowerCase(), c.id]) || [])
+    
+    let usuariosCreados = 0
+    let usuariosActualizados = 0
+    let errores = 0
+    
+    for (const userData of usuariosData) {
+      try {
+        // Map Excel fields to database structure
+        const usuarioData = {
+          id: userData['ID'] || null,
+          colaborador: userData['Nombre'] || '',
+          correo_electronico: userData['Correo'] || '',
+          telefono: userData['Teléfono'] || '',
+          cedula: userData['Cédula'] || '',
+          genero: userData['Género'] === 'Masculino' ? 'M' : userData['Género'] === 'Femenino' ? 'F' : userData['Género'],
+          fecha_ingreso: userData['Fecha Ingreso'] || null,
+          fecha_nacimiento: userData['Fecha Nacimiento'] || null,
+          edad: userData['Edad'] || null,
+          rh: userData['RH'] || '',
+          direccion_residencia: userData['Dirección'] || '',
+          estado: userData['Estado'] || 'activo',
+          rol: userData['Rol'] || 'usuario',
+          empresa_id: userData['Empresa'] ? empresasMap.get(userData['Empresa'].toLowerCase()) || null : null,
+          cargo_id: userData['Cargo'] ? cargosMap.get(userData['Cargo'].toLowerCase()) || null : null,
+          sede_id: userData['Sede'] ? sedesMap.get(userData['Sede'].toLowerCase()) || null : null,
+          eps_id: userData['EPS'] ? epsMap.get(userData['EPS'].toLowerCase()) || null : null,
+          afp_id: userData['AFP'] ? afpMap.get(userData['AFP'].toLowerCase()) || null : null,
+          cesantias_id: userData['Cesantías'] ? cesantiasMap.get(userData['Cesantías'].toLowerCase()) || null : null,
+          caja_de_compensacion_id: userData['Caja Compensación'] ? cajasMap.get(userData['Caja Compensación'].toLowerCase()) || null : null
+        }
+        
+        // Check if user exists by ID
+        if (usuarioData.id) {
+          const { data: existingUser } = await supabase
+            .from('usuario_nomina')
+            .select('id')
+            .eq('id', usuarioData.id)
+            .single()
+          
+          if (existingUser) {
+            // Update existing user
+            const { error } = await supabase
+              .from('usuario_nomina')
+              .update({
+                colaborador: usuarioData.colaborador,
+                correo_electronico: usuarioData.correo_electronico,
+                telefono: usuarioData.telefono,
+                cedula: usuarioData.cedula,
+                genero: usuarioData.genero,
+                fecha_ingreso: usuarioData.fecha_ingreso,
+                fecha_nacimiento: usuarioData.fecha_nacimiento,
+                edad: usuarioData.edad,
+                rh: usuarioData.rh,
+                direccion_residencia: usuarioData.direccion_residencia,
+                estado: usuarioData.estado,
+                rol: usuarioData.rol,
+                empresa_id: usuarioData.empresa_id,
+                cargo_id: usuarioData.cargo_id,
+                sede_id: usuarioData.sede_id,
+                eps_id: usuarioData.eps_id,
+                afp_id: usuarioData.afp_id,
+                cesantias_id: usuarioData.cesantias_id,
+                caja_de_compensacion_id: usuarioData.caja_de_compensacion_id
+              })
+              .eq('id', usuarioData.id)
+            
+            if (error) {
+              console.error('Error actualizando usuario:', error)
+              errores++
+            } else {
+              usuariosActualizados++
+            }
+          } else {
+            // Create new user with specific ID
+            const { error } = await supabase
+              .from('usuario_nomina')
+              .insert([usuarioData])
+            
+            if (error) {
+              console.error('Error creando usuario:', error)
+              errores++
+            } else {
+              usuariosCreados++
+            }
+          }
+        } else {
+          // Create new user without ID (will be auto-generated)
+          const { id, ...userDataWithoutId } = usuarioData
+          const { error } = await supabase
+            .from('usuario_nomina')
+            .insert([userDataWithoutId])
+          
+          if (error) {
+            console.error('Error creando usuario:', error)
+            errores++
+          } else {
+            usuariosCreados++
+          }
+        }
+        
+      } catch (error) {
+        console.error('Error procesando usuario:', error)
+        errores++
+      }
+    }
+    
+    // Show summary
+    const mensaje = `Importación completada:\n- Usuarios creados: ${usuariosCreados}\n- Usuarios actualizados: ${usuariosActualizados}\n- Errores: ${errores}`
+    alert(mensaje)
+    
+    // Reload users list
+    await fetchUsers()
+    
+  } catch (error) {
+    console.error('Error en importación:', error)
+    alert('Error durante la importación. Verifique el formato del archivo.')
+  }
+}
+
+const handleExportUsers = async () => {
+  try {
+    // Import xlsx dynamically
+    const XLSX = await import('xlsx')
+    
+    // Separate active and inactive users
     const usuariosActivos = users.filter(user => user.estado === 'activo')
     const usuariosInactivos = users.filter(user => user.estado === 'inactivo')
     
@@ -538,7 +730,7 @@ const handleExportUsers = async () => {
       return age.toString()
     }
     
-    // Función para formatear datos de usuario
+    // Format user data
     const formatUserData = (user: any) => ({
       'ID': user.id,
       'Nombre': user.colaborador,
@@ -562,26 +754,26 @@ const handleExportUsers = async () => {
       'Rol': user.rol
     })
     
-    // Formatear datos
+    // Format data
     const datosActivos = usuariosActivos.map(formatUserData)
     const datosInactivos = usuariosInactivos.map(formatUserData)
     
-    // Crear libro de trabajo
+    // Create workbook
     const workbook = XLSX.utils.book_new()
     
-    // Crear hojas
+    // Create sheets
     const worksheetActivos = XLSX.utils.json_to_sheet(datosActivos)
     const worksheetInactivos = XLSX.utils.json_to_sheet(datosInactivos)
     
-    // Agregar hojas al libro
+    // Add sheets to workbook
     XLSX.utils.book_append_sheet(workbook, worksheetActivos, 'Usuarios Activos')
     XLSX.utils.book_append_sheet(workbook, worksheetInactivos, 'Usuarios Inactivos')
     
-    // Generar nombre de archivo con fecha
+    // Generate filename with date
     const fecha = new Date().toISOString().split('T')[0]
     const nombreArchivo = `usuarios_${fecha}.xlsx`
     
-    // Descargar archivo
+    // Download file
     XLSX.writeFile(workbook, nombreArchivo)
     
   } catch (error) {
@@ -590,235 +782,223 @@ const handleExportUsers = async () => {
   }
 }
 
-  const handleEditUser = (user: any) => {
-    console.log('Usuario seleccionado:', user);
-    console.log('Género del usuario:', user.genero);
-    setEditUserData({
-      id: user.id, // ID de la tabla usuario_nomina para actualizar
-      auth_user_id: user.auth_user_id, // ID de auth para permisos
-      nombre: user.colaborador || '',
-      correo: user.correo_electronico || '',
-      telefono: user.telefono || '',
-      rol: user.rol || 'usuario',
-      estado: user.estado || 'activo',
-      genero: user.genero ? user.genero.toLowerCase() : '',
-      cedula: user.cedula || '',
-      fecha_ingreso: user.fecha_ingreso || '',
-      empresa_id: user.empresa_id ? user.empresa_id.toString() : '',
-      cargo_id: user.cargo_id ? user.cargo_id.toString() : (user.cargos?.id ? user.cargos.id.toString() : ''),
-      sede_id: user.sede_id ? user.sede_id.toString() : '',
-      fecha_nacimiento: user.fecha_nacimiento || '',
-      edad: user.edad ? user.edad.toString() : '',
-      rh: user.rh || '',
-      eps_id: user.eps_id ? user.eps_id.toString() : '',
-      afp_id: user.afp_id ? user.afp_id.toString() : '',
-      cesantias_id: user.cesantias_id ? user.cesantias_id.toString() : '',
-      caja_de_compensacion_id: user.caja_de_compensacion_id ? user.caja_de_compensacion_id.toString() : '',
-      direccion_residencia: user.direccion_residencia || ''
-    })
-    setIsEditUserModalOpen(true)
-    setEditUserError('')
-    setEditUserSuccess(false)
-  }
+const handleEditUser = (user: any) => {
+  console.log('Usuario seleccionado:', user);
+  console.log('Género del usuario:', user.genero);
+  setEditUserData({
+    id: user.id,
+    auth_user_id: user.auth_user_id,
+    nombre: user.colaborador || '',
+    correo: user.correo_electronico || '',
+    telefono: user.telefono || '',
+    rol: user.rol || 'usuario',
+    estado: user.estado || 'activo',
+    genero: user.genero ? user.genero.toLowerCase() : '',
+    cedula: user.cedula || '',
+    fecha_ingreso: user.fecha_ingreso || '',
+    empresa_id: user.empresa_id ? user.empresa_id.toString() : '',
+    cargo_id: user.cargo_id ? user.cargo_id.toString() : (user.cargos?.id ? user.cargos.id.toString() : ''),
+    sede_id: user.sede_id ? user.sede_id.toString() : '',
+    fecha_nacimiento: user.fecha_nacimiento || '',
+    edad: user.edad ? user.edad.toString() : '',
+    rh: user.rh || '',
+    eps_id: user.eps_id ? user.eps_id.toString() : '',
+    afp_id: user.afp_id ? user.afp_id.toString() : '',
+    cesantias_id: user.cesantias_id ? user.cesantias_id.toString() : '',
+    caja_de_compensacion_id: user.caja_de_compensacion_id ? user.caja_de_compensacion_id.toString() : '',
+    direccion_residencia: user.direccion_residencia || ''
+  })
+  setIsEditUserModalOpen(true)
+  setEditUserError('')
+  setEditUserSuccess(false)
+}
 
-  const fetchUsers = async () => {
-    try {
-      const supabase = createSupabaseClient()
-      const today = new Date().toISOString().split('T')[0]
-      
-      // Ejecutar consultas en paralelo para mejorar el rendimiento
-      const [
-        { data: usuarios, error: usuariosError },
-        { data: vacacionesActivas, error: vacacionesError },
-        { data: todasLasVacaciones, error: todasVacacionesError }
-      ] = await Promise.all([
-        // Usuarios con relaciones optimizadas
-        supabase
-          .from("usuario_nomina")
-          .select(`
-            id, auth_user_id, colaborador, correo_electronico, telefono, rol, estado, genero, cedula,
-            fecha_ingreso, empresa_id, cargo_id, sede_id, fecha_nacimiento, edad, rh, eps_id, afp_id,
-            cesantias_id, caja_de_compensacion_id, direccion_residencia, avatar_path,
-            empresas:empresa_id(id, nombre),
-            sedes:sede_id(id, nombre),
-            eps:eps_id(id, nombre),
-            afp:afp_id(id, nombre),
-            cesantias:cesantias_id(id, nombre),
-            caja_de_compensacion:caja_de_compensacion_id(id, nombre),
-            cargos:cargo_id(id, nombre)
-          `)
-          .eq("rol", "usuario"),
-        // Vacaciones activas
-        supabase
-          .from("solicitudes_vacaciones")
-          .select("usuario_id")
-          .eq("estado", "aprobado")
-          .lte("fecha_inicio", today)
-          .gte("fecha_fin", today),
-        // Todas las vacaciones aprobadas
-        supabase
-          .from("solicitudes_vacaciones")
-          .select("usuario_id, fecha_inicio, fecha_fin")
-          .eq("estado", "aprobado")
-          .order("fecha_inicio", { ascending: true })
-      ])
+const fetchUsers = async () => {
+  try {
+    const supabase = createSupabaseClient()
+    const today = new Date().toISOString().split('T')[0]
+    
+    const [
+      { data: usuarios, error: usuariosError },
+      { data: vacacionesActivas, error: vacacionesError },
+      { data: todasLasVacaciones, error: todasVacacionesError }
+    ] = await Promise.all([
+      supabase
+        .from("usuario_nomina")
+        .select(`
+          id, auth_user_id, colaborador, correo_electronico, telefono, rol, estado, genero, cedula,
+          fecha_ingreso, empresa_id, cargo_id, sede_id, fecha_nacimiento, edad, rh, eps_id, afp_id,
+          cesantias_id, caja_de_compensacion_id, direccion_residencia, avatar_path,
+          empresas:empresa_id(id, nombre),
+          sedes:sede_id(id, nombre),
+          eps:eps_id(id, nombre),
+          afp:afp_id(id, nombre),
+          cesantias:cesantias_id(id, nombre),
+          caja_de_compensacion:caja_de_compensacion_id(id, nombre),
+          cargos:cargo_id(id, nombre)
+        `)
+        .eq("rol", "usuario"),
+      supabase
+        .from("solicitudes_vacaciones")
+        .select("usuario_id")
+        .eq("estado", "aprobado")
+        .lte("fecha_inicio", today)
+        .gte("fecha_fin", today),
+      supabase
+        .from("solicitudes_vacaciones")
+        .select("usuario_id, fecha_inicio, fecha_fin")
+        .eq("estado", "aprobado")
+        .order("fecha_inicio", { ascending: true })
+    ])
 
-      if (usuariosError) {
-        console.error("Error al obtener usuarios:", usuariosError)
-        return
-      }
-      
-      if (vacacionesError) {
-        console.error("Error en vacaciones activas:", vacacionesError)
-      }
-      
-      if (todasVacacionesError) {
-        console.error("Error en todas las vacaciones:", todasVacacionesError)
-      }
+    if (usuariosError) {
+      console.error("Error al obtener usuarios:", usuariosError)
+      return
+    }
+    
+    if (vacacionesError) {
+      console.error("Error en vacaciones activas:", vacacionesError)
+    }
+    
+    if (todasVacacionesError) {
+      console.error("Error en todas las vacaciones:", todasVacacionesError)
+    }
 
-      // Agregar información completa de vacaciones a cada usuario
-      const usuariosConVacaciones = usuarios?.map(user => {
-        let estadoVacaciones = "sin_vacaciones"
-        let rangoVacaciones = null
-        const enVacaciones = user.auth_user_id ? vacacionesActivas?.some(vacacion => vacacion.usuario_id === user.auth_user_id) || false : false
+    const usuariosConVacaciones = usuarios?.map(user => {
+      let estadoVacaciones = "sin_vacaciones"
+      let rangoVacaciones = null
+      const enVacaciones = user.auth_user_id ? vacacionesActivas?.some(vacacion => vacacion.usuario_id === user.auth_user_id) || false : false
+      
+      if (user.auth_user_id && todasLasVacaciones) {
+        const anoActual = new Date().getFullYear()
+        const vacacionesEsteAno = todasLasVacaciones
+          .filter((vacacion: any) => vacacion.usuario_id === user.auth_user_id)
+          .filter((vacacion: any) => {
+            const fechaInicio = new Date(vacacion.fecha_inicio)
+            return fechaInicio.getFullYear() === anoActual
+          })
         
-        if (user.auth_user_id && todasLasVacaciones) {
-          const anoActual = new Date().getFullYear()
-          const vacacionesEsteAno = todasLasVacaciones
-            .filter((vacacion: any) => vacacion.usuario_id === user.auth_user_id)
-            .filter((vacacion: any) => {
-              const fechaInicio = new Date(vacacion.fecha_inicio)
-              return fechaInicio.getFullYear() === anoActual
-            })
+        if (vacacionesEsteAno.length > 0) {
+          const hoy = new Date()
           
-          if (vacacionesEsteAno.length > 0) {
-            const hoy = new Date()
-            
-            // Buscar vacaciones actuales primero
-            const vacacionActual = vacacionesEsteAno.find((v: any) => {
+          const vacacionActual = vacacionesEsteAno.find((v: any) => {
+            const fechaInicio = new Date(v.fecha_inicio)
+            const fechaFin = new Date(v.fecha_fin)
+            return fechaInicio <= hoy && fechaFin >= hoy
+          })
+          
+          if (vacacionActual) {
+            estadoVacaciones = "en_vacaciones"
+            rangoVacaciones = {
+              inicio: vacacionActual.fecha_inicio,
+              fin: vacacionActual.fecha_fin
+            }
+          } else {
+            const vacacionFutura = vacacionesEsteAno.find((v: any) => {
               const fechaInicio = new Date(v.fecha_inicio)
-              const fechaFin = new Date(v.fecha_fin)
-              return fechaInicio <= hoy && fechaFin >= hoy
+              return fechaInicio > hoy
             })
             
-            if (vacacionActual) {
-              // Está actualmente de vacaciones
-              estadoVacaciones = "en_vacaciones"
+            if (vacacionFutura) {
+              estadoVacaciones = "pendientes"
               rangoVacaciones = {
-                inicio: vacacionActual.fecha_inicio,
-                fin: vacacionActual.fecha_fin
+                inicio: vacacionFutura.fecha_inicio,
+                fin: vacacionFutura.fecha_fin
               }
             } else {
-              // Buscar vacaciones futuras
-              const vacacionFutura = vacacionesEsteAno.find((v: any) => {
-                const fechaInicio = new Date(v.fecha_inicio)
-                return fechaInicio > hoy
-              })
-              
-              if (vacacionFutura) {
-                // Tiene vacaciones pendientes
-                estadoVacaciones = "pendientes"
-                rangoVacaciones = {
-                  inicio: vacacionFutura.fecha_inicio,
-                  fin: vacacionFutura.fecha_fin
-                }
-              } else {
-                // Ya tomó vacaciones este año (todas las fechas de fin son pasadas)
-                const vacacionPasada = vacacionesEsteAno[vacacionesEsteAno.length - 1] // La más reciente
-                estadoVacaciones = "ya_tomo"
-                rangoVacaciones = {
-                  inicio: vacacionPasada.fecha_inicio,
-                  fin: vacacionPasada.fecha_fin
-                }
+              const vacacionPasada = vacacionesEsteAno[vacacionesEsteAno.length - 1]
+              estadoVacaciones = "ya_tomo"
+              rangoVacaciones = {
+                inicio: vacacionPasada.fecha_inicio,
+                fin: vacacionPasada.fecha_fin
               }
             }
           }
         }
-        
-        return {
-          ...user,
-          enVacaciones,
-          estadoVacaciones,
-          rangoVacaciones
+      }
+      
+      return {
+        ...user,
+        enVacaciones,
+        estadoVacaciones,
+        rangoVacaciones
+      }
+    }) || []
+
+    setUsers(usuariosConVacaciones)
+    setFilteredUsers(usuariosConVacaciones)
+  } catch (error) {
+    console.error('Error al cargar usuarios:', error)
+  }
+}
+
+const handleAddUserSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
+  setAddUserError('')
+  setAddUserSuccess(false)
+  setAddUserLoading(true)
+
+  try {
+    const supabase = createSupabaseClient()
+
+    const { error: dbError } = await supabase
+      .from('usuario_nomina')
+      .insert([
+        {
+          colaborador: newUserData.nombre,
+          correo_electronico: newUserData.correo,
+          telefono: newUserData.telefono,
+          rol: newUserData.rol,
+          genero: newUserData.genero || null,
+          cedula: newUserData.cedula || null,
+          fecha_ingreso: newUserData.fecha_ingreso || null,
+          empresa_id: newUserData.empresa_id ? parseInt(newUserData.empresa_id) : null,
+          cargo_id: newUserData.cargo_id || null,
+          sede_id: newUserData.sede_id ? parseInt(newUserData.sede_id) : null,
+          fecha_nacimiento: newUserData.fecha_nacimiento || null,
+          edad: newUserData.edad ? parseInt(newUserData.edad) : null,
+          rh: newUserData.rh || null,
+          eps_id: newUserData.eps_id ? parseInt(newUserData.eps_id) : null,
+          afp_id: newUserData.afp_id ? parseInt(newUserData.afp_id) : null,
+          cesantias_id: newUserData.cesantias_id ? parseInt(newUserData.cesantias_id) : null,
+          caja_de_compensacion_id: newUserData.caja_de_compensacion_id ? parseInt(newUserData.caja_de_compensacion_id) : null,
+          direccion_residencia: newUserData.direccion_residencia || null,
+          estado: 'activo'
         }
-      }) || []
+      ])
 
-      setUsers(usuariosConVacaciones)
-      setFilteredUsers(usuariosConVacaciones)
-    } catch (error) {
-      console.error('Error al cargar usuarios:', error)
-    }
+    if (dbError) throw dbError
+    
+    setAddUserSuccess(true)
+    setNewUserData({
+      nombre: '',
+      correo: '',
+      telefono: '',
+      rol: 'usuario',
+      genero: '',
+      cedula: '',
+      fecha_ingreso: '',
+      empresa_id: '',
+      cargo_id: '',
+      sede_id: '',
+      fecha_nacimiento: '',
+      edad: '',
+      rh: '',
+      eps_id: '',
+      afp_id: '',
+      cesantias_id: '',
+      caja_de_compensacion_id: '',
+      direccion_residencia: ''
+    })
+    
+    await fetchUsers()
+    
+  } catch (err: any) {
+    setAddUserError(err.message)
+  } finally {
+    setAddUserLoading(false)
   }
-
-  const handleAddUserSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setAddUserError('')
-    setAddUserSuccess(false)
-    setAddUserLoading(true)
-
-    try {
-      const supabase = createSupabaseClient()
-
-      // Insertar directamente en la tabla usuario_nomina sin crear autenticación
-      const { error: dbError } = await supabase
-        .from('usuario_nomina')
-        .insert([
-          {
-            colaborador: newUserData.nombre,
-            correo_electronico: newUserData.correo,
-            telefono: newUserData.telefono,
-            rol: newUserData.rol,
-            genero: newUserData.genero || null,
-            cedula: newUserData.cedula || null,
-            fecha_ingreso: newUserData.fecha_ingreso || null,
-            empresa_id: newUserData.empresa_id ? parseInt(newUserData.empresa_id) : null,
-            cargo_id: newUserData.cargo_id || null,
-            sede_id: newUserData.sede_id ? parseInt(newUserData.sede_id) : null,
-            fecha_nacimiento: newUserData.fecha_nacimiento || null,
-            edad: newUserData.edad ? parseInt(newUserData.edad) : null,
-            rh: newUserData.rh || null,
-            eps_id: newUserData.eps_id ? parseInt(newUserData.eps_id) : null,
-            afp_id: newUserData.afp_id ? parseInt(newUserData.afp_id) : null,
-            cesantias_id: newUserData.cesantias_id ? parseInt(newUserData.cesantias_id) : null,
-            caja_de_compensacion_id: newUserData.caja_de_compensacion_id ? parseInt(newUserData.caja_de_compensacion_id) : null,
-            direccion_residencia: newUserData.direccion_residencia || null,
-            estado: 'activo'
-          }
-        ])
-
-      if (dbError) throw dbError
-      
-      setAddUserSuccess(true)
-      setNewUserData({
-        nombre: '',
-        correo: '',
-        telefono: '',
-        rol: 'usuario',
-        genero: '',
-        cedula: '',
-        fecha_ingreso: '',
-        empresa_id: '',
-        cargo_id: '',
-        sede_id: '',
-        fecha_nacimiento: '',
-        edad: '',
-        rh: '',
-        eps_id: '',
-        afp_id: '',
-        cesantias_id: '',
-        caja_de_compensacion_id: '',
-        direccion_residencia: ''
-      })
-      
-      // Recargar la lista de usuarios
-      await fetchUsers()
-      
-    } catch (err: any) {
-      setAddUserError(err.message)
-    } finally {
-      setAddUserLoading(false)
-    }
-  }
+}
 
   const handleEditUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

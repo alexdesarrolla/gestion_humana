@@ -6,7 +6,7 @@ import { createSupabaseClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, X, Check } from "lucide-react";
+import { ArrowLeft, Save, X, Check, Search, Filter } from "lucide-react";
 import { toast } from "sonner";
 
 interface User {
@@ -43,9 +43,15 @@ export default function ExcelViewPage() {
   const supabase = createSupabaseClient();
   
   const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingCell, setEditingCell] = useState<{ userId: number; field: string } | null>(null);
   const [tempValue, setTempValue] = useState("");
+  
+  // Search and filter states
+  const [searchTerm, setSearchTerm] = useState("");
+  const [columnFilters, setColumnFilters] = useState<{ [key: string]: string }>({});
+  const [showFilters, setShowFilters] = useState(false);
   
   // Options for dropdowns
   const [empresas, setEmpresas] = useState<Option[]>([]);
@@ -59,6 +65,99 @@ export default function ExcelViewPage() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Filter users based on search term and column filters
+  useEffect(() => {
+    let filtered = users;
+
+    // Apply search term filter
+    if (searchTerm) {
+      filtered = filtered.filter(user => {
+        const searchFields = [
+          user.colaborador,
+          user.correo_electronico,
+          user.telefono,
+          user.cedula,
+          user.empresas?.nombre,
+          user.cargos?.nombre,
+          user.sedes?.nombre,
+          user.eps?.nombre,
+          user.afp?.nombre,
+          user.cesantias?.nombre,
+          user.caja_de_compensacion?.nombre,
+          user.direccion_residencia,
+          user.estado,
+          user.genero,
+          user.rh,
+          user.tipo_de_contrato
+        ];
+        
+        return searchFields.some(field => 
+          field?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      });
+    }
+
+    // Apply column filters
+    Object.entries(columnFilters).forEach(([column, filterValue]) => {
+      if (filterValue && filterValue !== 'all') {
+        filtered = filtered.filter(user => {
+          let fieldValue = '';
+          switch (column) {
+            case 'nombre':
+              fieldValue = user.colaborador || '';
+              break;
+            case 'correo':
+              fieldValue = user.correo_electronico || '';
+              break;
+            case 'empresa':
+              fieldValue = user.empresas?.nombre || '';
+              break;
+            case 'cargo':
+              fieldValue = user.cargos?.nombre || '';
+              break;
+            case 'sede':
+              fieldValue = user.sedes?.nombre || '';
+              break;
+            case 'estado':
+              fieldValue = user.estado || '';
+              break;
+            case 'genero':
+              fieldValue = user.genero === 'M' ? 'Masculino' : user.genero === 'F' ? 'Femenino' : user.genero || '';
+              break;
+            case 'eps':
+              fieldValue = user.eps?.nombre || '';
+              break;
+            case 'afp':
+              fieldValue = user.afp?.nombre || '';
+              break;
+            case 'cesantias':
+              fieldValue = user.cesantias?.nombre || '';
+              break;
+            case 'caja_compensacion':
+              fieldValue = user.caja_de_compensacion?.nombre || '';
+              break;
+            case 'rh':
+              fieldValue = user.rh || '';
+              break;
+            case 'tipo_de_contrato':
+              fieldValue = user.tipo_de_contrato || '';
+              break;
+            default:
+              fieldValue = '';
+          }
+          // Use exact match for certain fields, partial match for others
+          if (column === 'estado' || column === 'genero') {
+            return fieldValue.toLowerCase() === filterValue.toLowerCase();
+          } else {
+            return fieldValue.toLowerCase().includes(filterValue.toLowerCase());
+          }
+        });
+      }
+    });
+
+    setFilteredUsers(filtered);
+  }, [users, searchTerm, columnFilters]);
 
   const fetchData = async () => {
     try {
@@ -78,6 +177,7 @@ export default function ExcelViewPage() {
 
       if (usersError) throw usersError;
       setUsers(usersData || []);
+      setFilteredUsers(usersData || []);
 
       // Fetch options for dropdowns
       const [empresasRes, cargosRes, sedesRes, epsRes, afpsRes, cesantiasRes, cajaRes] = await Promise.all([
@@ -270,7 +370,7 @@ export default function ExcelViewPage() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Volver
           </Button>
-          <h1 className="excel-title">Vista Excel - Usuarios</h1>
+          <h1 className="excel-title">Vista Dinámica - Usuarios</h1>
         </div>
         <div className="excel-loading">
           Cargando datos...
@@ -279,15 +379,228 @@ export default function ExcelViewPage() {
     );
   }
 
+  const handleColumnFilter = (column: string, value: string) => {
+    setColumnFilters(prev => ({
+      ...prev,
+      [column]: value === 'all' ? '' : value
+    }));
+  };
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setColumnFilters({});
+  };
+
+  const getFilteredUniqueValues = (field: string) => {
+    const values = new Set<string>();
+    
+    // Filter users based on current filters (excluding the field we're getting values for)
+    let filteredUsers = users.filter(user => {
+      return Object.entries(columnFilters).every(([filterField, filterValue]) => {
+        if (filterField === field || !filterValue || filterValue === 'all') return true;
+        
+        let userValue = '';
+        switch (filterField) {
+          case 'empresa':
+            userValue = user.empresas?.nombre || '';
+            break;
+          case 'cargo':
+            userValue = user.cargos?.nombre || '';
+            break;
+          case 'sede':
+            userValue = user.sedes?.nombre || '';
+            break;
+          case 'estado':
+            userValue = user.estado || '';
+            break;
+          case 'genero':
+            userValue = user.genero === 'M' ? 'Masculino' : user.genero === 'F' ? 'Femenino' : user.genero || '';
+            break;
+          case 'eps':
+            userValue = user.eps?.nombre || '';
+            break;
+        }
+        return userValue.toLowerCase() === filterValue.toLowerCase();
+      });
+    });
+    
+    // Get unique values from filtered users
+    filteredUsers.forEach(user => {
+      let value = '';
+      switch (field) {
+        case 'empresa':
+          value = user.empresas?.nombre || '';
+          break;
+        case 'cargo':
+          value = user.cargos?.nombre || '';
+          break;
+        case 'sede':
+          value = user.sedes?.nombre || '';
+          break;
+        case 'estado':
+          value = user.estado || '';
+          break;
+        case 'genero':
+          value = user.genero === 'M' ? 'Masculino' : user.genero === 'F' ? 'Femenino' : user.genero || '';
+          break;
+        case 'eps':
+          value = user.eps?.nombre || '';
+          break;
+      }
+      if (value) values.add(value);
+    });
+    return Array.from(values).sort();
+  };
+
   return (
     <div className="excel-container">
-      <div className="excel-header">
-        <Button variant="outline" onClick={() => router.back()} className="excel-back-btn">
+      <div className="excel-header bg-white">
+        <Button variant="outline" onClick={() => router.back()} className="excel-back-btn" style={{color: 'black'}}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Volver
         </Button>
-        <h1 className="excel-title">Vista Excel - Usuarios</h1>
+        <h1 className="excel-title">Vista Dinámica - Usuarios ({filteredUsers.length} de {users.length})</h1>
+        <div className="excel-header-actions">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setShowFilters(!showFilters)}
+            className="excel-filter-btn"
+            style={{color: 'black'}}
+          >
+            <Filter className="h-4 w-4 mr-1" />
+            Filtros
+          </Button>
+          {(searchTerm || Object.keys(columnFilters).length > 0) && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={clearFilters}
+              className="excel-clear-btn"
+              style={{color: 'black'}}
+            >
+              Limpiar
+            </Button>
+          )}
+        </div>
       </div>
+      <div className="excel-search-bar">
+        <div className="excel-search-input">
+          <Input
+            placeholder="Buscar en todos los campos..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="excel-search-field"
+          />
+        </div>
+      </div>
+
+      {showFilters && (
+        <div className="excel-filters-panel" style={{backgroundColor: 'white'}}>
+          <div className="excel-filters-container">
+            <div className="excel-filters-row">
+              <div className="excel-filter-item">
+                <label>Empresa:</label>
+                <Select value={columnFilters.empresa || 'all'} onValueChange={(value) => {
+                  // Clear dependent filters when empresa changes
+                  if (value !== columnFilters.empresa) {
+                    setColumnFilters(prev => ({
+                      empresa: value === 'all' ? '' : value,
+                      cargo: '',
+                      sede: '',
+                      eps: ''
+                    }));
+                  } else {
+                    handleColumnFilter('empresa', value);
+                  }
+                }}>
+                  <SelectTrigger className="excel-filter-select">
+                    <SelectValue placeholder="Todas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    {getFilteredUniqueValues('empresa').map(value => (
+                      <SelectItem key={value} value={value}>{value}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="excel-filter-item">
+                <label>Cargo:</label>
+                <Select value={columnFilters.cargo || 'all'} onValueChange={(value) => handleColumnFilter('cargo', value)}>
+                  <SelectTrigger className="excel-filter-select">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {getFilteredUniqueValues('cargo').map(value => (
+                      <SelectItem key={value} value={value}>{value}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="excel-filter-item">
+                <label>Sede:</label>
+                <Select value={columnFilters.sede || 'all'} onValueChange={(value) => handleColumnFilter('sede', value)}>
+                  <SelectTrigger className="excel-filter-select">
+                    <SelectValue placeholder="Todas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    {getFilteredUniqueValues('sede').map(value => (
+                      <SelectItem key={value} value={value}>{value}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="excel-filters-row">
+              <div className="excel-filter-item">
+                <label>Estado:</label>
+                <Select value={columnFilters.estado || 'all'} onValueChange={(value) => handleColumnFilter('estado', value)}>
+                  <SelectTrigger className="excel-filter-select">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {getFilteredUniqueValues('estado').map(value => (
+                      <SelectItem key={value} value={value}>{value}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="excel-filter-item">
+                <label>Género:</label>
+                <Select value={columnFilters.genero || 'all'} onValueChange={(value) => handleColumnFilter('genero', value)}>
+                  <SelectTrigger className="excel-filter-select">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {getFilteredUniqueValues('genero').map(value => (
+                      <SelectItem key={value} value={value}>{value}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="excel-filter-item">
+                <label>EPS:</label>
+                <Select value={columnFilters.eps || 'all'} onValueChange={(value) => handleColumnFilter('eps', value)}>
+                  <SelectTrigger className="excel-filter-select">
+                    <SelectValue placeholder="Todas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    {getFilteredUniqueValues('eps').map(value => (
+                      <SelectItem key={value} value={value}>{value}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="excel-sheet">
         <div className="excel-table-container">
@@ -320,7 +633,7 @@ export default function ExcelViewPage() {
               </tr>
             </thead>
             <tbody>
-              {users.map((user, index) => (
+              {filteredUsers.map((user, index) => (
                 <tr key={user.id} className="excel-row">
                   <td className="excel-cell excel-row-number">{index + 1}</td>
                   <td className="excel-cell excel-id-cell">{user.id}</td>
@@ -370,6 +683,13 @@ export default function ExcelViewPage() {
           gap: 12px;
           border-bottom: 1px solid #0f3d26;
           box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          justify-content: space-between;
+        }
+
+        .excel-header-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
         }
 
         .excel-back-btn {
@@ -393,6 +713,112 @@ export default function ExcelViewPage() {
           font-weight: 400;
           margin: 0;
           letter-spacing: 0.5px;
+          flex: 1;
+        }
+
+        .excel-filter-btn, .excel-clear-btn {
+          background: rgba(255, 255, 255, 0.15);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          color: white;
+          font-size: 11px;
+          padding: 4px 8px;
+          border-radius: 2px;
+          transition: all 0.2s;
+          height: 28px;
+        }
+
+        .excel-filter-btn:hover, .excel-clear-btn:hover {
+          background: rgba(255, 255, 255, 0.25);
+          color: white;
+          transform: translateY(-1px);
+        }
+
+        .excel-search-bar {
+          background-color: #f8f8f8;
+          border-bottom: 1px solid #d0d0d0;
+          padding: 8px 16px;
+        }
+
+        .excel-search-input {
+          position: relative;
+          max-width: 400px;
+        }
+
+        .excel-search-icon {
+          position: absolute;
+          left: 8px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #666;
+          z-index: 1;
+        }
+
+        .excel-search-field {
+          padding-left: 32px;
+          border: 1px solid #c0c0c0;
+          border-radius: 2px;
+          font-size: 11px;
+          font-family: 'Calibri', sans-serif;
+          height: 28px;
+          background-color: white;
+        }
+
+        .excel-search-field:focus {
+          border-color: #0078d4;
+          outline: none;
+          box-shadow: 0 0 0 1px #0078d4;
+        }
+
+        .excel-filters-panel {
+          background-color: #f0f0f0;
+          border-bottom: 1px solid #d0d0d0;
+          padding: 12px 16px;
+        }
+
+        .excel-filters-container {
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+
+        .excel-filters-row {
+          display: flex;
+          gap: 16px;
+          margin-bottom: 12px;
+          flex-wrap: wrap;
+        }
+
+        .excel-filters-row:last-child {
+          margin-bottom: 0;
+        }
+
+        .excel-filter-item {
+          display: flex;
+          flex: 1;
+          min-width: 200px;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .excel-filter-item label {
+          font-size: 11px;
+          font-weight: 600;
+          color: #333;
+          font-family: 'Calibri', sans-serif;
+        }
+
+        .excel-filter-select {
+          border: 1px solid #c0c0c0;
+          border-radius: 2px;
+          font-size: 11px;
+          font-family: 'Calibri', sans-serif;
+          height: 26px;
+          background-color: white;
+        }
+
+        .excel-filter-select:focus {
+          border-color: #0078d4;
+          outline: none;
+          box-shadow: 0 0 0 1px #0078d4;
         }
 
         .excel-loading {
@@ -410,11 +836,12 @@ export default function ExcelViewPage() {
           margin: 0;
           border: none;
           box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          flex: 1;
         }
 
         .excel-table-container {
           overflow: auto;
-          max-height: calc(100vh - 60px);
+          max-height: calc(100vh - 140px);
           border: 1px solid #c0c0c0;
           background-color: white;
         }

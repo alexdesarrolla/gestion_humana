@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ChevronDown, ChevronUp, Search, X, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Loader2, Plus, Edit, Download, Upload } from "lucide-react"
+import { ChevronDown, ChevronUp, Search, X, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Loader2, Plus, Edit, Download, Upload, Table as TableIcon } from "lucide-react"
 import { ProfileCard } from "@/components/ui/profile-card"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
@@ -87,6 +87,8 @@ export default function Usuarios() {
   
   // Estados para permisos
   const [userPermissions, setUserPermissions] = useState<any[]>([])
+  
+  // Removed dynamic view states as they're now in a separate page
 
   // Paginación
   const [currentPage, setCurrentPage] = useState(1)
@@ -1314,6 +1316,8 @@ const handleAddUserSubmit = async (e: React.FormEvent) => {
     return pageNumbers
   }
 
+  // Dynamic view functions removed - now in separate page
+
   if (loading) {
     return (
       <div className="min-h-screen">
@@ -1438,6 +1442,14 @@ const handleAddUserSubmit = async (e: React.FormEvent) => {
                     <Button onClick={handleExportUsers} variant="outline" className="flex items-center gap-2">
                       <Download className="h-4 w-4" />
                       Exportar
+                    </Button>
+                    <Button 
+                      onClick={() => router.push('/administracion/usuarios/excel')} 
+                      variant="outline" 
+                      className="flex items-center gap-2"
+                    >
+                      <TableIcon className="h-4 w-4" />
+                      Vista Dinámica
                     </Button>
                     <Button onClick={handleAddUser} className="flex items-center gap-2 btn-custom">
                       <Plus className="h-4 w-4" />
@@ -1605,6 +1617,7 @@ const handleAddUserSubmit = async (e: React.FormEvent) => {
                       </div>
                     </div>
                   ) : (
+                    // Vista Normal
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>

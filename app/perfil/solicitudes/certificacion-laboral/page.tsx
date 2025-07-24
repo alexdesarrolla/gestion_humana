@@ -280,11 +280,11 @@ export default function CertificacionLaboral() {
       {/* Página principal */}
       <div className="space-y-6">
               {/* Header */}
-              <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                <h1 className="text-2xl font-bold w-full">
                   Solicitudes de Certificación Laboral
                 </h1>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto">
                   <Button
                     variant="outline"
                     onClick={() => router.push('/perfil/solicitudes/certificacion-laboral/historico')}

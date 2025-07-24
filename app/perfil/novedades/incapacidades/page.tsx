@@ -302,9 +302,9 @@ export default function IncapacidadesUsuario() {
         </div>
       ) : (
         <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h1 className="text-2xl font-bold">Mis Incapacidades</h1>
-                  <Button onClick={() => setShowModal(true)}>
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0">
+                  <h1 className="text-2xl font-bold w-full sm:w-auto text-center sm:text-left">Mis Incapacidades</h1>
+                  <Button onClick={() => setShowModal(true)} className="w-full sm:w-auto">
                     <Plus className="mr-2 h-4 w-4" /> Nueva
                   </Button>
                 </div>

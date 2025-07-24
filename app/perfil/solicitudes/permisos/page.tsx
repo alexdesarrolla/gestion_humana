@@ -366,9 +366,9 @@ export default function SolicitudPermisos() {
       </Dialog>
 
       <div className="space-y-6">
-                <div className="flex justify-between items-center ">
-                  <h1 className="text-2xl font-bold tracking-tight">Solicitudes de Permisos</h1>
-                  <Button onClick={() => setShowModal(true)} className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                  <h1 className="text-2xl font-bold tracking-tight w-full sm:w-auto">Solicitudes de Permisos</h1>
+                  <Button onClick={() => setShowModal(true)} className="flex items-center gap-2 w-full sm:w-auto justify-center">
                     <Plus className="h-4 w-4" /> Solicitar Permiso
                   </Button>
                 </div>

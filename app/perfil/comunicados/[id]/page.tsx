@@ -206,34 +206,36 @@ export default function DetalleComunicadoPage() {
 
     return (
         <div className="space-y-6">
-            <div className="mb-8 flex justify-between items-center">
+            <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <Button 
                     variant="outline" 
-                    className="gap-3 text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-all duration-200 border border-slate-200 bg-white shadow-sm px-6 py-3" 
+                    className="gap-3 text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-all duration-200 border border-slate-200 bg-white shadow-sm px-4 sm:px-6 py-2 sm:py-3 w-full sm:w-auto" 
                     onClick={() => router.back()}
                 >
                     <ArrowLeftIcon className="h-4 w-4" />
-                    Volver a comunicados
+                    <span className="whitespace-nowrap">Volver a comunicados</span>
                 </Button>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
                     {leido ? (
-                        <Badge variant="secondary" className="px-4 py-2 text-sm font-medium bg-green-50 text-green-700 border border-green-200">
-                            <CheckIcon className="h-4 w-4 mr-2" /> Leído
+                        <Badge variant="secondary" className="px-3 sm:px-4 py-2 text-sm font-medium bg-green-50 text-green-700 border border-green-200 w-full sm:w-auto flex items-center justify-center">
+                            <CheckIcon className="h-4 w-4 mr-2 flex-shrink-0" /> 
+                            <span className="whitespace-nowrap">Leído</span>
                         </Badge>
                     ) : (
                         <Button
                             variant="outline"
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium border-green-200 text-green-700 hover:bg-green-50"
+                            className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium border-green-200 text-green-700 hover:bg-green-50 w-full sm:w-auto"
                             onClick={() => setConfirmDialogOpen(true)}
                         >
-                            <CheckIcon className="h-4 w-4" /> Marcar como leído
+                            <CheckIcon className="h-4 w-4 flex-shrink-0" /> 
+                            <span className="whitespace-nowrap">Marcar como leído</span>
                         </Button>
                     )}
                     {comunicado.fecha_publicacion && (
-                        <Badge variant="outline" className="px-4 py-2 text-sm font-medium bg-slate-50 text-slate-700 border border-slate-200">
-                            <CalendarIcon className="h-4 w-4 mr-2" />
-                            {formatDate(comunicado.fecha_publicacion)}
+                        <Badge variant="outline" className="px-3 sm:px-4 py-2 text-sm font-medium bg-slate-50 text-slate-700 border border-slate-200 w-full sm:w-auto flex items-center justify-center">
+                            <CalendarIcon className="h-4 w-4 mr-2 flex-shrink-0" />
+                            <span className="whitespace-nowrap">{formatDate(comunicado.fecha_publicacion)}</span>
                         </Badge>
                     )}
                 </div>

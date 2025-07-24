@@ -249,14 +249,14 @@ export default function HistoricoCertificacionLaboral() {
       {/* Página principal */}
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <h1 className="text-2xl font-bold w-full">
             Histórico de Certificaciones Laborales
           </h1>
           <Button
             variant="outline"
             onClick={() => router.back()}
-            className="flex items-center gap-2 bg-black text-white hover:bg-gray-800"
+            className="flex items-center gap-2 bg-black text-white hover:bg-gray-800 w-full sm:w-auto"
           >
             <ArrowLeft className="h-4 w-4" /> Volver a Solicitudes
           </Button>

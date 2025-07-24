@@ -237,15 +237,21 @@ export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
   return (
     <>
       {/* Mobile sidebar toggle */}
-      <div className="sticky top-0 z-10 md:hidden pl-1 pt-1 sm:pl-3 sm:pt-3 bg-white shadow">
-        <button
-          type="button"
-          className="-ml-0.5 -mt-0.5 h-12 w-12 inline-flex items-center justify-center rounded-md text-gray-500 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary"
-          onClick={() => setSidebarOpen(true)}
-        >
-          <span className="sr-only">Abrir sidebar</span>
-          <Menu className="h-6 w-6" aria-hidden="true" />
-        </button>
+      <div className="sticky top-0 z-10 md:hidden w-full bg-white shadow-sm border-b border-gray-200">
+        <div className="flex items-center justify-between px-4 py-3">
+          <button
+            type="button"
+            className="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary transition-colors"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <span className="sr-only">Abrir menú</span>
+            <Menu className="h-6 w-6" aria-hidden="true" />
+          </button>
+          <div className="flex items-center">
+            <img src="/logo-h-n.webp" alt="Logo" className="h-8" />
+          </div>
+          <div className="w-10"></div> {/* Spacer for balance */}
+        </div>
       </div>
 
       {/* Mobile sidebar */}

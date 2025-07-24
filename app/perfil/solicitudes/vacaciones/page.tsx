@@ -293,7 +293,7 @@ export default function SolicitudVacaciones() {
       </Dialog>
 
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="max-w-fit max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[90vh] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Solicitar Vacaciones</DialogTitle>
             <DialogDescription>
@@ -416,14 +416,14 @@ export default function SolicitudVacaciones() {
         </div>
       ) : (
         <div className="space-y-6">
-                    <div className="flex justify-between items-center">
-                      <div>
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                      <div className="w-full">
                         <h1 className="text-2xl font-bold tracking-tight">Solicitudes de Vacaciones</h1>
                         <p className="text-muted-foreground">
                           Gestiona tus solicitudes de vacaciones.
                         </p>
                       </div>
-                      <Button onClick={() => setShowModal(true)}>
+                      <Button className="w-full sm:w-auto" onClick={() => setShowModal(true)}>
                         <Calendar className="mr-2 h-4 w-4" /> Solicitar vacaciones
                       </Button>
                     </div>
@@ -450,78 +450,80 @@ export default function SolicitudVacaciones() {
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="p-0">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Fecha de solicitud</TableHead>
-                              <TableHead>Fecha de inicio</TableHead>
-                              <TableHead>Fecha de fin</TableHead>
-                              <TableHead>Días</TableHead>
-                              <TableHead>Estado</TableHead>
-                              <TableHead>Acciones</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {solicitudes.length === 0 ? (
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
                               <TableRow>
-                                <TableCell colSpan={6} className="text-center">
-                                  No has realizado ninguna solicitud de vacaciones.
-                                </TableCell>
+                                <TableHead>Fecha de solicitud</TableHead>
+                                <TableHead>Fecha de inicio</TableHead>
+                                <TableHead>Fecha de fin</TableHead>
+                                <TableHead>Días</TableHead>
+                                <TableHead>Estado</TableHead>
+                                <TableHead>Acciones</TableHead>
                               </TableRow>
-                            ) : (
-                              solicitudes.map((solicitud) => (
-                                <TableRow key={solicitud.id}>
-                                  <TableCell>{formatDate(solicitud.fecha_solicitud)}</TableCell>
-                                  <TableCell>{formatDate(solicitud.fecha_inicio)}</TableCell>
-                                  <TableCell>{formatDate(solicitud.fecha_fin)}</TableCell>
-                                  <TableCell>
-                                    {calcularDiasVacaciones(solicitud.fecha_inicio, solicitud.fecha_fin)} días
+                            </TableHeader>
+                            <TableBody>
+                              {solicitudes.length === 0 ? (
+                                <TableRow>
+                                  <TableCell colSpan={6} className="text-center">
+                                    No has realizado ninguna solicitud de vacaciones.
                                   </TableCell>
-                                  <TableCell>
-                                    <Badge
-                                      variant={
-                                        solicitud.estado === "aprobado"
-                                          ? "secondary"
-                                          : solicitud.estado === "rechazado"
-                                          ? "destructive"
-                                          : "default"
-                                      }
-                                      className={
-                                        solicitud.estado === "aprobado"
-                                          ? "bg-green-100 text-green-800 hover:bg-green-100"
-                                          : solicitud.estado === "rechazado"
-                                          ? "bg-red-100 text-red-800 hover:bg-red-100"
-                                          : "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
-                                      }
-                                    >
-                                      {solicitud.estado.charAt(0).toUpperCase() + solicitud.estado.slice(1)}
-                                    </Badge>
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="flex gap-2">
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => handleShowComments(solicitud.id.toString())}
+                                </TableRow>
+                              ) : (
+                                solicitudes.map((solicitud) => (
+                                  <TableRow key={solicitud.id}>
+                                    <TableCell>{formatDate(solicitud.fecha_solicitud)}</TableCell>
+                                    <TableCell>{formatDate(solicitud.fecha_inicio)}</TableCell>
+                                    <TableCell>{formatDate(solicitud.fecha_fin)}</TableCell>
+                                    <TableCell>
+                                      {calcularDiasVacaciones(solicitud.fecha_inicio, solicitud.fecha_fin)} días
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge
+                                        variant={
+                                          solicitud.estado === "aprobado"
+                                            ? "secondary"
+                                            : solicitud.estado === "rechazado"
+                                            ? "destructive"
+                                            : "default"
+                                        }
+                                        className={
+                                          solicitud.estado === "aprobado"
+                                            ? "bg-green-100 text-green-800 hover:bg-green-100"
+                                            : solicitud.estado === "rechazado"
+                                            ? "bg-red-100 text-red-800 hover:bg-red-100"
+                                            : "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
+                                        }
                                       >
-                                        <MessageSquare className="h-4 w-4" />
-                                      </Button>
-                                      {solicitud.estado === "rechazado" && solicitud.motivo_rechazo && (
+                                        {solicitud.estado.charAt(0).toUpperCase() + solicitud.estado.slice(1)}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex gap-2">
                                         <Button
                                           variant="outline"
                                           size="sm"
-                                          onClick={() => handleShowReason(solicitud.motivo_rechazo)}
+                                          onClick={() => handleShowComments(solicitud.id.toString())}
                                         >
-                                          Ver motivo
+                                          <MessageSquare className="h-4 w-4" />
                                         </Button>
-                                      )}
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              ))
-                            )}
-                          </TableBody>
-                        </Table>
+                                        {solicitud.estado === "rechazado" && solicitud.motivo_rechazo && (
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleShowReason(solicitud.motivo_rechazo)}
+                                          >
+                                            Ver motivo
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ))
+                              )}
+                            </TableBody>
+                          </Table>
+                        </div>
                       </CardContent>
                     </Card>
         </div>

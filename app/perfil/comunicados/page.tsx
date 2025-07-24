@@ -251,27 +251,61 @@ export default function ComunicadosPage() {
   return (
     <div className="space-y-6">
               {/* Cabecera con estilo de usuarios */}
-              <div className="flex justify-between items-center">
-                <div>
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0">
+                <div className="w-full md:w-auto">
                   <h1 className="text-2xl font-bold tracking-tight">Comunicados</h1>
                   <p className="text-muted-foreground">Comunicados dirigidos a tu cargo y actualizaciones de la empresa.</p>
                 </div>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span>{comunicados.filter(c => c.leido).length} leídos</span>
-                  <span>•</span>
-                  <span>{comunicados.filter(c => !c.leido).length} pendientes</span>
-                  <span>•</span>
-                  <span>{comunicados.length} total</span>
+                <div className="flex flex-row justify-between md:justify-end w-full md:w-auto items-center gap-4 text-sm text-muted-foreground">
+                  <div className="flex gap-4">
+                    <div className="grid grid-cols-3 gap-6 w-full">
+                      <div className="bg-white/80 backdrop-blur-sm rounded-lg px-3 py-2 border shadow-sm">
+                        <div className="flex items-center gap-2 justify-center">
+                          <Eye className="w-4 h-4 text-green-600" />
+                          <span className="text-green-700 text-lg font-medium">
+                            {comunicados.filter(c => c.leido).length}
+                          </span>
+                        </div>
+                        <div className="text-sm text-green-600 text-center mt-1">
+                          leídos
+                        </div>
+                      </div>
+                      
+                      <div className="bg-white/80 backdrop-blur-sm rounded-lg px-3 py-2 border shadow-sm">
+                        <div className="flex items-center gap-2 justify-center">
+                          <EyeOff className="w-4 h-4 text-red-600" />
+                          <span className="text-red-700 text-lg font-medium">
+                            {comunicados.filter(c => !c.leido).length}
+                          </span>
+                        </div>
+                        <div className="text-sm text-red-600 text-center mt-1">
+                          pendientes
+                        </div>
+                      </div>
+
+                      <div className="bg-white/80 backdrop-blur-sm rounded-lg px-3 py-2 border shadow-sm">
+                        <div className="flex items-center gap-2 justify-center">
+                          <Building className="w-4 h-4 text-blue-600" />
+                          <span className="text-blue-700 text-lg font-medium">
+                            {comunicados.length}
+                          </span>
+                        </div>
+                        <div className="text-sm text-blue-600 text-center mt-1">
+                          total
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {/* Filtros */}
-              <Card className="bg-white/80 backdrop-blur-sm shadow-sm">
+              <Card className="bg-white/80 backdrop-blur-sm shadow-sm w-full">
                 <CardContent className="p-4">
-                  <div className="flex flex-col md:flex-row gap-4 items-end">
-                    <div className="flex-1">
+                  <div className="flex flex-col md:flex-row gap-4 items-end w-full">
+                    <div className="w-full md:flex-1">
                       <label className="text-sm font-medium mb-1 block">Buscar</label>
-                      <div className="relative">
+                      <div className="relative w-full">
                         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
                           placeholder="Buscar comunicados..."
@@ -287,7 +321,7 @@ export default function ComunicadosPage() {
                             setComunicadosFiltrados(filt);
                             setPaginaActual(1);
                           }}
-                          className="pl-8"
+                          className="pl-8 w-full"
                         />
                       </div>
                     </div>
@@ -296,7 +330,7 @@ export default function ComunicadosPage() {
                       value={columnasPorFila}
                       onValueChange={(value) => setColumnasPorFila(value)}
                     >
-                      <SelectTrigger className="w-[120px]">
+                      <SelectTrigger className="w-full md:w-[120px]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

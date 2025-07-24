@@ -70,7 +70,8 @@ export default function PerfilLayout({
   if (loading) {
     return (
       <div className="flex h-screen bg-transparent">
-        <div className="w-64 bg-white/80 backdrop-blur-sm shadow-sm border-r border-gray-200/50">
+        {/* Sidebar loading - oculto en móvil */}
+        <div className="hidden md:block w-64 bg-white/80 backdrop-blur-sm shadow-sm border-r border-gray-200/50">
           <div className="p-4">
             <div className="h-8 bg-gray-200/60 rounded animate-pulse mb-4"></div>
             <div className="space-y-2">
@@ -98,7 +99,11 @@ export default function PerfilLayout({
               WebkitBackdropFilter: 'blur(2px)'
             }}
           ></div>
-          <div className="relative z-10 p-6">
+          {/* Header móvil loading - solo visible en móvil */}
+          <div className="md:hidden relative z-20 p-4">
+            <div className="h-12 bg-white/60 rounded animate-pulse"></div>
+          </div>
+          <div className="relative z-10 p-4 md:p-6">
             <div className="h-8 bg-white/60 rounded animate-pulse mb-4"></div>
             <div className="h-64 bg-white/60 rounded animate-pulse"></div>
           </div>
@@ -109,8 +114,8 @@ export default function PerfilLayout({
 
   return (
     <div className="flex h-screen bg-transparent">
-      {/* Sidebar */}
-      <div className="w-64 bg-white shadow-sm border-r border-gray-200 flex-shrink-0">
+      {/* Sidebar - oculto en móvil */}
+      <div className="hidden md:block w-64 bg-white shadow-sm border-r border-gray-200 flex-shrink-0">
         <Sidebar userName={userData?.colaborador || 'Usuario'} />
         <OnlineUsersIndicator />
       </div>
@@ -134,8 +139,14 @@ export default function PerfilLayout({
             backdropFilter: 'blur(2px)',
             WebkitBackdropFilter: 'blur(2px)'
           }}
-        ></div>        
-        <main className="relative px-20 py-10 space-y-6 z-10">
+        ></div>
+        
+        {/* Header móvil - solo visible en móvil */}
+        <div className="md:hidden relative z-20">
+          <Sidebar userName={userData?.colaborador || 'Usuario'} />
+        </div>
+        
+        <main className="relative px-4 md:px-20 py-6 md:py-10 space-y-6 z-10">
           {children}
         </main>
       </div>

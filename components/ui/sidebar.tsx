@@ -317,6 +317,7 @@ export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
                             <Link
                               key={subItem.name}
                               href={subItem.href}
+                              onClick={() => setSidebarOpen(false)}
                               className={cn(
                                 subItem.current ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
                                 "group flex items-center px-2 py-2 text-sm font-medium rounded-md",
@@ -338,6 +339,7 @@ export const Sidebar = ({ userName = "Usuario" }: SidebarProps) => {
                   ) : (
                     <Link
                       href={item.href || "#"}
+                      onClick={() => setSidebarOpen(false)}
                       className={cn(
                         item.current ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
                         "group flex items-center px-2 py-2 text-base font-medium rounded-md",

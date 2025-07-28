@@ -130,11 +130,31 @@ export default function Home() {
     const loadBirthdayUsers = async () => {
       try {
         const supabase = createSupabaseClient()
-        const today = new Date()
+        
+        // Obtener fecha actual en zona horaria de Colombia (UTC-5)
+        const now = new Date()
+        const colombiaOffset = -5 * 60 // UTC-5 en minutos
+        const utc = now.getTime() + (now.getTimezoneOffset() * 60000)
+        const today = new Date(utc + (colombiaOffset * 60000))
+        
+        // Calcular inicio de semana (lunes) y fin de semana (domingo)
         const currentWeekStart = new Date(today)
-        currentWeekStart.setDate(today.getDate() - today.getDay() + 1) // Lunes
+        const dayOfWeek = today.getDay() // 0 = domingo, 1 = lunes, etc.
+        const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek // Si es domingo, retroceder 6 días
+        currentWeekStart.setDate(today.getDate() + daysToMonday)
+        currentWeekStart.setHours(0, 0, 0, 0) // Inicio del día
+        
         const currentWeekEnd = new Date(currentWeekStart)
         currentWeekEnd.setDate(currentWeekStart.getDate() + 6) // Domingo
+        currentWeekEnd.setHours(23, 59, 59, 999) // Final del día
+
+        // Debug: log para verificar el cálculo de la semana
+        console.log('Cálculo de semana:', {
+          hoy: today.toISOString().split('T')[0],
+          díaDeLaSemana: dayOfWeek,
+          inicioSemana: currentWeekStart.toISOString().split('T')[0],
+          finSemana: currentWeekEnd.toISOString().split('T')[0]
+        })
 
         // Obtener todos los usuarios activos con fecha de nacimiento
         const { data: users, error } = await supabase
@@ -163,11 +183,20 @@ export default function Home() {
           // Crear la fecha correctamente para evitar problemas de zona horaria
           const birthDateStr = user.fecha_nacimiento as string
           const [year, month, day] = birthDateStr.split('-')
-          const birthDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
           const currentYear = today.getFullYear()
 
-          // Crear fecha de cumpleaños para este año
-          const birthdayThisYear = new Date(currentYear, birthDate.getMonth(), birthDate.getDate())
+          // Crear fecha de cumpleaños para este año en zona horaria de Colombia
+          const birthdayThisYear = new Date(currentYear, parseInt(month) - 1, parseInt(day))
+          birthdayThisYear.setHours(12, 0, 0, 0) // Mediodía para evitar problemas de zona horaria
+
+          // Debug: log para verificar las fechas
+          console.log('Usuario:', user.colaborador, {
+            fechaNacimiento: birthDateStr,
+            cumpleañosEsteAño: birthdayThisYear.toISOString().split('T')[0],
+            inicioSemana: currentWeekStart.toISOString().split('T')[0],
+            finSemana: currentWeekEnd.toISOString().split('T')[0],
+            estáEnRango: birthdayThisYear >= currentWeekStart && birthdayThisYear <= currentWeekEnd
+          })
 
           // Verificar si el cumpleaños está en la semana actual
           return birthdayThisYear >= currentWeekStart && birthdayThisYear <= currentWeekEnd
@@ -1253,12 +1282,15 @@ export default function Home() {
                       // Crear la fecha correctamente para evitar problemas de zona horaria
                       const birthDateStr = user.fecha_nacimiento
                       const [year, month, day] = birthDateStr.split('-')
-                      const birthDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+                      const currentYear = new Date().getFullYear()
+                      const birthDate = new Date(currentYear, parseInt(month) - 1, parseInt(day))
+                      birthDate.setHours(12, 0, 0, 0) // Mediodía para evitar problemas de zona horaria
 
-                      const formattedDate = birthDate.toLocaleDateString("es-ES", {
+                      const formattedDate = birthDate.toLocaleDateString("es-CO", {
                         weekday: "long",
                         day: "numeric",
                         month: "long",
+                        timeZone: "America/Bogota"
                       })
 
                       const colors = [
